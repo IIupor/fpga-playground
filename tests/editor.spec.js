@@ -39,3 +39,29 @@ test('reset restores the example circuit', async ({ page }) => {
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
   await expect(page.locator('#editorMessage')).toContainText('Example restored');
 });
+
+test('rewiring a gate input replaces its previous connection', async ({ page }) => {
+  // Make A=1 while B remains 0, so the original AND output is 0.
+  await page.getByRole('button', { name: /A.*0.*LOW/i }).click();
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+
+  // Connect A to the second AND input; the old B-to-AND wire must be replaced.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator('#editorStage g[data-node="3"] .nodepin').nth(1).click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+});
+
+test('deleting a connected gate also removes its wires', async ({ page }) => {
+  const wires = page.locator('#editorStage path.editor-wire');
+  await expect(wires).toHaveCount(3);
+
+  // Select the AND gate and delete it.
+  await page.locator('#editorStage g[data-node="3"]').click();
+  await page.getByRole('button', { name: 'Delete selected' }).click();
+
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(3);
+  await expect(wires).toHaveCount(0);
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+});
