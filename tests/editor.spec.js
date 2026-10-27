@@ -360,11 +360,11 @@ test('resizing a gate input count adds and removes input pins', async ({ page })
   const gate = stage.locator('g[data-node="3"]');
 
   await gate.click();
-  await page.getByRole('button', { name: '＋ Input' }).click();
+  await page.locator('#inputPlus').click();
   await expect(gate.locator('.nodepin')).toHaveCount(4);
   await expect(page.locator('#editorMessage')).toContainText('3 input port(s)');
 
-  await page.getByRole('button', { name: '− Input' }).click();
+  await page.locator('#inputMinus').click();
   await expect(gate.locator('.nodepin')).toHaveCount(3);
   await expect(page.locator('#editorMessage')).toContainText('2 input port(s)');
 });
