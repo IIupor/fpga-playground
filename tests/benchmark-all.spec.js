@@ -68,22 +68,22 @@ for (const name of ['c17','c1908']) {
 
     // Simulate the original and exported modules side by side on identical vectors.
     const c=parse(name), vectorsToRun=vectors(c, 64);
-    const inputDecls=c.inputs.map(n=>'  reg '+n+';').join('\\n');
-    const originalOutputs=c.outputs.map(n=>'  wire orig_'+n+';').join('\\n');
-    const exportedOutputs=c.outputs.map(n=>'  wire exp_'+n+';').join('\\n');
+    const inputDecls=c.inputs.map(n=>'  reg '+n+';').join('\n');
+    const originalOutputs=c.outputs.map(n=>'  wire orig_'+n+';').join('\n');
+    const exportedOutputs=c.outputs.map(n=>'  wire exp_'+n+';').join('\n');
     const originalPorts=[...c.inputs.map(n=>'.'+n+'('+n+')'),...c.outputs.map(n=>'.'+n+'(orig_'+n+')')].join(', ');
     const exportedPorts=[...c.inputs.map(n=>'.'+n+'('+n+')'),...c.outputs.map(n=>'.'+n+'(exp_'+n+')')].join(', ');
-    const rows=vectorsToRun.map((v,i)=>v.map((bit,j)=>'    '+c.inputs[j]+' = 1\\'b'+bit+';').join('\\n')+
-      '\\n    #1;\\n    $display("EQ:'+i+':%b:%b", {'+c.outputs.map(n=>'orig_'+n).join(', ')+'}, {'+c.outputs.map(n=>'exp_'+n).join(', ')+'});').join('\\n');
-    const tb='module tb;\\n'+inputDecls+'\\n'+originalOutputs+'\\n'+exportedOutputs+
-      '\\n  '+name+' original_dut ('+originalPorts+');\\n  fpga_playground exported_dut ('+exportedPorts+');\\n  initial begin\\n'+rows+'\\n    $finish;\\n  end\\nendmodule\\n';
+    const rows=vectorsToRun.map((v,i)=>v.map((bit,j)=>"    "+c.inputs[j]+" = 1'b"+bit+";").join('\n')+
+      '\n    #1;\n    $display("EQ:'+i+':%b:%b", {'+c.outputs.map(n=>'orig_'+n).join(', ')+'}, {'+c.outputs.map(n=>'exp_'+n).join(', ')+'});').join('\n');
+    const tb='module tb;\n'+inputDecls+'\n'+originalOutputs+'\n'+exportedOutputs+
+      '\n  '+name+' original_dut ('+originalPorts+');\n  fpga_playground exported_dut ('+exportedPorts+');\n  initial begin\n'+rows+'\n    $finish;\n  end\nendmodule\n';
     const dir=fs.mkdtempSync(path.join(os.tmpdir(),name+'-equiv-'));
     try {
       const tbPath=path.join(dir,'tb.v'), exportedPath=path.join(dir,'exported.v'), exe=path.join(dir,'sim');
       fs.writeFileSync(tbPath,tb); fs.writeFileSync(exportedPath,exported);
       execFileSync('iverilog',['-g2012','-s','tb','-o',exe,c.file,exportedPath,tbPath],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
       const output=execFileSync('vvp',[exe],{encoding:'utf8'});
-      const rowsFound=[...output.matchAll(/^EQ:(\\d+):([01xXzZ]+):([01xXzZ]+)$/gm)];
+      const rowsFound=[...output.matchAll(/^EQ:(\d+):([01xXzZ]+):([01xXzZ]+)$/gm)];
       expect(rowsFound.length,name+' equivalence simulation must cover every vector').toBe(vectorsToRun.length);
       for(const row of rowsFound) {
         expect(row[2].toLowerCase(),name+' original circuit produced unknown output for vector '+row[1]).not.toMatch(/[xz]/i);
