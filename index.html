@@ -169,18 +169,6 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   if(e.target?.id!=='importVerilog'||!area.value.trim())return;
   let source=area.value;
   source=source.replace(/\b(input|output)(?:\s+wire)?\s+([^;]+);/gi,(whole,kind,list)=>list.split(',').map(name=>`${kind} ${name.trim()};`).join('\n'));
-  const outputs=[...source.matchAll(/\boutput\s+([A-Za-z_$][\w$]*)\s*;/gi)].map(m=>m[1]);
-  const aliases=[];
-  for(const name of outputs){
-   const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-   const gate=new RegExp(`\\b(and|or|xor|nand|nor|xnor|not)\\s+([A-Za-z_$][\\w$]*)\\s*\\(\\s*${escaped}\\s*,`,'i');
-   if(gate.test(source)){
-    const alias=`__drv_${name}`;
-    source=source.replace(gate,(_all,type,instance)=>`${type} ${instance} (${alias},`);
-    aliases.push(`  assign ${name} = ${alias};`);
-   }
-  }
-  if(aliases.length)source=source.replace(/\bendmodule\b/i,`${aliases.join('\n')}\nendmodule`);
   area.value=source;
  },true);
 })();
