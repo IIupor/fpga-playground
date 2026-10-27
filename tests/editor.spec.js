@@ -212,3 +212,54 @@ test('XNOR gate evaluates all input combinations correctly', async ({ page }) =>
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
 
+
+test('D flip-flop captures data only on the rising clock edge', async ({ page }) => {
+  await page.getByRole('button', { name: 'D flip-flop', exact: true }).click();
+  const dff = page.locator('#editorStage g[data-node]').last();
+  const dffId = await dff.getAttribute('data-node');
+
+  // Connect A to D, B to CLK, and Q to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${dffId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${dffId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${dffId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(0).click(); // D = 1, clock stays low
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(1).click(); // rising edge captures D = 1
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(0).click(); // D = 0 while clock is high
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(1).click(); // falling edge does not capture
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(1).click(); // next rising edge captures D = 0
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+});
+
+test('D latch follows data while enabled and holds its value while disabled', async ({ page }) => {
+  await page.getByRole('button', { name: 'D latch', exact: true }).click();
+  const latch = page.locator('#editorStage g[data-node]').last();
+  const latchId = await latch.getAttribute('data-node');
+
+  // Connect A to D, B to Enable, and Q to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${latchId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${latchId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${latchId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(0).click(); // D = 1, Enable = 0
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(1).click(); // Enable = 1, latch follows D
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(0).click(); // D = 0 while enabled
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(1).click(); // Disable, stored value remains 0
+  await page.locator('#editorControls button').nth(0).click(); // D = 1 while disabled
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+});
