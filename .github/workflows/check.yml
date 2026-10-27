@@ -14,4 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node --check <(sed -n '/^<script>$/,/^<\/script>$/p' index.html)
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
