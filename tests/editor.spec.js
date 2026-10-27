@@ -327,3 +327,44 @@ test('highlights valid input pins while a wire connection is pending', async ({ 
   await expect(inputs).toHaveCount(0);
   await expect(stage.locator('path.editor-wire')).toHaveCount(3);
 });
+
+test('custom instance and pin names are reflected in the editor', async ({ page }) => {
+  const stage = page.locator('#editorStage');
+  await stage.locator('g[data-node="3"]').click();
+
+  await page.locator('#instanceName').fill('CORE_AND');
+  await page.locator('#inputPinNames').fill('LEFT, RIGHT');
+  await page.locator('#outputPinNames').fill('RESULT');
+  await page.getByRole('button', { name: 'Apply names' }).click();
+
+  await expect(page.locator('#editorMessage')).toContainText('Names updated for CORE_AND');
+  await expect(stage.locator('g[data-node="3"]')).toContainText('CORE_AND');
+  await expect(stage.locator('g[data-node="3"] .custom-pin-label')).toHaveText(['LEFT', 'RIGHT', 'RESULT']);
+});
+
+test('rejects duplicate instance names without changing the selected block', async ({ page }) => {
+  const stage = page.locator('#editorStage');
+  await stage.locator('g[data-node="3"]').click();
+
+  await page.locator('#instanceName').fill('A');
+  await page.locator('#inputPinNames').fill('LEFT, RIGHT');
+  await page.locator('#outputPinNames').fill('RESULT');
+  await page.getByRole('button', { name: 'Apply names' }).click();
+
+  await expect(page.locator('#editorMessage')).toContainText('already used');
+  await expect(stage.locator('g[data-node="3"]')).toContainText('AND1');
+});
+
+test('resizing a gate input count adds and removes input pins', async ({ page }) => {
+  const stage = page.locator('#editorStage');
+  const gate = stage.locator('g[data-node="3"]');
+
+  await gate.click();
+  await page.locator('#inputPlus').click();
+  await expect(gate.locator('.nodepin')).toHaveCount(4);
+  await expect(page.locator('#editorMessage')).toContainText('3 input port(s)');
+
+  await page.locator('#inputMinus').click();
+  await expect(gate.locator('.nodepin')).toHaveCount(3);
+  await expect(page.locator('#editorMessage')).toContainText('2 input port(s)');
+});
