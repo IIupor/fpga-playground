@@ -1,6 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const sourcePath = path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c1908.v');
 const source = fs.readFileSync(sourcePath, 'utf8')
@@ -141,6 +143,59 @@ test('c1908 recursive and topological evaluators agree on directed and seeded-ra
     expect(evaluateTopologically(circuit, vector)).toEqual(evaluateRecursively(circuit, vector));
   }
 });
+
+test('c1908 outputs match the independent Icarus Verilog simulator', () => {
+  const vectors = [
+    circuit.inputs.map(() => 0),
+    circuit.inputs.map(() => 1),
+    ...circuit.inputs.map((_, i) => circuit.inputs.map((__, j) => i === j ? 1 : 0)),
+    ...circuit.inputs.map((_, i) => circuit.inputs.map((__, j) => i === j ? 0 : 1))
+  ];
+  let seed = 0x1908;
+  const random = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 0x100000000;
+  };
+  for (let i = 0; i < 2000; i++) {
+    vectors.push(circuit.inputs.map(() => random() < 0.5 ? 0 : 1));
+  }
+
+  const inputDecls = circuit.inputs.map(name => `  reg ${name};`).join('\\n');
+  const outputDecls = circuit.outputs.map(name => `  wire ${name};`).join('\\n');
+  const portConnections = [...circuit.inputs, ...circuit.outputs]
+    .map(name => `    .${name}(${name})`).join(',\\n');
+  const testVectors = vectors.map((vector, index) => {
+    const assignments = circuit.inputs.map((name, i) => `    ${name} = 1'b${vector[i]};`).join('\\n');
+    return `${assignments}\\n    #1;\\n    $display("VECTOR:${index}:%b", {${circuit.outputs.join(', ')}});`;
+  }).join('\\n');
+  const testbench = `module tb;\\n${inputDecls}\\n${outputDecls}\\n  c1908 dut (\\n${portConnections}\\n  );\\n  initial begin\\n${testVectors}\\n    $finish;\\n  end\\nendmodule\\n`;
+
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c1908-iverilog-'));
+  const testbenchPath = path.join(tempDir, 'c1908_tb.v');
+  const executablePath = path.join(tempDir, 'c1908_sim');
+  try {
+    fs.writeFileSync(testbenchPath, testbench);
+    execFileSync('iverilog', ['-g2012', '-s', 'tb', '-o', executablePath, sourcePath, testbenchPath], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const output = execFileSync('vvp', [executablePath], { encoding: 'utf8' });
+    const actual = new Map();
+    for (const line of output.split(/\\r?\\n/)) {
+      const match = line.match(/^VECTOR:(\\d+):([01xXzZ]+)$/);
+      if (match) actual.set(Number(match[1]), match[2].toLowerCase());
+    }
+
+    expect(actual.size, 'Icarus must produce one output row per vector').toBe(vectors.length);
+    vectors.forEach((vector, index) => {
+      const expected = evaluateTopologically(circuit, vector).join('');
+      expect(actual.get(index), `Icarus output mismatch for vector #${index}, input=${vector.join('')}`)
+        .toBe(expected);
+    });
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}, 60000);
 
 test('all supported primitive gate truth tables are correct', () => {
   const cases = {
