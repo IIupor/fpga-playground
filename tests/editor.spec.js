@@ -263,3 +263,21 @@ test('D latch follows data while enabled and holds its value while disabled', as
   await page.locator('#editorControls button').nth(0).click(); // D = 1 while disabled
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
+
+test('wire hit areas make wires easy to select and delete', async ({ page }) => {
+  const blocks = page.locator('#editorStage g[data-node]');
+  const wires = page.locator('#editorStage path.editor-wire');
+  const hitAreas = page.locator('#editorStage path.wire-hit-area');
+
+  await expect(blocks).toHaveCount(4);
+  await expect(wires).toHaveCount(3);
+  await expect(hitAreas).toHaveCount(3);
+
+  // The wider transparent hit area selects the wire without selecting its blocks.
+  await hitAreas.nth(2).click({ force: true });
+  await page.getByRole('button', { name: 'Delete selected' }).click();
+
+  await expect(blocks).toHaveCount(4);
+  await expect(wires).toHaveCount(2);
+  await expect(hitAreas).toHaveCount(2);
+});
