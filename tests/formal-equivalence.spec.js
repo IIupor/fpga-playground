@@ -41,7 +41,7 @@ for (const name of benchmarks) {
         'equiv_simple',
         'equiv_status -assert',
         ''
-      ].join('\\n'));
+      ].join('\n'));
 
       const log = execFileSync('yosys', ['-Q', '-s', scriptPath], {
         encoding: 'utf8',
