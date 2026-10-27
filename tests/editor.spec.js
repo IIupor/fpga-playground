@@ -65,3 +65,42 @@ test('deleting a connected gate also removes its wires', async ({ page }) => {
   await expect(wires).toHaveCount(0);
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
+
+test('deleting a wire preserves blocks and removes that connection', async ({ page }) => {
+  const blocks = page.locator('#editorStage g[data-node]');
+  const wires = page.locator('#editorStage path.editor-wire');
+  await expect(blocks).toHaveCount(4);
+  await expect(wires).toHaveCount(3);
+
+  // Remove the AND-to-output connection without deleting either block.
+  await wires.nth(2).click();
+  await page.getByRole('button', { name: 'Delete selected' }).click();
+
+  await expect(blocks).toHaveCount(4);
+  await expect(wires).toHaveCount(2);
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+});
+
+test('OR gate evaluates connected inputs correctly', async ({ page }) => {
+  await page.getByRole('button', { name: 'OR', exact: true }).click();
+  const orBlock = page.locator('#editorStage g[data-node]').last();
+  const orId = await orBlock.getAttribute('data-node');
+
+  // Connect A and B to OR, then connect OR to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${orId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${orId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${orId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+
+  // OR must be high when either input is high, including when only B is high.
+  await page.locator('#editorControls button').nth(1).click();
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(1).click();
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(0).click();
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+});
