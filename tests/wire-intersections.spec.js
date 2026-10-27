@@ -1,9 +1,16 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const benchmarks = ['c17', 'c432', 'c499', 'c880'];
 
 for (const name of benchmarks) {
   test(name + ': routed interconnects have no proper crossings', async ({ page }) => {
+    // Keep the integration test deterministic and independent of GitHub raw-content availability.
+    await page.route(`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`, async route => {
+      const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', `${name}.v`), 'utf8');
+      await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
+    });
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(name);
     await page.locator('#loadBenchmark').click();
