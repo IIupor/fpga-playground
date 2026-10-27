@@ -33,7 +33,7 @@ test('adds and deletes a logic block', async ({ page }) => {
 });
 
 test('reset restores the example circuit', async ({ page }) => {
-  await page.getByRole('button', { name: '＋ Input' }).click();
+  await page.locator('[data-add="INPUT"]').click();
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
   await page.getByRole('button', { name: 'Reset example' }).click();
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
