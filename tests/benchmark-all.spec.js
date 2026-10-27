@@ -51,7 +51,7 @@ for (const name of names) {
   }, 60000);
 }
 
-for (const name of ['c17','c1908']) {
+for (const name of names) {
   test(name + ': browser import/export/import preserves circuit structure', async ({ page }) => {
     await page.goto('/');
     const source=fs.readFileSync(path.join(__dirname,'..','benchmarks','iscas85',name+'.v'),'utf8');
@@ -97,5 +97,5 @@ for (const name of ['c17','c1908']) {
     await expect(page.locator('#editorMessage')).toContainText('Imported');
     await expect(page.locator('#editorStage g[data-node]')).toHaveCount(firstBlocks);
     await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(firstWires);
-  }, 120000);
+  }, 180000);
 }
