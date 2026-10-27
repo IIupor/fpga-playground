@@ -402,6 +402,12 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await page.locator('#editorStage g[data-node="3"] .nodepin').nth(0).click();
   await gnd.locator('.nodepin').click();
   await page.locator('#editorStage g[data-node="3"] .nodepin').nth(1).click();
+
+  // Include the gate output in the round-trip, so the imported circuit is behaviorally checked too.
+  await page.locator('#editorStage g[data-node="3"] .nodepin').nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+
   await page.locator('#exportVerilog').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain("1'b1");
@@ -416,4 +422,6 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await expect(page.locator('#editorMessage')).toContainText('Imported');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'VDD' })).toHaveCount(1);
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'GND' })).toHaveCount(1);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+  await expect(page.locator('#editorResults')).toContainText('= 0');
 });
