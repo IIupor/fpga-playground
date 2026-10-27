@@ -73,7 +73,7 @@ test('deleting a wire preserves blocks and removes that connection', async ({ pa
   await expect(wires).toHaveCount(3);
 
   // Remove the AND-to-output connection without deleting either block.
-  await wires.nth(2).click();
+  await wires.nth(2).click({ force: true });
   await page.getByRole('button', { name: 'Delete selected' }).click();
 
   await expect(blocks).toHaveCount(4);
