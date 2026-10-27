@@ -104,3 +104,44 @@ test('OR gate evaluates connected inputs correctly', async ({ page }) => {
   await page.locator('#editorControls button').nth(0).click();
   await expect(page.locator('#editorResults')).toContainText('= 1');
 });
+
+test('NAND gate evaluates all input combinations correctly', async ({ page }) => {
+  await page.getByRole('button', { name: 'NAND', exact: true }).click();
+  const nandBlock = page.locator('#editorStage g[data-node]').last();
+  const nandId = await nandBlock.getAttribute('data-node');
+
+  // Route A and B through NAND to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${nandId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${nandId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${nandId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  // NAND is high unless both inputs are high.
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(0).click(); // A = 1, B = 0
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(1).click(); // A = 1, B = 1
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(0).click(); // A = 0, B = 1
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+});
+
+test('NOT gate inverts its connected input', async ({ page }) => {
+  await page.getByRole('button', { name: 'NOT', exact: true }).click();
+  const notBlock = page.locator('#editorStage g[data-node]').last();
+  const notId = await notBlock.getAttribute('data-node');
+
+  // Route A through NOT to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${notId}"] .nodepin`).nth(0).click();
+  await page.locator(`#editorStage g[data-node="${notId}"] .nodepin`).nth(1).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 1'); // NOT 0 = 1
+  await page.locator('#editorControls button').nth(0).click();
+  await expect(page.locator('#editorResults')).toContainText('= 0'); // NOT 1 = 0
+  await page.locator('#editorControls button').nth(0).click();
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+});
