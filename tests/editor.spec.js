@@ -145,3 +145,70 @@ test('NOT gate inverts its connected input', async ({ page }) => {
   await page.locator('#editorControls button').nth(0).click();
   await expect(page.locator('#editorResults')).toContainText('= 1');
 });
+
+test('NOR gate evaluates all input combinations correctly', async ({ page }) => {
+  await page.getByRole('button', { name: 'NOR', exact: true }).click();
+  const norBlock = page.locator('#editorStage g[data-node]').last();
+  const norId = await norBlock.getAttribute('data-node');
+
+  // Route A and B through NOR to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${norId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${norId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${norId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 1'); // 00
+  await page.locator('#editorControls button').nth(0).click(); // 10
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(1).click(); // 11
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(0).click(); // 01
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+});
+
+test('XOR gate evaluates all input combinations correctly', async ({ page }) => {
+  await page.getByRole('button', { name: 'XOR', exact: true }).click();
+  const xorBlock = page.locator('#editorStage g[data-node]').last();
+  const xorId = await xorBlock.getAttribute('data-node');
+
+  // Route A and B through XOR to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${xorId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${xorId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${xorId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 0'); // 00
+  await page.locator('#editorControls button').nth(0).click(); // 10
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(1).click(); // 11
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(0).click(); // 01
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+});
+
+test('XNOR gate evaluates all input combinations correctly', async ({ page }) => {
+  await page.getByRole('button', { name: 'XNOR', exact: true }).click();
+  const xnorBlock = page.locator('#editorStage g[data-node]').last();
+  const xnorId = await xnorBlock.getAttribute('data-node');
+
+  // Route A and B through XNOR to the existing output terminal.
+  await page.locator('#editorStage g[data-node="1"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${xnorId}"] .nodepin`).nth(0).click();
+  await page.locator('#editorStage g[data-node="2"] .nodepin').click();
+  await page.locator(`#editorStage g[data-node="${xnorId}"] .nodepin`).nth(1).click();
+  await page.locator(`#editorStage g[data-node="${xnorId}"] .nodepin`).nth(2).click();
+  await page.locator('#editorStage g[data-node="4"] .nodepin').click();
+
+  await expect(page.locator('#editorResults')).toContainText('= 1'); // 00
+  await page.locator('#editorControls button').nth(0).click(); // 10
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+  await page.locator('#editorControls button').nth(1).click(); // 11
+  await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#editorControls button').nth(0).click(); // 01
+  await expect(page.locator('#editorResults')).toContainText('= 0');
+});
+
