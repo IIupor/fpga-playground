@@ -396,6 +396,12 @@ test('VDD and GND source blocks provide constant logic levels', async ({ page })
 test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await page.locator('[data-add="VDD"]').click();
   await page.locator('[data-add="GND"]').click();
+  const vdd = page.locator('#editorStage g[data-node]').filter({ hasText: 'VDD' });
+  const gnd = page.locator('#editorStage g[data-node]').filter({ hasText: 'GND' });
+  await vdd.locator('.nodepin').click();
+  await page.locator('#editorStage g[data-node="3"] .nodepin').nth(0).click();
+  await gnd.locator('.nodepin').click();
+  await page.locator('#editorStage g[data-node="3"] .nodepin').nth(1).click();
   await page.locator('#exportVerilog').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain("1'b1");
