@@ -92,7 +92,14 @@ for (const name of names) {
       }
     } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 
-    await page.locator('#verilogText').fill(exported);
+    // The exported source can be very large (thousands of gates). Set the
+    // textarea value as a paste would, instead of asking Playwright to type it.
+    await page.locator('#verilogText').evaluate((el, value) => {
+      el.focus();
+      el.value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }, exported);
     await page.locator('#importVerilog').click();
     await expect(page.locator('#editorMessage')).toContainText('Imported');
     await expect(page.locator('#editorStage g[data-node]')).toHaveCount(firstBlocks);
