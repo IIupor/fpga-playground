@@ -172,7 +172,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   const outputs=[...source.matchAll(/\boutput\s+([A-Za-z_$][\w$]*)\s*;/gi)].map(m=>m[1]);
   const aliases=[];
   for(const name of outputs){
-   const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\</body></html>');');
+   const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
    const gate=new RegExp(`\\b(and|or|xor|nand|nor|xnor|not)\\s+([A-Za-z_$][\\w$]*)\\s*\\(\\s*${escaped}\\s*,`,'i');
    if(gate.test(source)){
     const alias=`__drv_${name}`;
