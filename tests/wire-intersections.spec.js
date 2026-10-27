@@ -7,6 +7,7 @@ for (const name of benchmarks) {
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(name);
     await page.locator('#loadBenchmark').click();
+    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
     await expect.poll(async () => page.locator('#editorStage g[data-node]').count(), { timeout: 15000 })
       .toBeGreaterThan(0);
     await expect.poll(() => page.locator('#editorStage path.editor-wire').count(), { timeout: 30000 })
