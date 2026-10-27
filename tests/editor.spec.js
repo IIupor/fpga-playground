@@ -281,3 +281,29 @@ test('wire hit areas make wires easy to select and delete', async ({ page }) => 
   await expect(wires).toHaveCount(2);
   await expect(hitAreas).toHaveCount(2);
 });
+
+test('undo and redo restore deleted wires and added blocks', async ({ page }) => {
+  const blocks = page.locator('#editorStage g[data-node]');
+  const wires = page.locator('#editorStage path.editor-wire');
+
+  await expect(blocks).toHaveCount(4);
+  await expect(wires).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled();
+
+  await page.locator('#editorStage path.wire-hit-area').nth(2).click({ force: true });
+  await page.getByRole('button', { name: 'Delete selected' }).click();
+  await expect(wires).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(wires).toHaveCount(3);
+  await page.getByRole('button', { name: 'Redo' }).click();
+  await expect(wires).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'OR', exact: true }).click();
+  await expect(blocks).toHaveCount(5);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(blocks).toHaveCount(4);
+  await page.getByRole('button', { name: 'Redo' }).click();
+  await expect(blocks).toHaveCount(5);
+});
