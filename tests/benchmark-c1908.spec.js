@@ -160,15 +160,15 @@ test('c1908 outputs match the independent Icarus Verilog simulator', () => {
     vectors.push(circuit.inputs.map(() => random() < 0.5 ? 0 : 1));
   }
 
-  const inputDecls = circuit.inputs.map(name => `  reg ${name};`).join('\\n');
-  const outputDecls = circuit.outputs.map(name => `  wire ${name};`).join('\\n');
+  const inputDecls = circuit.inputs.map(name => `  reg ${name};`).join('\n');
+  const outputDecls = circuit.outputs.map(name => `  wire ${name};`).join('\n');
   const portConnections = [...circuit.inputs, ...circuit.outputs]
-    .map(name => `    .${name}(${name})`).join(',\\n');
+    .map(name => `    .${name}(${name})`).join(',\n');
   const testVectors = vectors.map((vector, index) => {
-    const assignments = circuit.inputs.map((name, i) => `    ${name} = 1'b${vector[i]};`).join('\\n');
-    return `${assignments}\\n    #1;\\n    $display("VECTOR:${index}:%b", {${circuit.outputs.join(', ')}});`;
-  }).join('\\n');
-  const testbench = `module tb;\\n${inputDecls}\\n${outputDecls}\\n  c1908 dut (\\n${portConnections}\\n  );\\n  initial begin\\n${testVectors}\\n    $finish;\\n  end\\nendmodule\\n`;
+    const assignments = circuit.inputs.map((name, i) => `    ${name} = 1'b${vector[i]};`).join('\n');
+    return `${assignments}\n    #1;\n    $display("VECTOR:${index}:%b", {${circuit.outputs.join(', ')}});`;
+  }).join('\n');
+  const testbench = `module tb;\n${inputDecls}\n${outputDecls}\n  c1908 dut (\n${portConnections}\n  );\n  initial begin\n${testVectors}\n    $finish;\n  end\nendmodule\n`;
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'c1908-iverilog-'));
   const testbenchPath = path.join(tempDir, 'c1908_tb.v');
@@ -181,8 +181,8 @@ test('c1908 outputs match the independent Icarus Verilog simulator', () => {
     });
     const output = execFileSync('vvp', [executablePath], { encoding: 'utf8' });
     const actual = new Map();
-    for (const line of output.split(/\\r?\\n/)) {
-      const match = line.match(/^VECTOR:(\\d+):([01xXzZ]+)$/);
+    for (const line of output.split(/\\r?\n/)) {
+      const match = line.match(/^VECTOR:(\d+):([01xXzZ]+)$/);
       if (match) actual.set(Number(match[1]), match[2].toLowerCase());
     }
 
