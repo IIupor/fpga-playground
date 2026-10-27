@@ -63,7 +63,7 @@ for (const name of ['c17','c1908']) {
     expect(firstBlocks).toBeGreaterThan(0);
     expect(firstWires).toBeGreaterThan(0);
     await page.locator('#exportVerilog').click();
-    await expect(page.locator('#verilogText')).toContainText('module fpga_playground');
+    await expect(page.locator('#verilogText')).toHaveValue(/module fpga_playground/);
     const exported=await page.locator('#verilogText').inputValue();
     await page.locator('#verilogText').fill(exported);
     await page.locator('#importVerilog').click();
