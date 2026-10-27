@@ -181,7 +181,7 @@ test('c1908 outputs match the independent Icarus Verilog simulator', () => {
     });
     const output = execFileSync('vvp', [executablePath], { encoding: 'utf8' });
     const actual = new Map();
-    for (const line of output.split(/\\r?\n/)) {
+    for (const line of output.split(/\r?\n/)) {
       const match = line.match(/^VECTOR:(\d+):([01xXzZ]+)$/);
       if (match) actual.set(Number(match[1]), match[2].toLowerCase());
     }
