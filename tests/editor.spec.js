@@ -307,3 +307,23 @@ test('undo and redo restore deleted wires and added blocks', async ({ page }) =>
   await page.getByRole('button', { name: 'Redo' }).click();
   await expect(blocks).toHaveCount(5);
 });
+
+test('highlights valid input pins while a wire connection is pending', async ({ page }) => {
+  const stage = page.locator('#editorStage');
+  const inputs = stage.locator('.nodepin.available');
+
+  await expect(stage).not.toHaveClass(/connection-active/);
+  await expect(inputs).toHaveCount(0);
+
+  // Selecting A's output activates connection mode and highlights all valid target inputs.
+  await stage.locator('g[data-node="1"] .nodepin').click();
+  await expect(stage).toHaveClass(/connection-active/);
+  await expect(inputs).toHaveCount(3);
+  await expect(stage.locator('g[data-node="1"] .nodepin')).toHaveClass(/pending/);
+
+  // Completing the connection clears the hint and returns pins to their normal appearance.
+  await stage.locator('g[data-node="3"] .nodepin').nth(0).click();
+  await expect(stage).not.toHaveClass(/connection-active/);
+  await expect(inputs).toHaveCount(0);
+  await expect(stage.locator('path.editor-wire')).toHaveCount(3);
+});
