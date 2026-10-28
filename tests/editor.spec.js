@@ -462,3 +462,21 @@ test('large benchmark uses a scrollable canvas and remains editable after scroll
   expect(await svg.locator('g[data-node]').count()).toBeGreaterThan(0);
   expect(await svg.locator('path.editor-wire').count()).toBeGreaterThan(0);
 });
+
+test('workspace zoom controls scale the circuit and reset to 100 percent', async ({ page }) => {
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  await expect(page.locator('#editorZoomLevel')).toHaveText('100%');
+  const before = await svg.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(page.locator('#editorZoomLevel')).toHaveText('110%');
+  const zoomed = await svg.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  expect(zoomed.width).toBeGreaterThan(before.width);
+  expect(zoomed.height).toBeGreaterThan(before.height);
+  await page.getByRole('button', { name: '110%' }).click();
+  await expect(page.locator('#editorZoomLevel')).toHaveText('100%');
+  const reset = await svg.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  expect(Math.abs(reset.width - before.width)).toBeLessThan(1);
+  expect(Math.abs(reset.height - before.height)).toBeLessThan(1);
+  await expect(viewport).toBeVisible();
+});
