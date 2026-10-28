@@ -536,19 +536,23 @@ test('F and f fit the complete circuit to the workspace', async ({ page }) => {
   await page.locator('#editorZoomIn').click();
   await page.keyboard.press('f');
   await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
-  const zoomLower = Number((await page.locator('#editorZoomLevel').textContent()).replace('%', ''));
-  expect(zoomLower).toBeLessThan(100);
+  const zoomByLowerF = await page.locator('#editorZoomLevel').textContent();
+
+  await page.locator('#editorZoomIn').click();
+  await page.locator('#editorFitView').click();
+  const zoomByButton = await page.locator('#editorZoomLevel').textContent();
+  expect(zoomByLowerF).toBe(zoomByButton);
 
   await page.locator('#editorZoomIn').click();
   await page.keyboard.press('Shift+F');
   await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
-  const zoomUpper = Number((await page.locator('#editorZoomLevel').textContent()).replace('%', ''));
-  expect(zoomUpper).toBeLessThan(100);
+  const zoomByUpperF = await page.locator('#editorZoomLevel').textContent();
+  expect(zoomByUpperF).toBe(zoomByButton);
 
   await page.locator('#instanceName').focus();
-  await page.locator('#instanceName').fill('f');
+  await page.locator('#instanceName').fill('x');
   await page.keyboard.press('f');
-  await expect(page.locator('#instanceName')).toHaveValue('f');
+  await expect(page.locator('#instanceName')).toHaveValue('xf');
   await expect(viewport).toBeVisible();
   await expect(svg).toBeVisible();
 });
