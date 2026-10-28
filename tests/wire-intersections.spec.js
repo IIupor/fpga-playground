@@ -108,3 +108,64 @@ for (const name of benchmarks) {
     expect(result.blocked, name + ' routes must not intersect unrelated node keep-out areas').toEqual([]);
   }, 120000);
 }
+
+for (const name of benchmarks) {
+  test(name + ': report wire-to-wire crossings and overlaps', async ({ page }) => {
+    await page.route(`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`, async route => {
+      const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', `${name}.v`), 'utf8');
+      await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
+    });
+    await page.goto('/');
+    await page.locator('#benchmarkSelect').selectOption(name);
+    await page.locator('#loadBenchmark').click();
+    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+    const stats = await page.locator('#editorStage').evaluate(svg => {
+      const wires = [...svg.querySelectorAll('path.editor-wire')].map(path => ({
+        id: path.getAttribute('data-wire'),
+        from: path.getAttribute('data-from'),
+        to: path.getAttribute('data-to'),
+        points: [...path.getAttribute('d').matchAll(/[ML]\\s*([-\\d.]+)[, ]+([-\\d.]+)/g)]
+          .map(m => ({ x: Number(m[1]), y: Number(m[2]) }))
+      }));
+      const segments = wires.map(w => w.points.slice(1).map((p,i) => ({
+        wire: w.id, from: w.from, to: w.to, a: w.points[i], b: p,
+        horizontal: w.points[i].y === p.y
+      }))).flat();
+      let crossings = 0, overlaps = 0;
+      const examples = [];
+      for (let i=0; i<segments.length; i++) {
+        const a=segments[i], ax1=Math.min(a.a.x,a.b.x), ax2=Math.max(a.a.x,a.b.x),
+          ay1=Math.min(a.a.y,a.b.y), ay2=Math.max(a.a.y,a.b.y);
+        for (let j=i+1; j<segments.length; j++) {
+          const b=segments[j];
+          if (a.wire===b.wire || a.from===b.from && a.to===b.to ||
+              a.from===b.to && a.to===b.from) continue;
+          if (a.horizontal !== b.horizontal) {
+            const h=a.horizontal?a:b, v=a.horizontal?b:a;
+            const x=v.a.x, y=h.a.y;
+            if (x>Math.min(h.a.x,h.b.x) && x<Math.max(h.a.x,h.b.x) &&
+                y>Math.min(v.a.y,v.b.y) && y<Math.max(v.a.y,v.b.y)) {
+              crossings++;
+              if (examples.length<8) examples.push({type:'crossing',wires:[a.wire,b.wire],at:{x,y}});
+            }
+          } else if (a.horizontal && a.a.y===b.a.y) {
+            const lo=Math.max(ax1,Math.min(b.a.x,b.b.x)), hi=Math.min(ax2,Math.max(b.a.x,b.b.x));
+            if (lo<hi && a.a.y===b.a.y && a.wire!==b.wire) {
+              overlaps++;
+              if (examples.length<8) examples.push({type:'overlap',wires:[a.wire,b.wire],from:lo,to:hi,y:a.a.y});
+            }
+          } else if (!a.horizontal && a.a.x===b.a.x) {
+            const lo=Math.max(ay1,Math.min(b.a.y,b.b.y)), hi=Math.min(ay2,Math.max(b.a.y,b.b.y));
+            if (lo<hi && a.a.x===b.a.x && a.wire!==b.wire) {
+              overlaps++;
+              if (examples.length<8) examples.push({type:'overlap',wires:[a.wire,b.wire],x:a.a.x,from:lo,to:hi});
+            }
+          }
+        }
+      }
+      return {wireCount:wires.length, segmentCount:segments.length, crossings, overlaps, examples};
+    });
+    console.log(`WIRE-CROSSING-DIAGNOSTIC ${name}: ${JSON.stringify(stats)}`);
+    expect(stats.wireCount, name + ' diagnostic should inspect wires').toBeGreaterThan(0);
+  }, 120000);
+}
