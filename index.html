@@ -64,7 +64,41 @@ function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
 let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
-const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300;
+let routedSegments=[], routedSegmentBins=new Map(), nextRoutedSegmentId=1;
+const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300,ROUTE_WIRE_BIN=64;
+function indexRoutedSegment(segment){
+ const id=nextRoutedSegmentId++;segment.indexId=id;routedSegments.push(segment);
+ const x1=Math.floor(Math.min(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN);
+ const y1=Math.floor(Math.min(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN);
+ for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
+}
+function routeCandidateWireCost(points,wire){
+ let length=0,bends=Math.max(0,points.length-2),crossings=0,overlaps=0;
+ for(let i=1;i<points.length;i++){
+  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+  const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
+  const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
+  const nearby=new Map();
+  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)for(const s of routedSegmentBins.get(x+','+y)||[])nearby.set(s.indexId,s);
+  for(const s of nearby.values()){
+   if(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to)continue;
+   const ah=a.y===b.y,bh=s.a.y===s.b.y;
+   if(ah!==bh){
+    const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))crossings++;
+   }else if(ah&&s.a.y===a.y){
+    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))overlaps++;
+   }else if(!ah&&s.a.x===a.x){
+    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))overlaps++;
+   }
+  }
+ }
+ return length+crossings*120+overlaps*90+bends*8;
+}
+function rememberRoutedWire(w,points){
+ for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
+  indexRoutedSegment({wire:w.id,from:w.from,to:w.to,a:points[i-1],b:points[i]});
+}
 function prepareRouteObstacleIndex(){
  routeNodeById=new Map(nodes.map(n=>[n.id,n]));routeRects=[];routeColumns=new Map();routeRows=new Map();
  for(const n of nodes){const s=spec(n);routeRects.push({id:n.id,l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8})}
