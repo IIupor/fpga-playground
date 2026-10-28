@@ -142,13 +142,13 @@ function routePointsFast(w,a,b,p,q){
  const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
  const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
  const rowLanes=[p.y,q.y,b.y-9,b.y+targetSpec.h+9,topLane,bottomLane,
-  ...Array.from({length:13},(_,i)=>Math.round(midY)+(i-6)*ROUTE_CELL)]
+  ...Array.from({length:7},(_,i)=>Math.round(midY)+(i-3)*ROUTE_CELL)]
   .filter((y,i,arr)=>arr.indexOf(y)===i)
   .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY));
- const targetLanes=Array.from({length:9},(_,i)=>targetLane-i*ROUTE_CELL);
+ const targetLanes=Array.from({length:5},(_,i)=>targetLane-i*ROUTE_CELL);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
-  for(let step=0;step<18;step++){
+  for(let step=0;step<10;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
    for(const targetX of targetLanes){
    const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q];
@@ -164,6 +164,10 @@ function routePointsFast(w,a,b,p,q){
   }
  }
  if(bestCandidate)return bestCandidate;
+ // The fast corridor search found no crossing-free candidate. Fall back to
+ // the visibility graph, which treats already-routed wires as hard obstacles.
+ const graphFallback=routePointsGraph(w,a,b,p,q);
+ if(graphFallback.length)return graphFallback;
  const middleX=(p.x+q.x)/2;
  let path=[p,{x:p.x+9,y:p.y},{x:middleX,y:p.y},{x:middleX,y:q.y},{x:q.x-9,y:q.y},q];
  const maxIterations=Math.min(80,routeRects.length*2+20);
