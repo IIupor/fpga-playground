@@ -69,14 +69,14 @@ test('editor routes wires orthogonally around unrelated blocks', async ({ page }
 
   const result = await page.locator('#editorStage').evaluate(svg => {
     const nodes = [...svg.querySelectorAll('g[data-node]')].map(g => {
-      const match = /translate\\(([-\\d.]+) ([-\\d.]+)\\)/.exec(g.getAttribute('transform'));
+      const match = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform'));
       const box = g.querySelector('rect.nodebox');
       return { id: Number(g.getAttribute('data-node')), x: Number(match[1]), y: Number(match[2]),
         w: Number(box.getAttribute('width')), h: Number(box.getAttribute('height')) };
     });
     const wires = [...svg.querySelectorAll('path.editor-wire')].map(path => {
       const d = path.getAttribute('d');
-      const points = [...d.matchAll(/[ML]\\s*([-\\d.]+)[, ]+([-\\d.]+)/g)]
+      const points = [...d.matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g)]
         .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
       return { id: path.getAttribute('data-wire'), from: Number(path.getAttribute('data-from')),
         to: Number(path.getAttribute('data-to')), d, points };
