@@ -124,7 +124,7 @@ for (const name of benchmarks) {
         id: path.getAttribute('data-wire'),
         from: path.getAttribute('data-from'),
         to: path.getAttribute('data-to'),
-        points: [...path.getAttribute('d').matchAll(/[ML]\\s*([-\\d.]+)[, ]+([-\\d.]+)/g)]
+        points: [...path.getAttribute('d').matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g)]
           .map(m => ({ x: Number(m[1]), y: Number(m[2]) }))
       }));
       const segments = wires.map(w => w.points.slice(1).map((p,i) => ({
