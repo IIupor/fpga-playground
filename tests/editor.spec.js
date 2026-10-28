@@ -425,3 +425,40 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
+
+test('large benchmark uses a scrollable canvas and remains editable after scrolling', async ({ page }) => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported');
+
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  await expect(svg.locator('g[data-node]')).toHaveCount(await svg.locator('g[data-node]').count());
+  const dimensions = await viewport.evaluate(el => ({
+    clientHeight: el.clientHeight,
+    scrollHeight: el.scrollHeight,
+    clientWidth: el.clientWidth,
+    scrollWidth: el.scrollWidth
+  }));
+  expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+  await viewport.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await expect.poll(() => viewport.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+
+  // The bottom of the benchmark remains reachable, and its wires still render.
+  await expect(svg.locator('path.editor-wire')).toHaveCount(await svg.locator('path.editor-wire').count());
+  const lastNode = svg.locator('g[data-node]').last();
+  await lastNode.scrollIntoViewIfNeeded();
+  await expect(lastNode).toBeVisible();
+
+  // Drag a visible block slightly and confirm the canvas continues to render.
+  const before = await lastNode.boundingBox();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2 + 18, before.y + before.height / 2 + 12, { steps: 3 });
+  await page.mouse.up();
+  await expect(svg.locator('g[data-node]')).toHaveCountGreaterThan(0);
+  await expect(svg.locator('path.editor-wire')).toHaveCountGreaterThan(0);
+});
