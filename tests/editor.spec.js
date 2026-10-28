@@ -528,3 +528,34 @@ test('holding Space and dragging pans the circuit workspace', async ({ page }) =
   expect(after.left).toBeGreaterThan(before.left);
   expect(after.top).toBeGreaterThan(before.top);
 });
+
+
+test('F and f fit the complete circuit to the workspace', async ({ page }) => {
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  await page.locator('#editorZoomIn').click();
+  await page.keyboard.press('f');
+  await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
+  const zoomLower = Number((await page.locator('#editorZoomLevel').textContent()).replace('%', ''));
+  expect(zoomLower).toBeLessThan(100);
+
+  await page.locator('#editorZoomIn').click();
+  await page.keyboard.press('Shift+F');
+  await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
+  const zoomUpper = Number((await page.locator('#editorZoomLevel').textContent()).replace('%', ''));
+  expect(zoomUpper).toBeLessThan(100);
+
+  await page.locator('#instanceName').focus();
+  await page.locator('#instanceName').fill('f');
+  await page.keyboard.press('f');
+  await expect(page.locator('#instanceName')).toHaveValue('f');
+  await expect(viewport).toBeVisible();
+  await expect(svg).toBeVisible();
+});
+
+test('logic gates use schematic symbols instead of visible rectangular bodies', async ({ page }) => {
+  const gate = page.locator('#editorStage g[data-node="3"]');
+  await expect(gate.locator('path')).toHaveCount(1);
+  await expect(gate.locator('rect.nodebox')).toHaveAttribute('stroke', 'transparent');
+  await expect(gate.locator('path')).toHaveAttribute('stroke', 'var(--site-primary)');
+});
