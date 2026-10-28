@@ -66,33 +66,75 @@ function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT
 let routeCache=new Map();
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
- const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];
+ const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);
+ if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
- const rects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{const s=spec(n);return {l:n.x-10,r:n.x+s.w+10,t:n.y-10,b:n.y+s.h+10}});
- const xs=[p.x,q.x,(p.x+q.x)/2],ys=[p.y,q.y];
- for(const r of rects){if(r.t<Math.max(p.y,q.y)&&r.b>Math.min(p.y,q.y))xs.push(r.l,r.r);if(r.l<Math.max(p.x,q.x)&&r.r>Math.min(p.x,q.x))ys.push(r.t,r.b)}
- const uniq=v=>[...new Set(v.map(x=>Math.max(4,Math.min(896,x))))];
- const X=uniq(xs),Y=uniq(ys), candidates=[];
- const add=pts=>{const out=[];for(const z of pts){if(!out.length||out[out.length-1].x!==z.x||out[out.length-1].y!==z.y)out.push(z)}if(out.length<2)return;let valid=true;for(let i=1;i<out.length;i++){const u=out[i-1],v=out[i];if(u.x!==v.x&&u.y!==v.y){valid=false;break}for(const r of rects){if(u.y===v.y){if(u.y>r.t&&u.y<r.b&&Math.max(Math.min(u.x,v.x),r.l)<Math.min(Math.max(u.x,v.x),r.r)){valid=false;break}}else if(u.x>r.l&&u.x<r.r&&Math.max(Math.min(u.y,v.y),r.t)<Math.min(Math.max(u.y,v.y),r.b)){valid=false;break}}if(!valid)break}if(valid)candidates.push(out)};
- for(const x of X)add([p,{x,y:p.y},{x,y:q.y},q])
- for(const y of Y)add([p,{x:p.x,y},{x:q.x,y},q]);
- const prior=wires.filter(v=>v.id!==w.id&&v.id<w.id).map(v=>routeCache.get(v.id)||routePointsSimple(v));
- const properCross=(u,v,r,s)=>{if(u.x===v.x&&r.y===s.y)return r.x>Math.min(u.x,v.x)&&r.x<Math.max(u.x,v.x)&&u.y>Math.min(r.y,s.y)&&u.y<Math.max(r.y,s.y);if(u.y===v.y&&r.x===s.x)return u.x>Math.min(r.x,s.x)&&u.x<Math.max(r.x,s.x)&&r.y>Math.min(u.y,v.y)&&r.y<Math.max(u.y,v.y);return false};
- const score=pts=>{let length=0,turns=0,crossings=0,overlaps=0;for(let i=1;i<pts.length;i++){const u=pts[i-1],v=pts[i];length+=Math.abs(v.x-u.x)+Math.abs(v.y-u.y);if(i>1){const z=pts[i-2];if((z.x===u.x)!==(u.x===v.x))turns++}for(const route of prior)for(let j=1;j<route.length;j++){const r=route[j-1],s=route[j];if(properCross(u,v,r,s))crossings++;if(u.y===v.y&&r.y===s.y&&u.y===r.y&&Math.max(Math.min(u.x,v.x),Math.min(r.x,s.x))<Math.min(Math.max(u.x,v.x),Math.max(r.x,s.x)))overlaps++;if(u.x===v.x&&r.x===s.x&&u.x===r.x&&Math.max(Math.min(u.y,v.y),Math.min(r.y,s.y))<Math.min(Math.max(u.y,v.y),Math.max(r.y,s.y)))overlaps++}}return length+turns*18+crossings*5000+overlaps*8000};
- if(!candidates.length){
-  // Only expand the search when both simple two-bend patterns are blocked.
-  for(const x of X)for(const y of Y){
-   add([p,{x,y:p.y},{x,y},{x:q.x,y},q]);
-   add([p,{x:p.x,y},{x,y},{x,y:q.y},q]);
+ const allRects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{
+  const s=spec(n);return {l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8};
+ });
+ const inside=(pt,rs)=>rs.some(r=>pt.x>r.l&&pt.x<r.r&&pt.y>r.t&&pt.y<r.b);
+ const clear=(u,v,rs)=>{
+  if(u.x!==v.x&&u.y!==v.y)return false;
+  for(const r of rs){
+   if(u.y===v.y&&u.y>r.t&&u.y<r.b&&Math.max(Math.min(u.x,v.x),r.l)<Math.min(Math.max(u.x,v.x),r.r))return false;
+   if(u.x===v.x&&u.x>r.l&&u.x<r.r&&Math.max(Math.min(u.y,v.y),r.t)<Math.min(Math.max(u.y,v.y),r.b))return false;
   }
-  if(!candidates.length){
-   // Extend the search corridor beyond the endpoints before accepting a fallback.
-   const detours=[Math.max(4,Math.min(896,Math.min(p.y,q.y)-40)),Math.max(4,Math.min(896,Math.max(p.y,q.y)+40))];
-   for(const y of detours)add([p,{x:p.x,y},{x:q.x,y},q]);
+  return true;
+ };
+ // Build a compressed visibility grid from obstacle edges. Expand the search
+ // window progressively so dense circuits do not require a full-canvas grid.
+ for(const margin of [80,180,360,720]){
+  const minX=Math.max(4,Math.min(p.x,q.x)-margin),maxX=Math.min(896,Math.max(p.x,q.x)+margin);
+  const minY=Math.max(4,Math.min(p.y,q.y)-margin),maxY=Math.min(386,Math.max(p.y,q.y)+margin);
+  const rs=allRects.filter(r=>r.r>=minX&&r.l<=maxX&&r.b>=minY&&r.t<=maxY);
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  const xs=[p.x,q.x],ys=[p.y,q.y];
+  for(const r of rs){
+   xs.push(clamp(r.l-1,minX,maxX),clamp(r.r+1,minX,maxX));
+   ys.push(clamp(r.t-1,minY,maxY),clamp(r.b+1,minY,maxY));
   }
-  if(!candidates.length){const fallback=[p,{x:(p.x+q.x)/2,y:p.y},{x:(p.x+q.x)/2,y:q.y},q];routeCache.set(w.id,fallback);return fallback}
+  const uniq=arr=>[...new Set(arr)].sort((x,y)=>x-y);
+  const X=uniq(xs),Y=uniq(ys),nx=X.length,ny=Y.length;
+  const ixp=X.indexOf(p.x),iyp=Y.indexOf(p.y),ixq=X.indexOf(q.x),iyq=Y.indexOf(q.y);
+  const id=(ix,iy,dir)=>((iy*nx+ix)*3+dir);
+  const point=(ix,iy)=>({x:X[ix],y:Y[iy]});
+  const blocked=new Uint8Array(nx*ny);
+  for(let iy=0;iy<ny;iy++)for(let ix=0;ix<nx;ix++)if(inside(point(ix,iy),rs))blocked[iy*nx+ix]=1;
+  if(blocked[iyp*nx+ixp]||blocked[iyq*nx+ixq])continue;
+  // Dijkstra over (grid point, previous direction); turn penalties keep paths tidy.
+  const dist=new Float64Array(nx*ny*3);dist.fill(Infinity);
+  const prev=new Int32Array(nx*ny*3);prev.fill(-1);
+  const heap=[];
+  const push=(item)=>{heap.push(item);let i=heap.length-1;while(i){const par=(i-1)>>1;if(heap[par].cost<=item.cost)break;heap[i]=heap[par];i=par}heap[i]=item};
+  const pop=()=>{const top=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){let c=i*2+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1].cost<heap[c].cost)c++;if(heap[c].cost>=last.cost)break;heap[i]=heap[c];i=c}heap[i]=last}return top};
+  const startId=id(ixp,iyp,0);dist[startId]=0;push({state:startId,ix:ixp,iy:iyp,dir:0,cost:0});
+  let finish=-1;
+  while(heap.length){
+   const cur=pop();if(cur.cost!==dist[cur.state])continue;
+   if(cur.ix===ixq&&cur.iy===iyq){finish=cur.state;break}
+   const moves=[[-1,0,1],[1,0,1],[0,-1,2],[0,1,2]];
+   for(const [dx,dy,dir] of moves){
+    const jx=cur.ix+dx,jy=cur.iy+dy;
+    if(jx<0||jx>=nx||jy<0||jy>=ny||blocked[jy*nx+jx])continue;
+    const u=point(cur.ix,cur.iy),v=point(jx,jy);if(!clear(u,v,rs))continue;
+    const next=id(jx,jy,dir),step=Math.abs(v.x-u.x)+Math.abs(v.y-u.y)+(cur.dir&&cur.dir!==dir?24:0);
+    const cost=cur.cost+step;
+    if(cost<dist[next]){dist[next]=cost;prev[next]=cur.state;push({state:next,ix:jx,iy:jy,dir,cost})}
+   }
+  }
+  if(finish>=0){
+   const reversed=[];for(let state=finish;state>=0;state=prev[state]){const cell=Math.floor(state/3),iy=Math.floor(cell/nx),ix=cell%nx;reversed.push(point(ix,iy));if(state===startId)break}
+   const path=reversed.reverse();
+   // The compressed grid may include collinear intermediate points; remove them.
+   const simplified=[];for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break} simplified.push(pt)}
+   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))){
+    routeCache.set(w.id,simplified);return simplified;
+   }
+  }
  }
- candidates.sort((u,v)=>score(u)-score(v));routeCache.set(w.id,candidates[0]);return candidates[0]
+ // Never draw an invalid fallback through a block. An empty path is safer than
+ // silently violating the obstacle constraint; tests will expose unroutable cases.
+ routeCache.set(w.id,[]);return [];
 }
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
