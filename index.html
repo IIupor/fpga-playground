@@ -136,10 +136,27 @@ function routePointsFast(w,a,b,p,q){
    return simplified;
   }
  }
- // Keep the accumulated orthogonal detours if the bounded search reaches its
- // iteration limit; an empty SVG path is less useful and hides the connection.
- const partial=[];
- for(const pt of path){while(partial.length>=2){const u=partial[partial.length-2],v=partial[partial.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))partial.pop();else break}partial.push({x:pt.x,y:pt.y})}
+ // If local detours cannot resolve a dense obstacle cluster within the iteration
+ // budget, use a perimeter corridor outside every block's keep-out rectangle.
+ // The source leaves to the right and the target is approached from the left,
+ // so the long vertical legs stay outside the endpoint columns.
+ const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
+ const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ const simplify=points=>{
+  const out=[];
+  for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
+  return out;
+ };
+ for(const laneY of [topLane,bottomLane]){
+  const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
+  let clear=true;
+  for(let i=1;i<candidate.length;i++){
+   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){clear=false;break}
+  }
+  if(clear)return candidate;
+ }
+ // Preserve geometry only as a last resort if even the outer corridor is blocked.
+ const partial=simplify(path);
  return partial;
 }
 function routePoints(w){
