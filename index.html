@@ -40,7 +40,7 @@
 <textarea id="verilogText" aria-label="Verilog source" placeholder="Verilog source appears here after export; paste code here to import it." style="display:block;width:100%;min-height:150px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace"></textarea>
 <p class="editor-hint">Click an output pin (right side of a block), then click an input pin (left side) to connect them. Drag a block by its header. Click an input block to toggle 0/1. Select a wire or block and press Delete to remove it.</p>
 <div class="editor-toolbar" id="editorZoomControls" style="margin:10px 0;align-items:center"><span class="status-chip">Zoom</span><button class="toolbtn" id="editorZoomOut" type="button" aria-label="Zoom out">−</button><button class="toolbtn" id="editorZoomReset" type="button">100%</button><button class="toolbtn" id="editorZoomIn" type="button" aria-label="Zoom in">＋</button><button class="toolbtn" id="editorFitView" type="button">Fit to view</button><span class="editor-hint" id="editorZoomLevel" style="margin:0">100%</span><span class="editor-hint" style="margin:0">Ctrl + wheel: zoom · Hold Space and drag: pan</span></div>
-<div class="editor-viewport" id="editorViewport" aria-label="Scrollable circuit workspace"><svg id="editorStage" class="editor-stage" viewBox="0 0 900 390" role="application" aria-label="Interactive digital circuit editor"></svg></div>
+<div class="editor-viewport" id="editorViewport" tabindex="0" aria-label="Scrollable circuit workspace"><svg id="editorStage" class="editor-stage" viewBox="0 0 900 390" role="application" aria-label="Interactive digital circuit editor"></svg></div>
 <div class="editor-lower"><div><h3>Input controls</h3><div class="controls" id="editorControls"></div></div><div><h3>Output values</h3><div class="editor-status" id="editorResults"></div></div></div>
 <div class="editor-status"><span class="status-chip" id="editorMessage" aria-live="polite">Example: A AND B → Y. Connect pins to change the circuit.</span><span class="status-chip">Green = logic 1</span><span class="status-chip">Grey = logic 0</span></div>
 <div class="editor-lower"><div><h3>Live signal values</h3><div class="editor-scroll"><table class="editor-table"><thead><tr><th>Signal</th><th>Type</th><th>Value</th></tr></thead><tbody id="signalRows"></tbody></table></div></div><div><h3>Truth table</h3><div class="editor-scroll"><table class="editor-table"><thead id="editorTruthHead"></thead><tbody id="editorTruthBody"></tbody></table></div><p class="editor-hint">Truth table is generated for up to four input blocks. Larger designs show live signal values only.</p></div></div>
@@ -487,14 +487,21 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   out.disabled=zoom<=0.25;inc.disabled=zoom>=2.5;
  }
  function fitToView(){
-  const width=Number(svg.dataset.canvasWidth||900),height=Number(svg.dataset.canvasHeight||390);
   const availableWidth=Math.max(1,viewport.clientWidth-32),availableHeight=Math.max(1,viewport.clientHeight-32);
-  const zoom=Math.max(0.05,Math.min(2.5,availableWidth/width,availableHeight/height));
-  window.fpgaZoom=Math.round(zoom*1000)/1000;
+  const width=Number(svg.dataset.canvasWidth||900),height=Number(svg.dataset.canvasHeight||390);
+  window.fpgaZoom=Math.max(0.01,Math.min(2.5,availableWidth/width,availableHeight/height));
   if(typeof window.fpgaRender==='function')window.fpgaRender();
   else {svg.style.width=(width*window.fpgaZoom)+'px';svg.style.height=(height*window.fpgaZoom)+'px'}
-  viewport.scrollLeft=Math.max(0,(svg.getBoundingClientRect().width-viewport.clientWidth)/2);
-  viewport.scrollTop=Math.max(0,(svg.getBoundingClientRect().height-viewport.clientHeight)/2);
+  // Re-check the rendered dimensions: imported circuits can change their canvas bounds
+  // during render, so refine the scale against the actual scrollable SVG size.
+  const renderedWidth=svg.getBoundingClientRect().width,renderedHeight=svg.getBoundingClientRect().height;
+  const correction=Math.min(1,availableWidth/Math.max(1,renderedWidth),availableHeight/Math.max(1,renderedHeight));
+  if(correction<0.999){
+   window.fpgaZoom=Math.max(0.01,window.fpgaZoom*correction);
+   if(typeof window.fpgaRender==='function')window.fpgaRender();
+   else {svg.style.width=(Number(svg.dataset.canvasWidth||width)*window.fpgaZoom)+'px';svg.style.height=(Number(svg.dataset.canvasHeight||height)*window.fpgaZoom)+'px'}
+  }
+  viewport.scrollLeft=0;viewport.scrollTop=0;
   label.textContent=Math.round(window.fpgaZoom*100)+'%';
   reset.textContent=Math.round(window.fpgaZoom*100)+'%';
   out.disabled=window.fpgaZoom<=0.25;inc.disabled=window.fpgaZoom>=2.5;
