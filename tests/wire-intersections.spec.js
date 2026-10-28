@@ -167,5 +167,7 @@ for (const name of benchmarks) {
     });
     console.log(`WIRE-CROSSING-DIAGNOSTIC ${name}: ${JSON.stringify(stats)}`);
     expect(stats.wireCount, name + ' diagnostic should inspect wires').toBeGreaterThan(0);
+    expect(stats.crossings, name + ' must have no proper wire-to-wire crossings: ' + JSON.stringify(stats.examples)).toBe(0);
+    expect(stats.overlaps, name + ' must have no unrelated wire overlaps: ' + JSON.stringify(stats.examples)).toBe(0);
   }, 120000);
 }
