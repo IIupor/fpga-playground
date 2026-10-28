@@ -109,10 +109,9 @@ function routeCandidateWireCost(points,wire){
    }
   }
  }
- // A true orthogonal crossing is more disruptive than sharing a collinear
- // corridor, so prioritize avoiding crossings while retaining a smaller
- // penalty for overlaps.
- return length+crossings*360+overlaps*60+bends*8;
+ // Keep crossing/overlap penalties moderate: heavier weights caused
+ // large benchmark import/export tests to exceed their time budget.
+ return length+crossings*120+overlaps*90+bends*8;
 }
 function rememberRoutedWire(w,points){
  for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
