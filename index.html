@@ -39,7 +39,7 @@
 <div class="editor-toolbar" id="instanceEditor" style="margin-top:10px;align-items:end"><label class="status-chip" style="display:grid;gap:5px">Instance / signal name<input id="instanceName" type="text" placeholder="Select a block" style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><label class="status-chip" style="display:grid;gap:5px">Input pin names<input id="inputPinNames" type="text" placeholder="A, B, ..." style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><label class="status-chip" style="display:grid;gap:5px">Output pin names<input id="outputPinNames" type="text" placeholder="Y, Q, ..." style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><button class="toolbtn" id="applyInstanceNames">Apply names</button><span class="editor-hint" style="margin:0">Select a block, enter comma-separated pin names, then apply. Instance names must be unique.</span></div>
 <textarea id="verilogText" aria-label="Verilog source" placeholder="Verilog source appears here after export; paste code here to import it." style="display:block;width:100%;min-height:150px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace"></textarea>
 <p class="editor-hint">Click an output pin (right side of a block), then click an input pin (left side) to connect them. Drag a block by its header. Click an input block to toggle 0/1. Select a wire or block and press Delete to remove it.</p>
-<div class="editor-toolbar" id="editorZoomControls" style="margin:10px 0;align-items:center"><span class="status-chip">Zoom</span><button class="toolbtn" id="editorZoomOut" type="button" aria-label="Zoom out">−</button><button class="toolbtn" id="editorZoomReset" type="button">100%</button><button class="toolbtn" id="editorZoomIn" type="button" aria-label="Zoom in">＋</button><span class="editor-hint" id="editorZoomLevel" style="margin:0">100%</span><span class="editor-hint" style="margin:0">Tip: Ctrl + mouse wheel to zoom</span></div>
+<div class="editor-toolbar" id="editorZoomControls" style="margin:10px 0;align-items:center"><span class="status-chip">Zoom</span><button class="toolbtn" id="editorZoomOut" type="button" aria-label="Zoom out">−</button><button class="toolbtn" id="editorZoomReset" type="button">100%</button><button class="toolbtn" id="editorZoomIn" type="button" aria-label="Zoom in">＋</button><button class="toolbtn" id="editorFitView" type="button">Fit to view</button><span class="editor-hint" id="editorZoomLevel" style="margin:0">100%</span><span class="editor-hint" style="margin:0">Ctrl + wheel: zoom · Hold Space and drag: pan</span></div>
 <div class="editor-viewport" id="editorViewport" aria-label="Scrollable circuit workspace"><svg id="editorStage" class="editor-stage" viewBox="0 0 900 390" role="application" aria-label="Interactive digital circuit editor"></svg></div>
 <div class="editor-lower"><div><h3>Input controls</h3><div class="controls" id="editorControls"></div></div><div><h3>Output values</h3><div class="editor-status" id="editorResults"></div></div></div>
 <div class="editor-status"><span class="status-chip" id="editorMessage" aria-live="polite">Example: A AND B → Y. Connect pins to change the circuit.</span><span class="status-chip">Green = logic 1</span><span class="status-chip">Grey = logic 0</span></div>
@@ -468,7 +468,8 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  const inc=document.getElementById('editorZoomIn');
  const reset=document.getElementById('editorZoomReset');
  const label=document.getElementById('editorZoomLevel');
- if(!viewport||!svg||!out||!inc||!reset||!label)return;
+ const fit=document.getElementById('editorFitView');
+ if(!viewport||!svg||!out||!inc||!reset||!label||!fit)return;
  window.fpgaZoom=1;
  const clamp=z=>Math.max(0.25,Math.min(2.5,Math.round(z*100)/100));
  function setZoom(next,anchorX,anchorY){
@@ -485,6 +486,39 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   reset.textContent=Math.round(zoom*100)+'%';
   out.disabled=zoom<=0.25;inc.disabled=zoom>=2.5;
  }
+ function fitToView(){
+  const width=Number(svg.dataset.canvasWidth||900),height=Number(svg.dataset.canvasHeight||390);
+  const availableWidth=Math.max(1,viewport.clientWidth-32),availableHeight=Math.max(1,viewport.clientHeight-32);
+  const zoom=Math.max(0.05,Math.min(2.5,availableWidth/width,availableHeight/height));
+  window.fpgaZoom=Math.round(zoom*1000)/1000;
+  if(typeof window.fpgaRender==='function')window.fpgaRender();
+  else {svg.style.width=(width*window.fpgaZoom)+'px';svg.style.height=(height*window.fpgaZoom)+'px'}
+  viewport.scrollLeft=Math.max(0,(svg.getBoundingClientRect().width-viewport.clientWidth)/2);
+  viewport.scrollTop=Math.max(0,(svg.getBoundingClientRect().height-viewport.clientHeight)/2);
+  label.textContent=Math.round(window.fpgaZoom*100)+'%';
+  reset.textContent=Math.round(window.fpgaZoom*100)+'%';
+  out.disabled=window.fpgaZoom<=0.25;inc.disabled=window.fpgaZoom>=2.5;
+  msg.textContent='Fitted the complete circuit into the workspace.';
+ }
+ fit.addEventListener('click',fitToView);
+ let spaceHeld=false,pan=null;
+ window.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||'')){spaceHeld=true;viewport.style.cursor='grab'}});
+ window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceHeld=false;if(!pan)viewport.style.cursor=''}});
+ viewport.addEventListener('pointerdown',e=>{
+  if(!(spaceHeld||e.button===1))return;
+  e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+  pan={x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};
+  viewport.style.cursor='grabbing';
+  viewport.setPointerCapture(e.pointerId);
+ },true);
+ viewport.addEventListener('pointermove',e=>{
+  if(!pan)return;
+  viewport.scrollLeft=pan.left-(e.clientX-pan.x);
+  viewport.scrollTop=pan.top-(e.clientY-pan.y);
+ },true);
+ const finishPan=()=>{if(!pan)return;pan=null;viewport.style.cursor=spaceHeld?'grab':''};
+ viewport.addEventListener('pointerup',finishPan,true);
+ viewport.addEventListener('pointercancel',finishPan,true);
  out.addEventListener('click',()=>setZoom((window.fpgaZoom||1)-0.1));
  inc.addEventListener('click',()=>setZoom((window.fpgaZoom||1)+0.1));
  reset.addEventListener('click',()=>setZoom(1));
