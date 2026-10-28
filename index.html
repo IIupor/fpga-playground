@@ -150,10 +150,13 @@ function routePointsFast(w,a,b,p,q){
  const sourceLane0=Math.floor((p.x+8)/ROUTE_CELL+1)*ROUTE_CELL+1;
  const targetLane=q.x-9;
  const targetSpec=spec(b);
- const rowLanes=[b.y-9,b.y+targetSpec.h+9];
+ const midY=(p.y+q.y)/2;
+ const rowLanes=[b.y-9,b.y+targetSpec.h+9,p.y-ROUTE_CELL,p.y+ROUTE_CELL,q.y-ROUTE_CELL,q.y+ROUTE_CELL]
+  .filter((y,i,arr)=>arr.indexOf(y)===i)
+  .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY)).slice(0,6);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
-  for(let step=0;step<12;step++){
+  for(let step=0;step<8;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
    const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetLane,y:laneY},{x:targetLane,y:q.y},q];
    let blocked=false;
@@ -281,7 +284,9 @@ function routePointsGraph(w,a,b,p,q){
    const cur=pop();if(cur.cost!==dist[cur.v][cur.dir])continue;
    if(cur.v===ti){finish=cur;break}
    for(const edge of adj[cur.v]){
-    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd;
+    const segmentCost=routeCandidateWireCost([vertices[cur.v],vertices[edge.to]],w);
+    const crossingPenalty=Math.max(0,segmentCost-edge.d);
+    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd+crossingPenalty;
     if(cost<dist[edge.to][edge.dir]){dist[edge.to][edge.dir]=cost;prev[edge.to][edge.dir]=[cur.v,cur.dir];push({v:edge.to,dir:edge.dir,cost})}
    }
   }
