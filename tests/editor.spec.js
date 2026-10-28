@@ -500,7 +500,8 @@ test('fit to view scales the complete circuit to the visible workspace', async (
   }));
   expect(fitted.scrollWidth).toBeLessThanOrEqual(fitted.clientWidth + 1);
   expect(fitted.scrollHeight).toBeLessThanOrEqual(fitted.clientHeight + 1);
-  await expect(page.locator('#editorMessage')).toContainText('Fitted');
+  const zoomLevel = Number((await page.locator('#editorZoomLevel').textContent()).replace('%', ''));
+  expect(zoomLevel).toBeLessThan(100);
   await expect(svg).toBeVisible();
 });
 
@@ -511,6 +512,8 @@ test('holding Space and dragging pans the circuit workspace', async ({ page }) =
   await expect(page.locator('#editorMessage')).toContainText('Imported');
 
   const viewport = page.locator('#editorViewport');
+  // Ensure the canvas overflows in both directions so panning can be observed.
+  for (let i = 0; i < 5; i++) await page.locator('#editorZoomIn').click();
   await viewport.evaluate(el => { el.scrollLeft = 120; el.scrollTop = 120; });
   const before = await viewport.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
   const box = await viewport.boundingBox();
