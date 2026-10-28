@@ -219,8 +219,8 @@ function routePointsFast(w,a,b,p,q){
  // budget, use a perimeter corridor outside every block's keep-out rectangle.
  // The source leaves to the right and the target is approached from the left,
  // so the long vertical legs stay outside the endpoint columns.
- const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
- const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ // Reuse topLane and bottomLane computed above; redeclaring these consts
+ // would prevent the entire editor script from parsing.
  const simplify=points=>{
   const out=[];
   for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
