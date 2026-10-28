@@ -82,12 +82,18 @@ function routeCandidateWireCost(points,wire){
   const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
   const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
   const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
-  const nearby=new Map();
-  scanBins:
-  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){
-   for(const s of routedSegmentBins.get(x+','+y)||[]){
+  const nearby=new Map(),binKeys=[];
+  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)binKeys.push(x+','+y);
+  // Sample bins across the entire candidate segment instead of consuming the
+  // first dense bin. Then sample each selected bin's segment list evenly too.
+  const MAX_SAMPLED_BINS=16,MAX_SEGMENTS_PER_BIN=8;
+  const binStep=Math.max(1,Math.ceil(binKeys.length/MAX_SAMPLED_BINS));
+  for(let bi=0;bi<binKeys.length&&nearby.size<MAX_CROSSING_CHECKS;bi+=binStep){
+   const list=routedSegmentBins.get(binKeys[bi])||[];
+   const segmentStep=Math.max(1,Math.ceil(list.length/MAX_SEGMENTS_PER_BIN));
+   for(let si=0;si<list.length&&nearby.size<MAX_CROSSING_CHECKS;si+=segmentStep){
+    const s=list[si];
     if(!nearby.has(s.indexId))nearby.set(s.indexId,s);
-    if(nearby.size>=MAX_CROSSING_CHECKS)break scanBins;
    }
   }
   for(const s of nearby.values()){
