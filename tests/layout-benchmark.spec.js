@@ -22,7 +22,7 @@ for (const circuit of cases) {
         // getBBox() returns local geometry and does not include the group's
         // translate(x y), so include the node transform for world coordinates.
         const transform = g.getAttribute('transform') || '';
-        const match = transform.match(/translate\\(\\s*([-+\\d.eE]+)[,\\s]+([-+\\d.eE]+)\\s*\\)/);
+        const match = transform.match(/translate\(\s*([-+\d.eE]+)[,\s]+([-+\d.eE]+)\s*\)/);
         const tx = match ? Number(match[1]) : 0;
         const ty = match ? Number(match[2]) : 0;
         return {
