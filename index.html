@@ -421,7 +421,9 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   const request=++activeRequest;button.disabled=true;button.textContent='Loading…';msg.textContent=`Downloading ${name}.v from GitHub…`;
   try{
    const url=`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`;
-   const response=await fetch(url,{cache:'no-store'});if(!response.ok)throw new Error(`GitHub returned HTTP ${response.status}.`);
+   const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),12000);
+   let response;try{response=await fetch(url,{cache:'no-store',signal:controller.signal})}catch(fetchError){if(fetchError.name==='AbortError')throw new Error('The download timed out after 12 seconds. Check the connection or open the benchmark file directly from GitHub.');throw new Error('Network request failed: '+fetchError.message)}finally{clearTimeout(timeout)}
+   if(!response.ok)throw new Error(`GitHub returned HTTP ${response.status}.`);
    const source=await response.text();if(!/^\s*module\s+/m.test(source))throw new Error('The downloaded file does not contain a Verilog module.');
    if(request!==activeRequest)return;area.value=source;
    document.getElementById('importVerilog').click();
