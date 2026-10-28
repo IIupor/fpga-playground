@@ -65,10 +65,12 @@ function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
 let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
-let routedSegments=[], routedSegmentBins=new Map(), nextRoutedSegmentId=1;
+let routedSegments=[], routedSegmentBins=new Map(), routedHorizontalByY=new Map(), routedVerticalByX=new Map(), nextRoutedSegmentId=1;
 const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300,ROUTE_WIRE_BIN=64;
 function indexRoutedSegment(segment){
  const id=nextRoutedSegmentId++;segment.indexId=id;routedSegments.push(segment);
+ if(segment.a.y===segment.b.y){const y=segment.a.y;if(!routedHorizontalByY.has(y))routedHorizontalByY.set(y,[]);routedHorizontalByY.get(y).push(segment)}
+ else if(segment.a.x===segment.b.x){const x=segment.a.x;if(!routedVerticalByX.has(x))routedVerticalByX.set(x,[]);routedVerticalByX.get(x).push(segment)}
  const x1=Math.floor(Math.min(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN);
  const y1=Math.floor(Math.min(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN);
  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
@@ -129,35 +131,28 @@ function routeFirstHit(u,v,skipFrom=null,skipTo=null,wire=null){
   while(lo<hi){const m=(lo+hi)>>1;if(list[m].l<threshold)lo=m+1;else hi=m}
   for(let i=lo;i<list.length&&list[i].l<maxX;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(y>r.t&&y<r.b&&r.r>minX&&Math.max(minX,r.l)<Math.min(maxX,r.r))return r}
  }
- // Previously routed wires are hard obstacles too. Use the same spatial bins
- // as the scoring function and return a thin keep-out rectangle around the
- // conflicting segment so the detour logic can route around its endpoint.
- const x1=Math.floor(Math.min(u.x,v.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(u.x,v.x)/ROUTE_WIRE_BIN);
- const y1=Math.floor(Math.min(u.y,v.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(u.y,v.y)/ROUTE_WIRE_BIN);
- const seen=new Set();
- for(let bx=x1;bx<=x2;bx++)for(let by=y1;by<=y2;by++){
-  const list=routedSegmentBins.get(bx+','+by)||[];
-  for(const s of list){
-   if(seen.has(s.indexId))continue;seen.add(s.indexId);
-   if(wire&&(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to))continue;
-   const sx1=Math.min(s.a.x,s.b.x),sx2=Math.max(s.a.x,s.b.x),sy1=Math.min(s.a.y,s.b.y),sy2=Math.max(s.a.y,s.b.y);
-   if(u.x===v.x){
-    if(s.a.y===s.b.y){
-     if(u.x>sx1&&u.x<sx2&&s.a.y>Math.min(u.y,v.y)&&s.a.y<Math.max(u.y,v.y))
-      return {l:sx1,r:sx2,t:s.a.y-1,b:s.a.y+1,id:null,wire:true};
-    }else if(s.a.x===u.x){
-     const from=Math.max(Math.min(u.y,v.y),sy1),to=Math.min(Math.max(u.y,v.y),sy2);
-     if(from<to)return {l:u.x-1,r:u.x+1,t:from,b:to,id:null,wire:true};
-    }
-   }else{
-    if(s.a.x===s.b.x){
-     if(s.a.x>Math.min(u.x,v.x)&&s.a.x<Math.max(u.x,v.x)&&u.y>sy1&&u.y<sy2)
-      return {l:s.a.x-1,r:s.a.x+1,t:sy1,b:sy2,id:null,wire:true};
-    }else if(s.a.y===u.y){
-     const from=Math.max(Math.min(u.x,v.x),sx1),to=Math.min(Math.max(u.x,v.x),sx2);
-     if(from<to)return {l:from,r:to,t:u.y-1,b:u.y+1,id:null,wire:true};
-    }
-   }
+ // Previously routed wires are hard obstacles too. Coordinate-indexed
+ // rows/columns avoid scanning every segment in dense ISCAS spatial bins.
+ const ignore=s=>wire&&(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to);
+ if(u.x===v.x){
+  const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y);
+  for(const [y,list] of routedHorizontalByY){
+   if(y<=minY||y>=maxY)continue;
+   for(const s of list){if(ignore(s))continue;const lo=Math.min(s.a.x,s.b.x),hi=Math.max(s.a.x,s.b.x);if(x>lo&&x<hi)return {l:lo,r:hi,t:y-1,b:y+1,id:null,wire:true}}
+  }
+  for(const s of routedVerticalByX.get(x)||[]){
+   if(ignore(s))continue;const lo=Math.max(minY,Math.min(s.a.y,s.b.y)),hi=Math.min(maxY,Math.max(s.a.y,s.b.y));
+   if(lo<hi)return {l:x-1,r:x+1,t:lo,b:hi,id:null,wire:true};
+  }
+ }else{
+  const y=u.y,minX=Math.min(u.x,v.x),maxX=Math.max(u.x,v.x);
+  for(const [x,list] of routedVerticalByX){
+   if(x<=minX||x>=maxX)continue;
+   for(const s of list){if(ignore(s))continue;const lo=Math.min(s.a.y,s.b.y),hi=Math.max(s.a.y,s.b.y);if(y>lo&&y<hi)return {l:x-1,r:x+1,t:lo,b:hi,id:null,wire:true}}
+  }
+  for(const s of routedHorizontalByY.get(y)||[]){
+   if(ignore(s))continue;const lo=Math.max(minX,Math.min(s.a.x,s.b.x)),hi=Math.min(maxX,Math.max(s.a.x,s.b.x));
+   if(lo<hi)return {l:lo,r:hi,t:y-1,b:y+1,id:null,wire:true};
   }
  }
  return null;
@@ -328,7 +323,7 @@ function routePointsGraph(w,a,b,p,q){
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
-function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
  const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`,'data-node':n.id});
  const selectedNode=selected?.kind==='node'&&selected.id===n.id;
