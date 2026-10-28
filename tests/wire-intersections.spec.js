@@ -138,8 +138,8 @@ for (const name of benchmarks) {
           ay1=Math.min(a.a.y,a.b.y), ay2=Math.max(a.a.y,a.b.y);
         for (let j=i+1; j<segments.length; j++) {
           const b=segments[j];
-          if (a.wire===b.wire || a.from===b.from && a.to===b.to ||
-              a.from===b.to && a.to===b.from) continue;
+          if (a.wire===b.wire || a.from===b.from || a.from===b.to ||
+              a.to===b.from || a.to===b.to) continue;
           if (a.horizontal !== b.horizontal) {
             const h=a.horizontal?a:b, v=a.horizontal?b:a;
             const x=v.a.x, y=h.a.y;
