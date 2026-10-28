@@ -436,7 +436,7 @@ test('large benchmark uses a scrollable canvas and remains editable after scroll
 
   const viewport = page.locator('#editorViewport');
   const svg = page.locator('#editorStage');
-  await expect(svg.locator('g[data-node]')).toHaveCount(await svg.locator('g[data-node]').count());
+  expect(await svg.locator('g[data-node]').count()).toBeGreaterThan(0);
   const dimensions = await viewport.evaluate(el => ({
     clientHeight: el.clientHeight,
     scrollHeight: el.scrollHeight,
@@ -448,7 +448,7 @@ test('large benchmark uses a scrollable canvas and remains editable after scroll
   await expect.poll(() => viewport.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
 
   // The bottom of the benchmark remains reachable, and its wires still render.
-  await expect(svg.locator('path.editor-wire')).toHaveCount(await svg.locator('path.editor-wire').count());
+  expect(await svg.locator('path.editor-wire').count()).toBeGreaterThan(0);
   const lastNode = svg.locator('g[data-node]').last();
   await lastNode.scrollIntoViewIfNeeded();
   await expect(lastNode).toBeVisible();
@@ -459,6 +459,6 @@ test('large benchmark uses a scrollable canvas and remains editable after scroll
   await page.mouse.down();
   await page.mouse.move(before.x + before.width / 2 + 18, before.y + before.height / 2 + 12, { steps: 3 });
   await page.mouse.up();
-  await expect(svg.locator('g[data-node]')).toHaveCountGreaterThan(0);
-  await expect(svg.locator('path.editor-wire')).toHaveCountGreaterThan(0);
+  expect(await svg.locator('g[data-node]').count()).toBeGreaterThan(0);
+  expect(await svg.locator('path.editor-wire').count()).toBeGreaterThan(0);
 });
