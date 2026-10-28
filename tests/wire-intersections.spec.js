@@ -167,5 +167,19 @@ for (const name of benchmarks) {
     });
     console.log(`WIRE-CROSSING-DIAGNOSTIC ${name}: ${JSON.stringify(stats)}`);
     expect(stats.wireCount, name + ' diagnostic should inspect wires').toBeGreaterThan(0);
+
+    // Guard against regressions against the pre-wire-aware router's recorded counts.
+    // These are segment-pair counts, not unique physical crossing locations.
+    const limits = {
+      c432: { crossings: 6806, overlaps: 15538 },
+      c499: { crossings: 7085, overlaps: 22502 },
+      c880: { crossings: 19983, overlaps: 56845 }
+    };
+    if (limits[name]) {
+      expect(stats.crossings, name + ' should reduce wire crossings vs. the previous router')
+        .toBeLessThan(limits[name].crossings);
+      expect(stats.overlaps, name + ' should reduce collinear wire overlaps vs. the previous router')
+        .toBeLessThan(limits[name].overlaps);
+    }
   }, 120000);
 }
