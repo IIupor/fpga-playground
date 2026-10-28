@@ -480,3 +480,51 @@ test('workspace zoom controls scale the circuit and reset to 100 percent', async
   expect(Math.abs(reset.height - before.height)).toBeLessThan(1);
   await expect(viewport).toBeVisible();
 });
+
+
+test('fit to view scales the complete circuit to the visible workspace', async ({ page }) => {
+  const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported');
+
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  await page.locator('#editorFitView').click();
+
+  const fitted = await viewport.evaluate(el => ({
+    clientWidth: el.clientWidth,
+    clientHeight: el.clientHeight,
+    scrollWidth: el.scrollWidth,
+    scrollHeight: el.scrollHeight
+  }));
+  expect(fitted.scrollWidth).toBeLessThanOrEqual(fitted.clientWidth + 1);
+  expect(fitted.scrollHeight).toBeLessThanOrEqual(fitted.clientHeight + 1);
+  const zoomLevel = Number((await page.locator('#editorZoomLevel').textContent()).replace('%', ''));
+  expect(zoomLevel).toBeLessThan(100);
+  await expect(svg).toBeVisible();
+});
+
+test('holding Space and dragging pans the circuit workspace', async ({ page }) => {
+  const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported');
+
+  const viewport = page.locator('#editorViewport');
+  // Ensure the canvas overflows in both directions so panning can be observed.
+  for (let i = 0; i < 5; i++) await page.locator('#editorZoomIn').click();
+  await viewport.evaluate(el => { el.scrollLeft = 120; el.scrollTop = 120; });
+  const before = await viewport.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
+  const box = await viewport.boundingBox();
+  await viewport.evaluate(el => el.focus());
+  await page.keyboard.down('Space');
+  await page.mouse.move(box.x + 180, box.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 145, box.y + 150, { steps: 3 });
+  await page.mouse.up();
+  await page.keyboard.up('Space');
+  const after = await viewport.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
+  expect(after.left).toBeGreaterThan(before.left);
+  expect(after.top).toBeGreaterThan(before.top);
+});
