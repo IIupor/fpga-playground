@@ -142,13 +142,13 @@ function routePointsFast(w,a,b,p,q){
  const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
  const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
  const rowLanes=[p.y,q.y,b.y-9,b.y+targetSpec.h+9,topLane,bottomLane,
-  ...Array.from({length:7},(_,i)=>Math.round(midY)+(i-3)*ROUTE_CELL)]
+  ...Array.from({length:5},(_,i)=>Math.round(midY)+(i-2)*ROUTE_CELL)]
   .filter((y,i,arr)=>arr.indexOf(y)===i)
   .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY));
- const targetLanes=Array.from({length:5},(_,i)=>targetLane-i*ROUTE_CELL);
+ const targetLanes=Array.from({length:3},(_,i)=>targetLane-i*ROUTE_CELL);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
-  for(let step=0;step<10;step++){
+  for(let step=0;step<6;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
    for(const targetX of targetLanes){
    const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q];
