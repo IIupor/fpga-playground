@@ -19,12 +19,12 @@
 }
 *{box-sizing:border-box} body{margin:0;font-family:var(--site-font-body);background:var(--site-background);color:var(--site-on-background)}
 #app{min-height:100vh;width:100%;background-color:var(--site-background);color:var(--site-on-background);border-radius:0;padding:calc(24px * var(--site-spacing-scale));}
-.shell{max-width:1120px;margin:0 auto}.top{display:flex;gap:16px;align-items:center;margin-bottom:24px}.logo{width:48px;height:48px;border-radius:calc(14px * var(--site-radius-scale));display:grid;place-items:center;background:var(--site-primary);color:var(--site-on-primary);font-size:25px;font-weight:800}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:11px;color:var(--muted);font-weight:800}.top h1{font-family:var(--site-font-heading);font-size:calc(30px * var(--site-heading-scale));margin:2px 0 0;letter-spacing:-.04em}.top p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.shell{width:100%;max-width:none;margin:0 auto}.top{display:flex;gap:16px;align-items:center;margin-bottom:24px}.logo{width:48px;height:48px;border-radius:calc(14px * var(--site-radius-scale));display:grid;place-items:center;background:var(--site-primary);color:var(--site-on-primary);font-size:25px;font-weight:800}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:11px;color:var(--muted);font-weight:800}.top h1{font-family:var(--site-font-heading);font-size:calc(30px * var(--site-heading-scale));margin:2px 0 0;letter-spacing:-.04em}.top p{margin:4px 0 0;color:var(--muted);font-size:14px}
 .layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.8fr);gap:18px}.panel{background:var(--surface);border:1px solid var(--border);border-radius:calc(18px * var(--site-radius-scale));overflow:hidden}.panelhead{padding:17px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}.panelhead h2{font-size:15px;margin:0}.pill{font-size:11px;font-weight:800;border-radius:999px;padding:6px 9px;background:var(--site-secondary);color:var(--site-on-secondary)}.body{padding:20px}.circuit{width:100%;display:block;min-height:260px;background:var(--surface2);border-radius:12px}.wire{stroke:var(--wire);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}.wire.active{stroke:var(--on)}.wire.inactive{stroke:var(--wire);stroke-dasharray:5 6}.gate{fill:var(--surface);stroke:var(--site-primary);stroke-width:2.5}.label{fill:var(--text);font-size:13px;font-weight:700}.sub{fill:var(--muted);font-size:10px}.pin{fill:var(--surface);stroke:var(--wire);stroke-width:2}.pin.active{fill:var(--on);stroke:var(--on)}
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.control{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface2)}.control label{font-size:12px;color:var(--muted);font-weight:750;display:block;margin-bottom:8px}.toggle{display:flex;width:100%;align-items:center;justify-content:space-between;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:9px 11px;cursor:pointer;font-weight:800}.toggle .bit{font-size:11px;letter-spacing:.08em}.toggle[aria-pressed="true"] .bit{color:var(--on)}.toggle[aria-pressed="false"] .bit{color:var(--off)}button:focus-visible{outline:3px solid var(--off);outline-offset:2px}.result{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;border-radius:14px;padding:15px 16px;background:var(--site-primary);color:var(--site-on-primary)}.result small{display:block;opacity:.8;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.result strong{font-size:12px}.bigbit{font-size:32px;font-weight:900;line-height:1}.explain{color:var(--muted);font-size:13px;line-height:1.5;margin:14px 0 0}.tablewrap{overflow-x:auto}.truth{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}.truth th,.truth td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--border)}.truth th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.truth tr.current{background:var(--site-secondary);color:var(--site-on-secondary);font-weight:900}.truth tr:last-child td{border-bottom:0}.bitbadge{display:inline-grid;place-items:center;min-width:23px;height:23px;border-radius:7px;font-weight:900;background:var(--surface2)}.current .bitbadge{background:var(--site-primary);color:var(--site-on-primary)}.foot{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.5}.reset{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 11px;border-radius:9px;font-weight:750;cursor:pointer}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:11px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--on)}.dot.low{background:var(--wire)}
 @media(max-width:760px){.layout{grid-template-columns:1fr}.top h1{font-size:calc(26px * var(--site-heading-scale))}.body{padding:15px}#app{padding:16px}.circuit{min-height:220px}}
 /* Graphical logic editor */
-.editor-panel{grid-column:1/-1}.editor-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.toolbtn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}.toolbtn.primary{background:var(--site-primary);color:var(--site-on-primary);border-color:var(--site-primary)}.editor-hint{color:var(--muted);font-size:12px;line-height:1.5;margin:12px 0}.editor-stage{width:100%;height:390px;display:block;background:var(--surface2);border:1px solid var(--border);border-radius:14px;touch-action:none}.nodebox{fill:var(--surface);stroke:var(--site-primary);stroke-width:2}.nodehead{fill:var(--site-secondary)}.nodetext{fill:var(--text);font-size:13px;font-weight:800;pointer-events:none}.nodemeta{fill:var(--muted);font-size:10px;pointer-events:none}.nodepin{fill:var(--surface);stroke:var(--site-primary);stroke-width:2;cursor:crosshair;transition:stroke-width .12s,filter .12s}.nodepin.high{fill:var(--on);stroke:var(--on)}.nodepin.pending{stroke:var(--off);stroke-width:4}.nodepin.available{stroke:var(--on);stroke-width:3;filter:drop-shadow(0 0 3px var(--on))}#editorStage.connection-active{background-image:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--site-primary) 7%,transparent),transparent 70%)}#editorStage.connection-active .nodepin.available{animation:pin-pulse 1s ease-in-out infinite alternate}@keyframes pin-pulse{from{stroke-width:3}to{stroke-width:5}}.wire-hit-area{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}.editor-wire{fill:none;stroke:var(--wire);stroke-width:3;stroke-linecap:round;pointer-events:stroke;cursor:pointer}.editor-wire.high{stroke:var(--on)}.editor-wire.pending{stroke:var(--off);stroke-dasharray:6 5}.editor-status{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.status-chip{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12px;color:var(--muted)}.status-chip b{color:var(--text)}.editor-table{width:100%;border-collapse:collapse;font-size:12px}.editor-table th,.editor-table td{text-align:center;padding:8px;border-bottom:1px solid var(--border)}.editor-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.editor-table .highbit{color:var(--on);font-weight:900}.editor-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.editor-lower h3{font-size:13px;margin:0 0 10px}.editor-scroll{overflow:auto;max-height:200px}.toolbtn:disabled{opacity:.45;cursor:not-allowed}@media(max-width:760px){.editor-stage{height:330px}.editor-lower{grid-template-columns:1fr}}
+.editor-panel{grid-column:1/-1}.editor-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.toolbtn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}.toolbtn.primary{background:var(--site-primary);color:var(--site-on-primary);border-color:var(--site-primary)}.editor-hint{color:var(--muted);font-size:12px;line-height:1.5;margin:12px 0}.editor-viewport{width:100%;height:min(68vh,850px);min-height:480px;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:14px;overscroll-behavior:contain}.editor-stage{width:900px;height:390px;display:block;background:var(--surface2);border:0;border-radius:0;touch-action:none;max-width:none}.nodebox{fill:var(--surface);stroke:var(--site-primary);stroke-width:2}.nodehead{fill:var(--site-secondary)}.nodetext{fill:var(--text);font-size:13px;font-weight:800;pointer-events:none}.nodemeta{fill:var(--muted);font-size:10px;pointer-events:none}.nodepin{fill:var(--surface);stroke:var(--site-primary);stroke-width:2;cursor:crosshair;transition:stroke-width .12s,filter .12s}.nodepin.high{fill:var(--on);stroke:var(--on)}.nodepin.pending{stroke:var(--off);stroke-width:4}.nodepin.available{stroke:var(--on);stroke-width:3;filter:drop-shadow(0 0 3px var(--on))}#editorStage.connection-active{background-image:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--site-primary) 7%,transparent),transparent 70%)}#editorStage.connection-active .nodepin.available{animation:pin-pulse 1s ease-in-out infinite alternate}@keyframes pin-pulse{from{stroke-width:3}to{stroke-width:5}}.wire-hit-area{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}.editor-wire{fill:none;stroke:var(--wire);stroke-width:3;stroke-linecap:round;pointer-events:stroke;cursor:pointer}.editor-wire.high{stroke:var(--on)}.editor-wire.pending{stroke:var(--off);stroke-dasharray:6 5}.editor-status{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.status-chip{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12px;color:var(--muted)}.status-chip b{color:var(--text)}.editor-table{width:100%;border-collapse:collapse;font-size:12px}.editor-table th,.editor-table td{text-align:center;padding:8px;border-bottom:1px solid var(--border)}.editor-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.editor-table .highbit{color:var(--on);font-weight:900}.editor-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.editor-lower h3{font-size:13px;margin:0 0 10px}.editor-scroll{overflow:auto;max-height:200px}.toolbtn:disabled{opacity:.45;cursor:not-allowed}@media(max-width:760px){.editor-viewport{height:330px;min-height:330px}.editor-lower{grid-template-columns:1fr}}
 </style><style>
 /* The .nodebox class rule overrides SVG stroke attributes, so force selection styling. */
 #editorStage .nodebox[stroke="var(--off)"]{stroke:var(--off)!important;stroke-width:3!important}
@@ -39,7 +39,8 @@
 <div class="editor-toolbar" id="instanceEditor" style="margin-top:10px;align-items:end"><label class="status-chip" style="display:grid;gap:5px">Instance / signal name<input id="instanceName" type="text" placeholder="Select a block" style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><label class="status-chip" style="display:grid;gap:5px">Input pin names<input id="inputPinNames" type="text" placeholder="A, B, ..." style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><label class="status-chip" style="display:grid;gap:5px">Output pin names<input id="outputPinNames" type="text" placeholder="Y, Q, ..." style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><button class="toolbtn" id="applyInstanceNames">Apply names</button><span class="editor-hint" style="margin:0">Select a block, enter comma-separated pin names, then apply. Instance names must be unique.</span></div>
 <textarea id="verilogText" aria-label="Verilog source" placeholder="Verilog source appears here after export; paste code here to import it." style="display:block;width:100%;min-height:150px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace"></textarea>
 <p class="editor-hint">Click an output pin (right side of a block), then click an input pin (left side) to connect them. Drag a block by its header. Click an input block to toggle 0/1. Select a wire or block and press Delete to remove it.</p>
-<svg id="editorStage" class="editor-stage" viewBox="0 0 900 390" role="application" aria-label="Interactive digital circuit editor"></svg>
+<div class="editor-toolbar" id="editorZoomControls" style="margin:10px 0;align-items:center"><span class="status-chip">Zoom</span><button class="toolbtn" id="editorZoomOut" type="button" aria-label="Zoom out">−</button><button class="toolbtn" id="editorZoomReset" type="button">100%</button><button class="toolbtn" id="editorZoomIn" type="button" aria-label="Zoom in">＋</button><span class="editor-hint" id="editorZoomLevel" style="margin:0">100%</span><span class="editor-hint" style="margin:0">Tip: Ctrl + mouse wheel to zoom</span></div>
+<div class="editor-viewport" id="editorViewport" aria-label="Scrollable circuit workspace"><svg id="editorStage" class="editor-stage" viewBox="0 0 900 390" role="application" aria-label="Interactive digital circuit editor"></svg></div>
 <div class="editor-lower"><div><h3>Input controls</h3><div class="controls" id="editorControls"></div></div><div><h3>Output values</h3><div class="editor-status" id="editorResults"></div></div></div>
 <div class="editor-status"><span class="status-chip" id="editorMessage" aria-live="polite">Example: A AND B → Y. Connect pins to change the circuit.</span><span class="status-chip">Green = logic 1</span><span class="status-chip">Grey = logic 0</span></div>
 <div class="editor-lower"><div><h3>Live signal values</h3><div class="editor-scroll"><table class="editor-table"><thead><tr><th>Signal</th><th>Type</th><th>Value</th></tr></thead><tbody id="signalRows"></tbody></table></div></div><div><h3>Truth table</h3><div class="editor-scroll"><table class="editor-table"><thead id="editorTruthHead"></thead><tbody id="editorTruthBody"></tbody></table></div><p class="editor-hint">Truth table is generated for up to four input blocks. Larger designs show live signal values only.</p></div></div>
@@ -61,8 +62,243 @@ function reset(){nodes=[];wires=[];selected=null;pending=null;nextId=1;const a=n
 function spec(n){return {w:['INPUT','OUTPUT','VDD','GND'].includes(n.type)?112:150,h:Math.max(76,50+Math.max(n.inputs,n.outputs)*22),ins:n.inputs,outs:n.outputs}}
 function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:n.y+30+(kind==='in'?index*22:0)}}
 function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT')n.value=n.value?1:0;else if(n.type==='VDD')n.value=1;else if(n.type==='GND')n.value=0});for(let pass=0;pass<nodes.length+2;pass++){let changed=false;for(const n of nodes){if(n.type==='INPUT'||n.type==='VDD'||n.type==='GND'||n.type==='DFF'||n.type==='LATCH')continue;const vals=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&nodes.find(x=>x.id===w.from);return src?src.value:0});let v=0;if(n.type==='AND')v=vals.length&&vals.every(Boolean)?1:0;else if(n.type==='NAND')v=vals.length&&vals.every(Boolean)?0:1;else if(n.type==='OR')v=vals.some(Boolean)?1:0;else if(n.type==='NOR')v=vals.some(Boolean)?0:1;else if(n.type==='XOR')v=vals.filter(Boolean).length%2;else if(n.type==='XNOR')v=vals.filter(Boolean).length%2?0:1;else if(n.type==='NOT')v=vals[0]?0:1;else if(n.type==='OUTPUT')v=vals[0]||0;if(v!==n.value){n.value=v;changed=true}}if(!changed)break}if(updateSequential)for(const n of nodes.filter(n=>n.type==='DFF'||n.type==='LATCH')){const vals=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&nodes.find(x=>x.id===w.from);return src?src.value:0});if(n.type==='LATCH'){if(vals[1])n.state=vals[0]||0}else if(vals[1]&&!n.prevClock)n.state=vals[0]||0;n.prevClock=vals[1]||0;n.value=n.state}if(updateSequential)evalCircuit(false)}
-function wirePath(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return '';const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),mid=(p.x+q.x)/2;return `M${p.x} ${p.y} C${mid} ${p.y},${mid} ${q.y},${q.x} ${q.y}`}
-function render(){evalCircuit();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const d=wirePath(w),hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':'')});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+
+// Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
+let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
+let routedSegments=[], routedSegmentBins=new Map(), nextRoutedSegmentId=1;
+const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300,ROUTE_WIRE_BIN=64;
+function indexRoutedSegment(segment){
+ const id=nextRoutedSegmentId++;segment.indexId=id;routedSegments.push(segment);
+ const x1=Math.floor(Math.min(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN);
+ const y1=Math.floor(Math.min(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN);
+ for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
+}
+function routeCandidateWireCost(points,wire){
+ let length=0,bends=Math.max(0,points.length-2),crossings=0,overlaps=0;
+ // Bound crossing analysis on large circuits: inspect at most 128 nearby
+ // segments per candidate segment. This keeps scoring useful without allowing
+ // dense spatial bins to make routing quadratic.
+ const MAX_CROSSING_CHECKS=128;
+ for(let i=1;i<points.length;i++){
+  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+  const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
+  const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
+  const nearby=new Map(),binKeys=[];
+  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)binKeys.push(x+','+y);
+  // Sample bins across the entire candidate segment instead of consuming the
+  // first dense bin. Then sample each selected bin's segment list evenly too.
+  const MAX_SAMPLED_BINS=16,MAX_SEGMENTS_PER_BIN=8;
+  const binStep=Math.max(1,Math.ceil(binKeys.length/MAX_SAMPLED_BINS));
+  for(let bi=0;bi<binKeys.length&&nearby.size<MAX_CROSSING_CHECKS;bi+=binStep){
+   const list=routedSegmentBins.get(binKeys[bi])||[];
+   const segmentStep=Math.max(1,Math.ceil(list.length/MAX_SEGMENTS_PER_BIN));
+   for(let si=0;si<list.length&&nearby.size<MAX_CROSSING_CHECKS;si+=segmentStep){
+    const s=list[si];
+    if(!nearby.has(s.indexId))nearby.set(s.indexId,s);
+   }
+  }
+  for(const s of nearby.values()){
+   if(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to)continue;
+   const ah=a.y===b.y,bh=s.a.y===s.b.y;
+   if(ah!==bh){
+    const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))crossings++;
+   }else if(ah&&s.a.y===a.y){
+    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))overlaps++;
+   }else if(!ah&&s.a.x===a.x){
+    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))overlaps++;
+   }
+  }
+ }
+ // Keep crossing/overlap penalties moderate: heavier weights caused
+ // large benchmark import/export tests to exceed their time budget.
+ return length+crossings*120+overlaps*90+bends*8;
+}
+function rememberRoutedWire(w,points){
+ for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
+  indexRoutedSegment({wire:w.id,from:w.from,to:w.to,a:points[i-1],b:points[i]});
+}
+function prepareRouteObstacleIndex(){
+ routeNodeById=new Map(nodes.map(n=>[n.id,n]));routeRects=[];routeColumns=new Map();routeRows=new Map();
+ for(const n of nodes){const s=spec(n);routeRects.push({id:n.id,l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8})}
+ for(const r of routeRects){
+  for(let x=Math.floor(r.l/ROUTE_CELL);x<=Math.floor(r.r/ROUTE_CELL);x++){if(!routeColumns.has(x))routeColumns.set(x,[]);routeColumns.get(x).push(r)}
+  for(let y=Math.floor(r.t/ROUTE_CELL);y<=Math.floor(r.b/ROUTE_CELL);y++){if(!routeRows.has(y))routeRows.set(y,[]);routeRows.get(y).push(r)}
+ }
+ for(const list of routeColumns.values())list.sort((a,b)=>a.t-b.t);
+ for(const list of routeRows.values())list.sort((a,b)=>a.l-b.l);
+}
+function routeFirstHit(u,v,skipFrom=null,skipTo=null){
+ if(u.x!==v.x&&u.y!==v.y)return {l:Math.min(u.x,v.x),r:Math.max(u.x,v.x),t:Math.min(u.y,v.y),b:Math.max(u.y,v.y),id:null};
+ if(u.x===v.x){
+  const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y),list=routeColumns.get(Math.floor(x/ROUTE_CELL))||[];
+  let lo=0,hi=list.length,threshold=minY-ROUTE_MAX_HEIGHT;
+  while(lo<hi){const m=(lo+hi)>>1;if(list[m].t<threshold)lo=m+1;else hi=m}
+  for(let i=lo;i<list.length&&list[i].t<maxY;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(x>r.l&&x<r.r&&r.b>minY&&Math.max(minY,r.t)<Math.min(maxY,r.b))return r}
+ }else{
+  const y=u.y,minX=Math.min(u.x,v.x),maxX=Math.max(u.x,v.x),list=routeRows.get(Math.floor(y/ROUTE_CELL))||[];
+  let lo=0,hi=list.length,threshold=minX-ROUTE_MAX_WIDTH;
+  while(lo<hi){const m=(lo+hi)>>1;if(list[m].l<threshold)lo=m+1;else hi=m}
+  for(let i=lo;i<list.length&&list[i].l<maxX;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(y>r.t&&y<r.b&&r.r>minX&&Math.max(minX,r.l)<Math.min(maxX,r.r))return r}
+ }
+ return null;
+}
+function routePointsFast(w,a,b,p,q){
+ // First try a direct corridor route: leave the source to the right, travel
+ // through a clear horizontal gap above/below the target row, then approach
+ // the target pin from its left. This keeps large benchmark routing bounded.
+ const sourceLane0=Math.floor((p.x+8)/ROUTE_CELL+1)*ROUTE_CELL+1;
+ const targetLane=q.x-9;
+ const targetSpec=spec(b);
+ const rowLanes=[b.y-9,b.y+targetSpec.h+9];
+ let bestCandidate=null,bestScore=Infinity;
+ for(const laneY of rowLanes){
+  for(let step=0;step<12;step++){
+   const laneX=sourceLane0+step*ROUTE_CELL;
+   const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetLane,y:laneY},{x:targetLane,y:q.y},q];
+   let blocked=false;
+   for(let i=1;i<candidate.length;i++){
+    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){blocked=true;break}
+   }
+   if(blocked)continue;
+   const simplified=candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);
+   const score=routeCandidateWireCost(simplified,w);
+   if(score<bestScore){bestScore=score;bestCandidate=simplified}
+  }
+ }
+ if(bestCandidate)return bestCandidate;
+ const middleX=(p.x+q.x)/2;
+ let path=[p,{x:p.x+9,y:p.y},{x:middleX,y:p.y},{x:middleX,y:q.y},{x:q.x-9,y:q.y},q];
+ const maxIterations=Math.min(80,routeRects.length*2+20);
+ for(let iteration=0;iteration<maxIterations;iteration++){
+  let changed=false;
+  for(let i=1;i<path.length;i++){
+   const u=path[i-1],v=path[i],skipFrom=i===1?a.id:null,skipTo=i===path.length-1?b.id:null;
+   const hit=routeFirstHit(u,v,skipFrom,skipTo);
+   if(!hit)continue;
+   let candidates;
+   if(u.x===v.x){
+    const lanes=[Math.floor(hit.l/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.r/ROUTE_CELL+1)*ROUTE_CELL+1];
+    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y})?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
+   }else{
+    const lanes=[Math.floor(hit.t/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.b/ROUTE_CELL+1)*ROUTE_CELL+1];
+    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y})?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
+   }
+   candidates.sort((x,y)=>x.score-y.score);
+   path.splice(i,0,...candidates[0].points);changed=true;break;
+  }
+  if(!changed){
+   const simplified=[];
+   for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))break;
+   return simplified;
+  }
+ }
+ // If local detours cannot resolve a dense obstacle cluster within the iteration
+ // budget, use a perimeter corridor outside every block's keep-out rectangle.
+ // The source leaves to the right and the target is approached from the left,
+ // so the long vertical legs stay outside the endpoint columns.
+ const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
+ const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ const simplify=points=>{
+  const out=[];
+  for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
+  return out;
+ };
+ for(const laneY of [topLane,bottomLane]){
+  const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
+  let clear=true;
+  for(let i=1;i<candidate.length;i++){
+   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){clear=false;break}
+  }
+  if(clear)return candidate;
+ }
+ // Preserve geometry only as a last resort if even the outer corridor is blocked.
+ const partial=simplify(path);
+ return partial;
+}
+function routePoints(w){
+ if(routeCache.has(w.id))return routeCache.get(w.id);
+ const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
+ if(!a||!b)return [];
+ const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
+ const result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ routeCache.set(w.id,result);return result;
+}
+function routePointsGraph(w,a,b,p,q){
+ const allRects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{
+  const s=spec(n);return {l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8};
+ });
+ const inside=(pt,rs)=>rs.some(r=>pt.x>r.l&&pt.x<r.r&&pt.y>r.t&&pt.y<r.b);
+ const clear=(u,v,rs)=>{
+  if(u.x!==v.x&&u.y!==v.y)return false;
+  for(const r of rs){
+   if(u.y===v.y&&u.y>r.t&&u.y<r.b&&Math.max(Math.min(u.x,v.x),r.l)<Math.min(Math.max(u.x,v.x),r.r))return false;
+   if(u.x===v.x&&u.x>r.l&&u.x<r.r&&Math.max(Math.min(u.y,v.y),r.t)<Math.min(Math.max(u.y,v.y),r.b))return false;
+  }
+  return true;
+ };
+ // Sparse orthogonal visibility graph: endpoints, obstacle corners and their
+ // projections onto endpoint rows/columns. This avoids the Cartesian grid's
+ // O(obstacles^2) vertices on large ISCAS benchmarks.
+ for(const margin of [80,180,360,720,1440]){
+  const minX=Math.min(p.x,q.x)-margin,maxX=Math.max(p.x,q.x)+margin;
+  const minY=Math.min(p.y,q.y)-margin,maxY=Math.max(p.y,q.y)+margin;
+  const rs=allRects.filter(r=>r.r>=minX&&r.l<=maxX&&r.b>=minY&&r.t<=maxY);
+  const points=new Map();
+  const add=(x,y)=>{if(x<minX||x>maxX||y<minY||y>maxY)return;const key=x+','+y;if(!points.has(key))points.set(key,{x,y,key})};
+  add(p.x,p.y);add(q.x,q.y);
+  for(const r of rs){
+   const left=r.l-1,right=r.r+1,top=r.t-1,bottom=r.b+1;
+   add(left,top);add(left,bottom);add(right,top);add(right,bottom);
+   add(left,p.y);add(right,p.y);add(p.x,top);add(p.x,bottom);
+   add(left,q.y);add(right,q.y);add(q.x,top);add(q.x,bottom);
+  }
+  const vertices=[...points.values()].filter(pt=>!inside(pt,rs));
+  const byKey=new Map(vertices.map((pt,i)=>[pt.key,i]));
+  const adj=vertices.map(()=>[]);
+  const connectLine=group=>{
+   const items=group.items;
+   items.sort((i,j)=>group.axis==='x'?vertices[i].y-vertices[j].y:vertices[i].x-vertices[j].x);
+   for(let k=1;k<items.length;k++){
+    const i=items[k-1],j=items[k],u=vertices[i],v=vertices[j];
+    if(clear(u,v,rs)){const d=Math.abs(u.x-v.x)+Math.abs(u.y-v.y);adj[i].push({to:j,d,dir:u.x===v.x?2:1});adj[j].push({to:i,d,dir:u.x===v.x?2:1});}
+   }
+  };
+  const columns=new Map(),rows=new Map();
+  vertices.forEach((pt,i)=>{if(!columns.has(pt.x))columns.set(pt.x,{axis:'x',items:[]});columns.get(pt.x).items.push(i);if(!rows.has(pt.y))rows.set(pt.y,{axis:'y',items:[]});rows.get(pt.y).items.push(i)});
+  for(const g of columns.values())connectLine(g);
+  for(const g of rows.values())connectLine(Object.assign(g,{sort:undefined}));
+  const si=byKey.get(p.x+','+p.y),ti=byKey.get(q.x+','+q.y);
+  if(si===undefined||ti===undefined)continue;
+  const dist=vertices.map(()=>[Infinity,Infinity,Infinity]),prev=vertices.map(()=>[null,null,null]);
+  const heap=[];
+  const push=item=>{heap.push(item);let i=heap.length-1;while(i){const par=(i-1)>>1;if(heap[par].cost<=item.cost)break;heap[i]=heap[par];i=par}heap[i]=item};
+  const pop=()=>{const top=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){let c=i*2+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1].cost<heap[c].cost)c++;if(heap[c].cost>=last.cost)break;heap[i]=heap[c];i=c}heap[i]=last}return top};
+  dist[si][0]=0;push({v:si,dir:0,cost:0});
+  let finish=null;
+  while(heap.length){
+   const cur=pop();if(cur.cost!==dist[cur.v][cur.dir])continue;
+   if(cur.v===ti){finish=cur;break}
+   for(const edge of adj[cur.v]){
+    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd;
+    if(cost<dist[edge.to][edge.dir]){dist[edge.to][edge.dir]=cost;prev[edge.to][edge.dir]=[cur.v,cur.dir];push({v:edge.to,dir:edge.dir,cost})}
+   }
+  }
+  if(finish){
+   const reversed=[];let v=finish.v,dir=finish.dir;
+   while(v>=0){reversed.push(vertices[v]);const back=prev[v][dir];if(!back)break;[v,dir]=back}
+   const path=reversed.reverse(),simplified=[];
+   for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
+   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))){routeCache.set(w.id,simplified);return simplified}
+  }
+ }
+ routeCache.set(w.id,[]);return [];
+}
+function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
+function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
+function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
+function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`, 'data-node':n.id});const box=make('rect',{x:0,y:0,width:s.w,height:s.h,rx:12,class:'nodebox'});if(selected?.kind==='node'&&selected.id===n.id)box.setAttribute('stroke','var(--off)');g.append(box);g.append(make('rect',{x:0,y:0,width:s.w,height:25,rx:10,class:'nodehead'}));g.append(make('rect',{x:0,y:15,width:s.w,height:10,fill:'var(--site-secondary)'}));g.append(make('text',{x:12,y:17,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));g.append(make('text',{x:s.w/2,y:48,'text-anchor':'middle',class:'nodetext'},n.name));g.append(make('text',{x:s.w/2,y:64,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+n.value));
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
@@ -70,7 +306,7 @@ updateTables()}
 function connectInput(n,i){if(!pending){msg.textContent='First click an output pin on the right side of a block.';return}if(pending.source===n.id){msg.textContent='A block cannot connect to itself in this simple editor.';return}saveHistory();const old=wires.findIndex(w=>w.to===n.id&&w.toPin===i);if(old>=0)wires.splice(old,1);wires.push({id:nextId++,from:pending.source,fromPin:pending.sourcePin||0,to:n.id,toPin:i});pending=null;selected=null;msg.textContent='Wire connected. Signal values recalculated.';render()}
 function add(type){saveHistory();const count=nodes.filter(n=>n.type===type).length;const names={INPUT:'IN',OUTPUT:'OUT',VDD:'VDD',GND:'GND',AND:'AND',OR:'OR',XOR:'XOR',NOT:'NOT',NAND:'NAND',NOR:'NOR',XNOR:'XNOR',DFF:'DFF',LATCH:'LATCH'};const n=node(type,45+(nodes.length%4)*185,25+(nodes.length%3)*110,names[type]+(count+1));if(type==='DFF'||type==='LATCH')n.inputs=2;selected={kind:'node',id:n.id};msg.textContent=`Added ${n.name}. Select it and adjust its ports if needed.`;render()}
 function updateTables(){signalRows.replaceChildren();editorControls.replaceChildren();editorResults.replaceChildren();for(const n of nodes){const tr=document.createElement('tr');tr.innerHTML=`<td>${n.name}</td><td>${n.type}</td><td class="${n.value?'highbit':''}">${n.value}</td>`;signalRows.append(tr)}const ins=nodes.filter(n=>n.type==='INPUT'),outs=nodes.filter(n=>n.type==='OUTPUT');for(const n of ins){const wrap=document.createElement('div');wrap.className='control';const label=document.createElement('label');label.textContent='Input '+n.name;const btn=document.createElement('button');btn.type='button';btn.className='toggle';btn.setAttribute('aria-pressed',String(!!n.value));btn.innerHTML=`<span>${n.name}</span><span class="bit">${n.value} · ${n.value?'HIGH':'LOW'}</span>`;btn.addEventListener('click',()=>{saveHistory();n.value=1-n.value;msg.textContent=`${n.name} set to ${n.value}.`;render()});wrap.append(label,btn);editorControls.append(wrap)}if(!ins.length){editorControls.innerHTML='<p class="editor-hint">Add an Input block to control the circuit.</p>'}for(const n of outs){const chip=document.createElement('span');chip.className='status-chip';chip.innerHTML=`<b>${n.name}</b> = <b class="${n.value?'highbit':''}">${n.value}</b> · ${n.value?'HIGH':'LOW'}`;editorResults.append(chip)}if(!outs.length)editorResults.innerHTML='<span class="status-chip">Add an Output block to see the result.</span>';truthHead.replaceChildren();truthBody.replaceChildren();if(ins.length>4){truthHead.innerHTML='<tr><th>Truth table hidden</th></tr>';truthBody.innerHTML='<tr><td>Use up to four input blocks to generate a truth table.</td></tr>';return}const h=document.createElement('tr');[...ins.map(n=>n.name),...outs.map(n=>n.name||'Y')].forEach(t=>{const th=document.createElement('th');th.textContent=t;h.append(th)});truthHead.append(h);if(!ins.length||!outs.length){truthBody.innerHTML='<tr><td colspan="8">Add at least one input and one output block.</td></tr>';return}const saved=ins.map(n=>n.value);for(let bits=0;bits<2**ins.length;bits++){ins.forEach((n,i)=>n.value=(bits>>(ins.length-1-i))&1);evalCircuit(false);const tr=document.createElement('tr');[...ins.map(n=>n.value),...outs.map(n=>n.value)].forEach(v=>{const td=document.createElement('td');td.textContent=v;if(v)td.className='highbit';tr.append(td)});truthBody.append(tr)}ins.forEach((n,i)=>n.value=saved[i]);evalCircuit();for(const n of nodes){const row=[...signalRows.rows].find(r=>r.cells[0].textContent===n.name);if(row){row.cells[2].textContent=n.value;row.cells[2].className=n.value?'highbit':''}}}
-document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>add(b.dataset.add)));document.getElementById('editorReset').addEventListener('click',()=>{saveHistory();reset()});document.getElementById('editorUndo').addEventListener('click',undo);document.getElementById('editorRedo').addEventListener('click',redo);document.getElementById('editorDelete').addEventListener('click',()=>{if(!selected){msg.textContent='Select a block or wire first.';return}saveHistory();if(selected.kind==='node'){nodes=nodes.filter(n=>n.id!==selected.id);wires=wires.filter(w=>w.from!==selected.id&&w.to!==selected.id)}else wires=wires.filter(w=>w.id!==selected.id);selected=null;pending=null;msg.textContent='Selected item deleted.';render()});function resizePort(which,delta){const n=selected?.kind==='node'?nodes.find(x=>x.id===selected.id):null;if(!n){msg.textContent='Select a block before changing its ports.';return}if(which==='inputs'){if(n.type==='INPUT'||n.type==='OUTPUT'){msg.textContent='Input and output terminal blocks have fixed port directions.';return}const min=(n.type==='NOT'?1:2),max=4;const oldCount=n.inputs,newCount=Math.max(min,Math.min(max,n.inputs+delta));if(newCount!==oldCount)saveHistory();n.inputs=newCount;wires=wires.filter(w=>w.to!==n.id||w.toPin<n.inputs)}else{if(n.type==='OUTPUT'){msg.textContent='An Output terminal has no output pins.';return}const oldCount=n.outputs,newCount=Math.max(1,Math.min(4,n.outputs+delta));if(newCount!==oldCount)saveHistory();n.outputs=newCount}msg.textContent=`${n.name}: ${n.inputs} input port(s), ${n.outputs} output port(s).`;render()}document.getElementById('inputMinus').addEventListener('click',()=>resizePort('inputs',-1));document.getElementById('inputPlus').addEventListener('click',()=>resizePort('inputs',1));document.getElementById('outputMinus').addEventListener('click',()=>resizePort('outputs',-1));document.getElementById('outputPlus').addEventListener('click',()=>resizePort('outputs',1));window.addEventListener('keydown',e=>{if(e.key==='Delete'||e.key==='Backspace'){if(document.activeElement?.tagName==='BUTTON')return;if(selected){document.getElementById('editorDelete').click()}}});svg.addEventListener('pointermove',e=>{if(!drag)return;const n=nodes.find(x=>x.id===drag.id);if(!n)return;const s=spec(n),r=svg.getBoundingClientRect(),sx=900/r.width,sy=390/r.height,dx=(e.clientX-drag.startX)*sx,dy=(e.clientY-drag.startY)*sy;if(Math.abs(dx)+Math.abs(dy)>3)drag.moved=true;n.x=Math.max(8,Math.min(900-s.w-8,drag.x+dx));n.y=Math.max(8,Math.min(390-s.h-8,drag.y+dy));render()});svg.addEventListener('pointerup',()=>{if(drag?.moved)pushHistorySnapshot(drag.before);drag=null});svg.addEventListener('click',e=>{if(e.target===svg){selected=null;render()}});svg.addEventListener('multi-drag',e=>{const {ids,dx,dy}=e.detail;for(const id of ids){const n=nodes.find(x=>x.id===id);if(!n)continue;const s=spec(n);n.x=Math.max(8,Math.min(900-s.w-8,n.x+dx));n.y=Math.max(8,Math.min(390-s.h-8,n.y+dy))}render()});reset();updateHistoryButtons();
+document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>add(b.dataset.add)));document.getElementById('editorReset').addEventListener('click',()=>{saveHistory();reset()});document.getElementById('editorUndo').addEventListener('click',undo);document.getElementById('editorRedo').addEventListener('click',redo);document.getElementById('editorDelete').addEventListener('click',()=>{if(!selected){msg.textContent='Select a block or wire first.';return}saveHistory();if(selected.kind==='node'){nodes=nodes.filter(n=>n.id!==selected.id);wires=wires.filter(w=>w.from!==selected.id&&w.to!==selected.id)}else wires=wires.filter(w=>w.id!==selected.id);selected=null;pending=null;msg.textContent='Selected item deleted.';render()});function resizePort(which,delta){const n=selected?.kind==='node'?nodes.find(x=>x.id===selected.id):null;if(!n){msg.textContent='Select a block before changing its ports.';return}if(which==='inputs'){if(n.type==='INPUT'||n.type==='OUTPUT'){msg.textContent='Input and output terminal blocks have fixed port directions.';return}const min=(n.type==='NOT'?1:2),max=4;const oldCount=n.inputs,newCount=Math.max(min,Math.min(max,n.inputs+delta));if(newCount!==oldCount)saveHistory();n.inputs=newCount;wires=wires.filter(w=>w.to!==n.id||w.toPin<n.inputs)}else{if(n.type==='OUTPUT'){msg.textContent='An Output terminal has no output pins.';return}const oldCount=n.outputs,newCount=Math.max(1,Math.min(4,n.outputs+delta));if(newCount!==oldCount)saveHistory();n.outputs=newCount}msg.textContent=`${n.name}: ${n.inputs} input port(s), ${n.outputs} output port(s).`;render()}document.getElementById('inputMinus').addEventListener('click',()=>resizePort('inputs',-1));document.getElementById('inputPlus').addEventListener('click',()=>resizePort('inputs',1));document.getElementById('outputMinus').addEventListener('click',()=>resizePort('outputs',-1));document.getElementById('outputPlus').addEventListener('click',()=>resizePort('outputs',1));window.addEventListener('keydown',e=>{if(e.key==='Delete'||e.key==='Backspace'){if(document.activeElement?.tagName==='BUTTON')return;if(selected){document.getElementById('editorDelete').click()}}});svg.addEventListener('pointermove',e=>{if(!drag)return;const n=nodes.find(x=>x.id===drag.id);if(!n)return;const s=spec(n),r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal,sx=vb.width/r.width,sy=vb.height/r.height,dx=(e.clientX-drag.startX)*sx,dy=(e.clientY-drag.startY)*sy;if(Math.abs(dx)+Math.abs(dy)>3)drag.moved=true;n.x=Math.max(8,Math.min(Math.max(900,vb.width)-s.w-8,drag.x+dx));n.y=Math.max(8,Math.min(Math.max(390,vb.height)-s.h-8,drag.y+dy));render()});svg.addEventListener('pointerup',()=>{if(drag?.moved)pushHistorySnapshot(drag.before);drag=null});svg.addEventListener('click',e=>{if(e.target===svg){selected=null;render()}});svg.addEventListener('multi-drag',e=>{const {ids,dx,dy}=e.detail,vb=svg.viewBox.baseVal;for(const id of ids){const n=nodes.find(x=>x.id===id);if(!n)continue;const s=spec(n);n.x=Math.max(8,Math.min(Math.max(900,vb.width)-s.w-8,n.x+dx));n.y=Math.max(8,Math.min(Math.max(390,vb.height)-s.h-8,n.y+dy))}render()});reset();updateHistoryButtons();
 })();
 </script><script>
 (()=>{
@@ -134,7 +370,8 @@ window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')
  document.getElementById('applyInstanceNames').addEventListener('click',()=>{const n=getSelected();if(!n){msg.textContent='Select one block first.';return}const name=nameInput.value.trim();if(!name){msg.textContent='Instance/signal name cannot be empty.';return}if(window.fpgaNodes.some(x=>x.id!==n.id&&x.name.toLowerCase()===name.toLowerCase())){msg.textContent='That instance/signal name is already used. Choose a unique name.';return}defaults(n);const parse=(v,count,prefix)=>{const a=v.split(',').map(x=>x.trim());if(a.some(x=>!x)||new Set(a.map(x=>x.toLowerCase())).size!==a.length)throw Error('Pin names must be non-empty and unique within each side.');if(a.length!==count)throw Error(`Enter exactly ${count} pin name(s), separated by commas.`);return a};try{n.name=name;n.inputNames=parse(inInput.value,n.inputs,'IN');n.outputNames=parse(outInput.value,n.outputs,'OUT');window.fpgaRender();refreshFields();msg.textContent=`Names updated for ${n.name}.`}catch(e){msg.textContent=e.message}});
  const paintPins=()=>{const ns='http://www.w3.org/2000/svg';for(const g of svg.querySelectorAll('g[data-node]')){const n=window.fpgaNodes.find(x=>x.id===Number(g.getAttribute('data-node')));if(!n)continue;defaults(n);const box=g.querySelector('rect.nodebox');if(!box)continue;const w=+box.getAttribute('width');const sync=(side,count,names)=>{let labels=[...g.querySelectorAll(`.custom-pin-label[data-side="${side}"]`)];while(labels.length>count){labels.pop().remove()}for(let i=0;i<count;i++){let t=labels[i];if(!t){t=document.createElementNS(ns,'text');t.setAttribute('class','custom-pin-label');t.setAttribute('data-side',side);t.setAttribute('pointer-events','none');t.setAttribute('font-size','9');t.setAttribute('fill','var(--muted)');if(side==='out')t.setAttribute('text-anchor','end');g.append(t)}const x=side==='in'?'9':String(w-9),y=String(34+i*22),value=names[i]||'';if(t.getAttribute('x')!==x)t.setAttribute('x',x);if(t.getAttribute('y')!==y)t.setAttribute('y',y);if(t.textContent!==value)t.textContent=value}};sync('in',n.inputs,n.inputNames);sync('out',n.outputs,n.outputNames)}};
  new MutationObserver(()=>{paintPins();refreshFields()}).observe(svg,{childList:true,subtree:true});
- svg.addEventListener('click',()=>setTimeout(refreshFields,0),true);
+ // Selection changes already trigger render() and the MutationObserver refreshes these fields.
+ // Do not refresh on every captured SVG click: its deferred callback can overwrite user input.
  document.getElementById('inputPlus').addEventListener('click',()=>setTimeout(()=>{const n=getSelected();if(n){defaults(n);refreshFields()}},0));document.getElementById('inputMinus').addEventListener('click',()=>setTimeout(()=>{const n=getSelected();if(n){defaults(n);n.inputNames.length=n.inputs;refreshFields()}},0));document.getElementById('outputPlus').addEventListener('click',()=>setTimeout(()=>{const n=getSelected();if(n){defaults(n);refreshFields()}},0));document.getElementById('outputMinus').addEventListener('click',()=>setTimeout(()=>{const n=getSelected();if(n){defaults(n);n.outputNames.length=n.outputs;refreshFields()}},0));
 })();
 </script><script>
@@ -156,7 +393,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  const valid=s=>/^[A-Za-z_][A-Za-z0-9_$]*$/.test(s);
  const namesFor=n=>{n.inputNames??=Array.from({length:n.inputs},(_,i)=>String.fromCharCode(65+i));n.outputNames??=Array.from({length:n.outputs},(_,i)=>i===0?'Y':`Y${i+1}`);while(n.inputNames.length<n.inputs)n.inputNames.push(`IN${n.inputNames.length+1}`);while(n.outputNames.length<n.outputs)n.outputNames.push(`OUT${n.outputNames.length+1}`)};
  function exportVerilog(){const ns=nodes(),inputs=ns.filter(n=>n.type==='INPUT'),outputs=ns.filter(n=>n.type==='OUTPUT');if(!ns.length){msg.textContent='Nothing to export.';return}for(const n of ns){namesFor(n);if(!valid(n.name)||n.inputNames.slice(0,n.inputs).some(x=>!valid(x))||n.outputNames.slice(0,n.outputs).some(x=>x&&!valid(x))){msg.textContent='Fix invalid block or pin names before exporting Verilog.';return}}const ports=[...inputs.map(n=>n.name),...outputs.map(n=>n.name)];if(new Set(ports.map(x=>x.toLowerCase())).size!==ports.length){msg.textContent='Input/output signal names must be unique for Verilog export.';return}const lines=['// Generated by FPGA Playground','module fpga_playground('+ports.join(', ')+');',...inputs.map(n=>`  input wire ${n.name};`),...outputs.map(n=>`  output wire ${n.name};`)];const signal=n=>n.type==='VDD'?"1'b1":n.type==='GND'?"1'b0":n.type==='INPUT'?n.name:(n.type==='OUTPUT'?n.name:`${n.name}_out`);for(const n of ns.filter(n=>!['INPUT','OUTPUT','VDD','GND'].includes(n.type))){const s=signal(n);lines.push(`  wire ${s};`)}for(const n of outputs){const w=window.fpgaWires?.find(w=>w.to===n.id&&w.toPin===0),src=w&&ns.find(x=>x.id===w.from);if(src)lines.push(`  assign ${n.name} = ${signal(src)};`);else lines.push(`  assign ${n.name} = 1'b0;`)}const gates={AND:'and',NAND:'nand',OR:'or',NOR:'nor',XOR:'xor',XNOR:'xnor',NOT:'not'};for(const n of ns.filter(n=>gates[n.type])){const wires=window.fpgaWires||[],ins=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&ns.find(x=>x.id===w.from);return src?signal(src):"1'b0"});lines.push(`  ${gates[n.type]} ${n.name} (${signal(n)}, ${ins.join(', ')});`)}for(const n of ns.filter(n=>n.type==='DFF'||n.type==='LATCH')){const wires=window.fpgaWires||[],src=i=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),v=w&&ns.find(x=>x.id===w.from);return v?signal(v):"1'b0"};lines.push(`  reg ${signal(n)}_reg;`,n.type==='DFF'?`  always @(posedge ${src(1)}) ${signal(n)}_reg <= ${src(0)};`:`  always @* if (${src(1)}) ${signal(n)}_reg = ${src(0)};`,`  assign ${signal(n)} = ${signal(n)}_reg;`)}lines.push('endmodule','');area.value=lines.join('\n');msg.textContent='Structural Verilog generated in the text area.';const blob=new Blob([area.value],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='fpga_playground.v';a.click();URL.revokeObjectURL(url)}
- function importVerilog(source){const clean=source.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');const mod=clean.match(/\bmodule\s+\w+\s*\(([\s\S]*?)\)\s*;([\s\S]*?)\bendmodule\b/i);if(!mod)throw Error('Could not find a Verilog module. Paste structural Verilog exported by this editor.');const body=mod[2],decls=[...body.matchAll(/\b(input|output)(?:\s+wire)?\s+([A-Za-z_$][\w$]*)\s*;/gi)],inputs=decls.filter(m=>m[1].toLowerCase()==='input').map(m=>m[2]),outputs=decls.filter(m=>m[1].toLowerCase()==='output').map(m=>m[2]);if(!decls.length)throw Error('Expected input/output declarations using one signal per statement.');const parsed=[];for(const m of body.matchAll(/\b(and|or|xor|nand|nor|xnor|not)\s+([A-Za-z_$][\w$]*)\s*\(([^;]+)\)\s*;/gi)){const type={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT'}[m[1].toLowerCase()],pins=m[3].split(',').map(s=>s.trim());if(pins.length<2||pins.some(s=>!valid(s)))throw Error(`Invalid gate instance ${m[2]}.`);parsed.push({type,name:m[2],out:pins[0],ins:pins.slice(1)})}const assigns=[...body.matchAll(/\bassign\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;/gi)].map(m=>({to:m[1],from:m[2]}));if(!parsed.length&&!assigns.length)throw Error('No supported gates or simple assign statements found.');const all=[...inputs,...outputs,...parsed.map(g=>g.name),...parsed.map(g=>g.out),...parsed.flatMap(g=>g.ins)];if(all.some(x=>!valid(x)))throw Error('Invalid Verilog identifier.');const map=new Map(),next=[];let id=1;for(const name of inputs){const n={id:id++,type:'INPUT',name,x:40,y:35+next.length*90,value:0,inputs:0,outputs:1,inputNames:[],outputNames:[name],prevClock:0,state:0};next.push(n);map.set(name,n)}for(const g of parsed){const n={id:id++,type:g.type,name:g.name,x:280+(next.length%2)*200,y:25+(next.length%4)*85,value:0,inputs:g.ins.length,outputs:1,inputNames:g.ins.map((_,i)=>String.fromCharCode(65+i)),outputNames:[g.out],prevClock:0,state:0};if(n.type==='NOT'&&n.inputs!==1)throw Error(`NOT gate ${n.name} must have one input.`);if(n.inputs>4)throw Error(`Gate ${n.name} has more than four inputs.`);next.push(n);map.set(g.out,n)}for(const name of outputs){const n={id:id++,type:'OUTPUT',name,x:650,y:35+next.length*55,value:0,inputs:1,outputs:0,inputNames:['A'],outputNames:[],prevClock:0,state:0};next.push(n);map.set(name,n)}const nw=[];for(const g of parsed){const n=next.find(x=>x.name===g.name);g.ins.forEach((name,i)=>{const src=map.get(name);if(src)nw.push({id:id++,from:src.id,to:n.id,toPin:i})})}for(const a of assigns){const target=next.find(n=>n.type==='OUTPUT'&&n.name===a.to),src=map.get(a.from);if(target&&src)nw.push({id:id++,from:src.id,to:target.id,toPin:0})}window.fpgaLoadCircuit(next,nw,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${nw.length} wires from Verilog.`}
+ function importVerilog(source){const clean=source.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');const mod=clean.match(/\bmodule\s+\w+\s*\(([\s\S]*?)\)\s*;([\s\S]*?)\bendmodule\b/i);if(!mod)throw Error('Could not find a Verilog module. Paste structural Verilog exported by this editor.');const body=mod[2],decls=[...body.matchAll(/\b(input|output)(?:\s+wire)?\s+([A-Za-z_$][\w$]*)\s*;/gi)],inputs=decls.filter(m=>m[1].toLowerCase()==='input').map(m=>m[2]),outputs=decls.filter(m=>m[1].toLowerCase()==='output').map(m=>m[2]);if(!decls.length)throw Error('Expected input/output declarations using one signal per statement.');const parsed=[];for(const m of body.matchAll(/\b(and|or|xor|nand|nor|xnor|not)\s+([A-Za-z_$][\w$]*)\s*\(([^;]+)\)\s*;/gi)){const type={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT'}[m[1].toLowerCase()],pins=m[3].split(',').map(s=>s.trim());if(pins.length<2||pins.some(s=>!valid(s)))throw Error(`Invalid gate instance ${m[2]}.`);parsed.push({type,name:m[2],out:pins[0],ins:pins.slice(1)})}const assigns=[...body.matchAll(/\bassign\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;/gi)].map(m=>({to:m[1],from:m[2]}));if(!parsed.length&&!assigns.length)throw Error('No supported gates or simple assign statements found.');const all=[...inputs,...outputs,...parsed.map(g=>g.name),...parsed.map(g=>g.out),...parsed.flatMap(g=>g.ins)];if(all.some(x=>!valid(x)))throw Error('Invalid Verilog identifier.');const map=new Map(),next=[];let id=1;const gateRowHeight=Math.max(110,...parsed.map(g=>Math.max(76,50+g.ins.length*22)+20));for(const name of inputs){const n={id:id++,type:'INPUT',name,x:40,y:35+next.length*90,value:0,inputs:0,outputs:1,inputNames:[],outputNames:[name],prevClock:0,state:0};next.push(n);map.set(name,n)}for(const g of parsed){const n={id:id++,type:g.type,name:g.name,x:280+((next.length-inputs.length)%2)*200,y:25+Math.floor((next.length-inputs.length)/2)*gateRowHeight,value:0,inputs:g.ins.length,outputs:1,inputNames:g.ins.map((_,i)=>String.fromCharCode(65+i)),outputNames:[g.out],prevClock:0,state:0};if(n.type==='NOT'&&n.inputs!==1)throw Error(`NOT gate ${n.name} must have one input.`);if(n.inputs>4)throw Error(`Gate ${n.name} has more than four inputs.`);next.push(n);map.set(g.out,n)}for(const name of outputs){const n={id:id++,type:'OUTPUT',name,x:650,y:35+outputs.indexOf(name)*90,value:0,inputs:1,outputs:0,inputNames:['A'],outputNames:[],prevClock:0,state:0};next.push(n);map.set(name,n)}const nw=[];for(const g of parsed){const n=next.find(x=>x.name===g.name);g.ins.forEach((name,i)=>{const src=map.get(name);if(src)nw.push({id:id++,from:src.id,to:n.id,toPin:i})})}for(const a of assigns){const target=next.find(n=>n.type==='OUTPUT'&&n.name===a.to),src=map.get(a.from);if(target&&src)nw.push({id:id++,from:src.id,to:target.id,toPin:0})}window.fpgaLoadCircuit(next,nw,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${nw.length} wires from Verilog.`}
  document.getElementById('exportVerilog').addEventListener('click',exportVerilog);document.getElementById('importVerilog').addEventListener('click',()=>{if(area.value.trim()){try{importVerilog(area.value)}catch(e){msg.textContent=e.message}}else file.click()});file.addEventListener('change',async()=>{const f=file.files?.[0];if(!f)return;try{importVerilog(await f.text())}catch(e){msg.textContent=e.message}file.value=''});
 })();
 
@@ -207,10 +444,10 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   if(parsed.some(g=>g.pins.length<2||g.pins.length>9||g.pins.some(p=>!valid(p)&&!/^1'b[01]$/i.test(p))||g.type==='NOT'&&g.pins.length!==2)){msg.textContent='Gates must have 1–8 inputs (NOT has exactly 1).';e.preventDefault();e.stopImmediatePropagation();return}
   e.preventDefault();e.stopImmediatePropagation();
   try{
-   const next=[],driverBySignal=new Map(),gateNodes=[],outputNodes=new Map();let id=1;
+   const next=[],driverBySignal=new Map(),gateNodes=[],outputNodes=new Map();let id=1;const gateRowHeight=Math.max(110,...parsed.map(g=>Math.max(76,50+(g.pins.length-1)*22)+20));
    for(const name of inputs){if(driverBySignal.has(name)){msg.textContent=`Duplicate driver for signal ${name}; import cancelled.`;return}const n={id:id++,type:'INPUT',name,x:40,y:35+next.length*90,value:0,inputs:0,outputs:1,inputNames:[],outputNames:[name],prevClock:0,state:0};next.push(n);driverBySignal.set(name,n)}
-   for(const g of parsed){const out=g.pins[0];if(driverBySignal.has(out)){msg.textContent=`Multiple drivers for signal ${out}; import cancelled.`;return}const n={id:id++,type:g.type,name:g.name,x:280+(next.length%2)*200,y:25+(next.length%4)*85,value:0,inputs:g.pins.length-1,outputs:1,inputNames:g.pins.slice(1).map((_,i)=>String.fromCharCode(65+i)),outputNames:[out],prevClock:0,state:0};next.push(n);driverBySignal.set(out,n);gateNodes.push({gate:g,node:n})}
-   for(const name of outputs){if(outputNodes.has(name)){msg.textContent=`Duplicate output declaration ${name}; import cancelled.`;return}const n={id:id++,type:'OUTPUT',name,x:650,y:35+next.length*55,value:0,inputs:1,outputs:0,inputNames:['A'],outputNames:[],prevClock:0,state:0};next.push(n);outputNodes.set(name,n)}
+   for(const g of parsed){const out=g.pins[0];if(driverBySignal.has(out)){msg.textContent=`Multiple drivers for signal ${out}; import cancelled.`;return}const n={id:id++,type:g.type,name:g.name,x:280+((next.length-inputs.length)%2)*200,y:25+Math.floor((next.length-inputs.length)/2)*gateRowHeight,value:0,inputs:g.pins.length-1,outputs:1,inputNames:g.pins.slice(1).map((_,i)=>String.fromCharCode(65+i)),outputNames:[out],prevClock:0,state:0};next.push(n);driverBySignal.set(out,n);gateNodes.push({gate:g,node:n})}
+   for(const name of outputs){if(outputNodes.has(name)){msg.textContent=`Duplicate output declaration ${name}; import cancelled.`;return}const n={id:id++,type:'OUTPUT',name,x:650,y:35+outputNodes.size*90,value:0,inputs:1,outputs:0,inputNames:['A'],outputNames:[],prevClock:0,state:0};next.push(n);outputNodes.set(name,n)}
    const wires=[],constantDrivers=new Map();const constantSource=value=>{if(!constantDrivers.has(value)){const high=value.toLowerCase()==="1'b1",src={id:id++,type:high?'VDD':'GND',name:(high?'VDD':'GND')+id,x:460,y:25+next.length*65,value:high?1:0,inputs:0,outputs:1,inputNames:[],outputNames:[high?'VDD':'GND'],prevClock:0,state:0};next.push(src);constantDrivers.set(value,src)}return constantDrivers.get(value)};for(const {gate:g,node:target} of gateNodes){g.pins.slice(1).forEach((name,i)=>{const src=/^1'b[01]$/i.test(name)?constantSource(name):driverBySignal.get(name);if(!src)throw Error(`No driver found for signal ${name} (gate ${g.name}).`);wires.push({id:id++,from:src.id,to:target.id,toPin:i})})}
    // The exporter represents an undriven output as assign OUT = 1'b0.
    // Preserve that as an unconnected output instead of rejecting the round trip.
@@ -222,5 +459,49 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  },true);
 })();
 
+</script>
+<script>
+(()=> {
+ const viewport=document.getElementById('editorViewport');
+ const svg=document.getElementById('editorStage');
+ const out=document.getElementById('editorZoomOut');
+ const inc=document.getElementById('editorZoomIn');
+ const reset=document.getElementById('editorZoomReset');
+ const label=document.getElementById('editorZoomLevel');
+ if(!viewport||!svg||!out||!inc||!reset||!label)return;
+ window.fpgaZoom=1;
+ const clamp=z=>Math.max(0.25,Math.min(2.5,Math.round(z*100)/100));
+ function setZoom(next,anchorX,anchorY){
+  const old=window.fpgaZoom||1,zoom=clamp(next);
+  if(zoom===old)return;
+  const x=anchorX??viewport.clientWidth/2,y=anchorY??viewport.clientHeight/2;
+  const contentX=(viewport.scrollLeft+x)/old,contentY=(viewport.scrollTop+y)/old;
+  window.fpgaZoom=zoom;
+  if(typeof window.fpgaRender==='function')window.fpgaRender();
+  else {svg.style.width=(Number(svg.dataset.canvasWidth||900)*zoom)+'px';svg.style.height=(Number(svg.dataset.canvasHeight||390)*zoom)+'px'}
+  viewport.scrollLeft=Math.max(0,contentX*zoom-x);
+  viewport.scrollTop=Math.max(0,contentY*zoom-y);
+  label.textContent=Math.round(zoom*100)+'%';
+  reset.textContent=Math.round(zoom*100)+'%';
+  out.disabled=zoom<=0.25;inc.disabled=zoom>=2.5;
+ }
+ out.addEventListener('click',()=>setZoom((window.fpgaZoom||1)-0.1));
+ inc.addEventListener('click',()=>setZoom((window.fpgaZoom||1)+0.1));
+ reset.addEventListener('click',()=>setZoom(1));
+ viewport.addEventListener('wheel',e=>{
+  if(!e.ctrlKey)return;
+  e.preventDefault();
+  const r=viewport.getBoundingClientRect();
+  setZoom((window.fpgaZoom||1)*(e.deltaY<0?1.1:1/1.1),e.clientX-r.left,e.clientY-r.top);
+ },{passive:false});
+ window.addEventListener('keydown',e=>{
+  if(!(e.ctrlKey||e.metaKey)||!['+','=','-','0'].includes(e.key))return;
+  if(e.target instanceof HTMLElement&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  e.preventDefault();
+  if(e.key==='0')setZoom(1);
+  else setZoom((window.fpgaZoom||1)+(e.key==='-'?-0.1:0.1));
+ });
+ setZoom(1);
+})();
 </script>
 </body></html>

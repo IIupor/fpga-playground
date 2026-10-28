@@ -425,3 +425,58 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
+
+test('large benchmark uses a scrollable canvas and remains editable after scrolling', async ({ page }) => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported');
+
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  expect(await svg.locator('g[data-node]').count()).toBeGreaterThan(0);
+  const dimensions = await viewport.evaluate(el => ({
+    clientHeight: el.clientHeight,
+    scrollHeight: el.scrollHeight,
+    clientWidth: el.clientWidth,
+    scrollWidth: el.scrollWidth
+  }));
+  expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight);
+  await viewport.evaluate(el => { el.scrollTop = el.scrollHeight; });
+  await expect.poll(() => viewport.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+
+  // The bottom of the benchmark remains reachable, and its wires still render.
+  expect(await svg.locator('path.editor-wire').count()).toBeGreaterThan(0);
+  const lastNode = svg.locator('g[data-node]').last();
+  await lastNode.scrollIntoViewIfNeeded();
+  await expect(lastNode).toBeVisible();
+
+  // Drag a visible block slightly and confirm the canvas continues to render.
+  const before = await lastNode.boundingBox();
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2 + 18, before.y + before.height / 2 + 12, { steps: 3 });
+  await page.mouse.up();
+  expect(await svg.locator('g[data-node]').count()).toBeGreaterThan(0);
+  expect(await svg.locator('path.editor-wire').count()).toBeGreaterThan(0);
+});
+
+test('workspace zoom controls scale the circuit and reset to 100 percent', async ({ page }) => {
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  await expect(page.locator('#editorZoomLevel')).toHaveText('100%');
+  const before = await svg.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(page.locator('#editorZoomLevel')).toHaveText('110%');
+  const zoomed = await svg.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  expect(zoomed.width).toBeGreaterThan(before.width);
+  expect(zoomed.height).toBeGreaterThan(before.height);
+  await page.getByRole('button', { name: '110%' }).click();
+  await expect(page.locator('#editorZoomLevel')).toHaveText('100%');
+  const reset = await svg.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }));
+  expect(Math.abs(reset.width - before.width)).toBeLessThan(1);
+  expect(Math.abs(reset.height - before.height)).toBeLessThan(1);
+  await expect(viewport).toBeVisible();
+});
