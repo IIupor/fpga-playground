@@ -514,6 +514,7 @@ test('holding Space and dragging pans the circuit workspace', async ({ page }) =
   await viewport.evaluate(el => { el.scrollLeft = 120; el.scrollTop = 120; });
   const before = await viewport.evaluate(el => ({ left: el.scrollLeft, top: el.scrollTop }));
   const box = await viewport.boundingBox();
+  await viewport.evaluate(el => el.focus());
   await page.keyboard.down('Space');
   await page.mouse.move(box.x + 180, box.y + 180);
   await page.mouse.down();
