@@ -19,9 +19,16 @@ for (const circuit of cases) {
       const wires = [...svg.querySelectorAll('path.editor-wire')];
       const boxes = groups.map((g) => {
         const b = g.getBBox();
+        // getBBox() returns local geometry and does not include the group's
+        // translate(x y), so include the node transform for world coordinates.
+        const transform = g.getAttribute('transform') || '';
+        const match = transform.match(/translate\\(\\s*([-+\\d.eE]+)[,\\s]+([-+\\d.eE]+)\\s*\\)/);
+        const tx = match ? Number(match[1]) : 0;
+        const ty = match ? Number(match[2]) : 0;
         return {
           id: g.getAttribute('data-node'),
-          x: b.x, y: b.y, right: b.x + b.width, bottom: b.y + b.height,
+          x: b.x + tx, y: b.y + ty,
+          right: b.x + tx + b.width, bottom: b.y + ty + b.height,
           width: b.width, height: b.height
         };
       });
