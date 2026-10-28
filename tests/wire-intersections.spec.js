@@ -57,48 +57,54 @@ test('wire crossing geometry distinguishes a proper crossing from a shared endpo
   expect(result).toEqual({ crossing: true, sharedEndpoint: false, separated: false });
 });
 
-test('editor routes wires orthogonally around unrelated blocks', async ({ page }) => {
-  await page.route('https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/c17.v', async route => {
-    const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c17.v'), 'utf8');
-    await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
-  });
-  await page.goto('/');
-  await page.locator('#benchmarkSelect').selectOption('c17');
-  await page.locator('#loadBenchmark').click();
-  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+for (const name of benchmarks) {
+  test(name + ': all wire segments avoid unrelated blocks', async ({ page }) => {
+    await page.route(`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`, async route => {
+      const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', `${name}.v`), 'utf8');
+      await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
+    });
+    await page.goto('/');
+    await page.locator('#benchmarkSelect').selectOption(name);
+    await page.locator('#loadBenchmark').click();
+    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
 
-  const result = await page.locator('#editorStage').evaluate(svg => {
-    const nodes = [...svg.querySelectorAll('g[data-node]')].map(g => {
-      const match = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform'));
-      const box = g.querySelector('rect.nodebox');
-      return { id: Number(g.getAttribute('data-node')), x: Number(match[1]), y: Number(match[2]),
-        w: Number(box.getAttribute('width')), h: Number(box.getAttribute('height')) };
-    });
-    const wires = [...svg.querySelectorAll('path.editor-wire')].map(path => {
-      const d = path.getAttribute('d');
-      const points = [...d.matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g)]
-        .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
-      return { id: path.getAttribute('data-wire'), from: Number(path.getAttribute('data-from')),
-        to: Number(path.getAttribute('data-to')), d, points };
-    });
-    const blocked = [];
-    const nonOrthogonal = [];
-    for (const wire of wires) {
-      for (let i = 1; i < wire.points.length; i++) {
-        const a = wire.points[i - 1], b = wire.points[i];
-        if (a.x !== b.x && a.y !== b.y) nonOrthogonal.push(wire.id);
-        for (const n of nodes) {
-          if (n.id === wire.from || n.id === wire.to) continue;
-          const inside = a.x === b.x
-            ? a.x > n.x && a.x < n.x + n.w && Math.max(Math.min(a.y,b.y),n.y) < Math.min(Math.max(a.y,b.y),n.y+n.h)
-            : a.y > n.y && a.y < n.y + n.h && Math.max(Math.min(a.x,b.x),n.x) < Math.min(Math.max(a.x,b.x),n.x+n.w);
-          if (inside) blocked.push({ wire: wire.id, node: n.id });
+    const result = await page.locator('#editorStage').evaluate(svg => {
+      const nodes = [...svg.querySelectorAll('g[data-node]')].map(g => {
+        const match = /translate\\(([-\\d.]+) ([-\\d.]+)\\)/.exec(g.getAttribute('transform'));
+        const box = g.querySelector('rect.nodebox');
+        return { id: Number(g.getAttribute('data-node')), x: Number(match[1]), y: Number(match[2]),
+          w: Number(box.getAttribute('width')), h: Number(box.getAttribute('height')) };
+      });
+      const wires = [...svg.querySelectorAll('path.editor-wire')].map(path => {
+        const points = [...path.getAttribute('d').matchAll(/[ML]\\s*([-\\d.]+)[, ]+([-\\d.]+)/g)]
+          .map(m => ({ x: Number(m[1]), y: Number(m[2]) }));
+        return { id: path.getAttribute('data-wire'), from: Number(path.getAttribute('data-from')),
+          to: Number(path.getAttribute('data-to')), points };
+      });
+      const blocked = [];
+      const nonOrthogonal = [];
+      const missingGeometry = [];
+      for (const wire of wires) {
+        if (!wire.id || wire.points.length < 2) missingGeometry.push(wire.id);
+        for (let i = 1; i < wire.points.length; i++) {
+          const a = wire.points[i - 1], b = wire.points[i];
+          if (a.x !== b.x && a.y !== b.y) nonOrthogonal.push(wire.id);
+          for (const n of nodes) {
+            if (n.id === wire.from || n.id === wire.to) continue;
+            const inside = a.x === b.x
+              ? a.x > n.x - 8 && a.x < n.x + n.w + 8 &&
+                Math.max(Math.min(a.y,b.y),n.y - 8) < Math.min(Math.max(a.y,b.y),n.y+n.h + 8)
+              : a.y > n.y - 8 && a.y < n.y + n.h + 8 &&
+                Math.max(Math.min(a.x,b.x),n.x - 8) < Math.min(Math.max(a.x,b.x),n.x+n.w + 8);
+            if (inside) blocked.push({ wire: wire.id, node: n.id, segment: i });
+          }
         }
       }
-    }
-    return { wireCount: wires.length, nonOrthogonal, blocked };
-  });
-  expect(result.wireCount).toBeGreaterThan(0);
-  expect(result.nonOrthogonal, 'wire routes must use horizontal and vertical segments only').toEqual([]);
-  expect(result.blocked, 'wire routes must not pass through unrelated blocks').toEqual([]);
-});
+      return { wireCount: wires.length, missingGeometry, nonOrthogonal, blocked };
+    });
+    expect(result.wireCount, name + ' should render wires').toBeGreaterThan(0);
+    expect(result.missingGeometry, name + ' has missing or invalid wire geometry').toEqual([]);
+    expect(result.nonOrthogonal, name + ' routes must be orthogonal').toEqual([]);
+    expect(result.blocked, name + ' routes must not intersect unrelated node keep-out areas').toEqual([]);
+  }, 120000);
+}
