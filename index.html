@@ -66,6 +66,9 @@ function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT
 let routeCache=new Map();
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
+ // Large ISCAS benchmarks can contain thousands of nodes. Keep their initial
+ // rendering responsive until the router can use a sparse visibility graph.
+ if(nodes.length>100){const quick=routePointsSimple(w);routeCache.set(w.id,quick);return quick;}
  const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
