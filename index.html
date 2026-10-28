@@ -114,7 +114,7 @@ function routePoints(w){
   for(const g of rows.values())connectLine(Object.assign(g,{sort:undefined}));
   const si=byKey.get(p.x+','+p.y),ti=byKey.get(q.x+','+q.y);
   if(si===undefined||ti===undefined)continue;
-  const dist=vertices.map(()=>[Infinity,Infinity,Infinity]),prev=vertices.map(()=>[-1,-1,-1]);
+  const dist=vertices.map(()=>[Infinity,Infinity,Infinity]),prev=vertices.map(()=>[null,null,null]);
   const heap=[];
   const push=item=>{heap.push(item);let i=heap.length-1;while(i){const par=(i-1)>>1;if(heap[par].cost<=item.cost)break;heap[i]=heap[par];i=par}heap[i]=item};
   const pop=()=>{const top=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){let c=i*2+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1].cost<heap[c].cost)c++;if(heap[c].cost>=last.cost)break;heap[i]=heap[c];i=c}heap[i]=last}return top};
