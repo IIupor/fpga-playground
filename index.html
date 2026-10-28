@@ -101,15 +101,16 @@ function routePoints(w){
   const byKey=new Map(vertices.map((pt,i)=>[pt.key,i]));
   const adj=vertices.map(()=>[]);
   const connectLine=group=>{
-   group.sort((i,j)=>group.axis==='x'?vertices[i].y-vertices[j].y:vertices[i].x-vertices[j].x);
-   for(let k=1;k<group.length;k++){
-    const i=group[k-1],j=group[k],u=vertices[i],v=vertices[j];
+   const items=group.items;
+   items.sort((i,j)=>group.axis==='x'?vertices[i].y-vertices[j].y:vertices[i].x-vertices[j].x);
+   for(let k=1;k<items.length;k++){
+    const i=items[k-1],j=items[k],u=vertices[i],v=vertices[j];
     if(clear(u,v,rs)){const d=Math.abs(u.x-v.x)+Math.abs(u.y-v.y);adj[i].push({to:j,d,dir:u.x===v.x?2:1});adj[j].push({to:i,d,dir:u.x===v.x?2:1});}
    }
   };
   const columns=new Map(),rows=new Map();
   vertices.forEach((pt,i)=>{if(!columns.has(pt.x))columns.set(pt.x,{axis:'x',items:[]});columns.get(pt.x).items.push(i);if(!rows.has(pt.y))rows.set(pt.y,{axis:'y',items:[]});rows.get(pt.y).items.push(i)});
-  for(const g of columns.values())connectLine(Object.assign(g,{sort:undefined}));
+  for(const g of columns.values())connectLine(g);
   for(const g of rows.values())connectLine(Object.assign(g,{sort:undefined}));
   const si=byKey.get(p.x+','+p.y),ti=byKey.get(q.x+','+q.y);
   if(si===undefined||ti===undefined)continue;
