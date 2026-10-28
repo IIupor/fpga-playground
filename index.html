@@ -132,11 +132,15 @@ function routePointsFast(w,a,b,p,q){
   if(!changed){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))return [];
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))break;
    return simplified;
   }
  }
- return [];
+ // Keep the accumulated orthogonal detours if the bounded search reaches its
+ // iteration limit; an empty SVG path is less useful and hides the connection.
+ const partial=[];
+ for(const pt of path){while(partial.length>=2){const u=partial[partial.length-2],v=partial[partial.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))partial.pop();else break}partial.push({x:pt.x,y:pt.y})}
+ return partial;
 }
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
