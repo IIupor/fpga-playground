@@ -70,14 +70,12 @@ function routePoints(w){
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
  const rects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{const s=spec(n);return {l:n.x-10,r:n.x+s.w+10,t:n.y-10,b:n.y+s.h+10}});
  const xs=[p.x,q.x,(p.x+q.x)/2],ys=[p.y,q.y];
- for(const r of rects){xs.push(r.l,r.r);ys.push(r.t,r.b)}
+ for(const r of rects){if(r.t<Math.max(p.y,q.y)&&r.b>Math.min(p.y,q.y))xs.push(r.l,r.r);if(r.l<Math.max(p.x,q.x)&&r.r>Math.min(p.x,q.x))ys.push(r.t,r.b)}
  const uniq=v=>[...new Set(v.map(x=>Math.max(4,Math.min(896,x))))];
  const X=uniq(xs),Y=uniq(ys), candidates=[];
  const add=pts=>{const out=[];for(const z of pts){if(!out.length||out[out.length-1].x!==z.x||out[out.length-1].y!==z.y)out.push(z)}if(out.length<2)return;let valid=true;for(let i=1;i<out.length;i++){const u=out[i-1],v=out[i];if(u.x!==v.x&&u.y!==v.y){valid=false;break}for(const r of rects){if(u.y===v.y){if(u.y>r.t&&u.y<r.b&&Math.max(Math.min(u.x,v.x),r.l)<Math.min(Math.max(u.x,v.x),r.r)){valid=false;break}}else if(u.x>r.l&&u.x<r.r&&Math.max(Math.min(u.y,v.y),r.t)<Math.min(Math.max(u.y,v.y),r.b)){valid=false;break}}if(!valid)break}if(valid)candidates.push(out)};
- for(const x of X){add([p,{x,y:p.y},{x,y:q.y},q]);for(const y of Y)add([p,{x,y:p.y},{x,y},{x:x===q.x?q.x:x,y:q.y},q])}
+ for(const x of X)add([p,{x,y:p.y},{x,y:q.y},q])
  for(const y of Y)add([p,{x:p.x,y},{x:q.x,y},q]);
- // Include mirrored 3-bend candidates for cases where one side is blocked.
- for(const y of Y)for(const x of X){add([p,{x:p.x,y},{x,y},{x,y:q.y},q]);add([p,{x,y:p.y},{x,y},{x:q.x,y},q])}
  const prior=wires.filter(v=>v.id!==w.id&&v.id<w.id).map(v=>routeCache.get(v.id)||routePointsSimple(v));
  const properCross=(u,v,r,s)=>{if(u.x===v.x&&r.y===s.y)return r.x>Math.min(u.x,v.x)&&r.x<Math.max(u.x,v.x)&&u.y>Math.min(r.y,s.y)&&u.y<Math.max(r.y,s.y);if(u.y===v.y&&r.x===s.x)return u.x>Math.min(r.x,s.x)&&u.x<Math.max(r.x,s.x)&&r.y>Math.min(u.y,v.y)&&r.y<Math.max(u.y,v.y);return false};
  const score=pts=>{let length=0,turns=0,crossings=0,overlaps=0;for(let i=1;i<pts.length;i++){const u=pts[i-1],v=pts[i];length+=Math.abs(v.x-u.x)+Math.abs(v.y-u.y);if(i>1){const z=pts[i-2];if((z.x===u.x)!==(u.x===v.x))turns++}for(const route of prior)for(let j=1;j<route.length;j++){const r=route[j-1],s=route[j];if(properCross(u,v,r,s))crossings++;if(u.y===v.y&&r.y===s.y&&u.y===r.y&&Math.max(Math.min(u.x,v.x),Math.min(r.x,s.x))<Math.min(Math.max(u.x,v.x),Math.max(r.x,s.x)))overlaps++;if(u.x===v.x&&r.x===s.x&&u.x===r.x&&Math.max(Math.min(u.y,v.y),Math.min(r.y,s.y))<Math.min(Math.max(u.y,v.y),Math.max(r.y,s.y)))overlaps++}}return length+turns*18+crossings*5000+overlaps*8000};
