@@ -63,7 +63,7 @@ function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:
 function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT')n.value=n.value?1:0;else if(n.type==='VDD')n.value=1;else if(n.type==='GND')n.value=0});for(let pass=0;pass<nodes.length+2;pass++){let changed=false;for(const n of nodes){if(n.type==='INPUT'||n.type==='VDD'||n.type==='GND'||n.type==='DFF'||n.type==='LATCH')continue;const vals=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&nodes.find(x=>x.id===w.from);return src?src.value:0});let v=0;if(n.type==='AND')v=vals.length&&vals.every(Boolean)?1:0;else if(n.type==='NAND')v=vals.length&&vals.every(Boolean)?0:1;else if(n.type==='OR')v=vals.some(Boolean)?1:0;else if(n.type==='NOR')v=vals.some(Boolean)?0:1;else if(n.type==='XOR')v=vals.filter(Boolean).length%2;else if(n.type==='XNOR')v=vals.filter(Boolean).length%2?0:1;else if(n.type==='NOT')v=vals[0]?0:1;else if(n.type==='OUTPUT')v=vals[0]||0;if(v!==n.value){n.value=v;changed=true}}if(!changed)break}if(updateSequential)for(const n of nodes.filter(n=>n.type==='DFF'||n.type==='LATCH')){const vals=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&nodes.find(x=>x.id===w.from);return src?src.value:0});if(n.type==='LATCH'){if(vals[1])n.state=vals[0]||0}else if(vals[1]&&!n.prevClock)n.state=vals[0]||0;n.prevClock=vals[1]||0;n.value=n.state}if(updateSequential)evalCircuit(false)}
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
-let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map(),routedSegments=[];
+let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
 const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300;
 function prepareRouteObstacleIndex(){
  routeNodeById=new Map(nodes.map(n=>[n.id,n]));routeRects=[];routeColumns=new Map();routeRows=new Map();
@@ -90,30 +90,6 @@ function routeFirstHit(u,v,skipFrom=null,skipTo=null){
  }
  return null;
 }
-function routeWirePenalty(u,v,from,to){
- let penalty=0;
- for(const s of routedSegments){
-  if(from===s.from||from===s.to||to===s.from||to===s.to)continue;
-  const sh=u.y===v.y, th=s.a.y===s.b.y;
-  if(sh!==th){
-   const h=sh?{a:u,b:v}:{a:s.a,b:s.b},vert=sh?{a:s.a,b:s.b}:{a:u,b:v};
-   const x=vert.a.x,y=h.a.y;
-   if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(vert.a.y,vert.b.y)&&y<Math.max(vert.a.y,vert.b.y))penalty+=1;
-  }else if(sh&&u.y===s.a.y){
-   const lo=Math.max(Math.min(u.x,v.x),Math.min(s.a.x,s.b.x)),hi=Math.min(Math.max(u.x,v.x),Math.max(s.a.x,s.b.x));
-   if(lo<hi)penalty+=1+Math.min(10,(hi-lo)/ROUTE_CELL);
-  }else if(!sh&&u.x===s.a.x){
-   const lo=Math.max(Math.min(u.y,v.y),Math.min(s.a.y,s.b.y)),hi=Math.min(Math.max(u.y,v.y),Math.max(s.a.y,s.b.y));
-   if(lo<hi)penalty+=1+Math.min(10,(hi-lo)/ROUTE_CELL);
-  }
- }
- return penalty;
-}
-function routePathWirePenalty(points,from,to){
- let penalty=0;
- for(let i=1;i<points.length;i++)penalty+=routeWirePenalty(points[i-1],points[i],from,to);
- return penalty;
-}
 function routePointsFast(w,a,b,p,q){
  // First try a direct corridor route: leave the source to the right, travel
  // through a clear horizontal gap above/below the target row, then approach
@@ -122,7 +98,6 @@ function routePointsFast(w,a,b,p,q){
  const targetLane=q.x-9;
  const targetSpec=spec(b);
  const rowLanes=[b.y-9,b.y+targetSpec.h+9];
- let bestDirect=null;
  for(const laneY of rowLanes){
   for(let step=0;step<12;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
@@ -131,7 +106,7 @@ function routePointsFast(w,a,b,p,q){
    for(let i=1;i<candidate.length;i++){
     if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){blocked=true;break}
    }
-   if(!blocked){const clean=candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);const score=routePathWirePenalty(clean,a.id,b.id);if(!bestDirect||score<bestDirect.score)bestDirect={points:clean,score};if(score===0)return clean;}
+   if(!blocked)return candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);
   }
  }
  const middleX=(p.x+q.x)/2;
@@ -158,8 +133,7 @@ function routePointsFast(w,a,b,p,q){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
    for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))break;
-   const score=routePathWirePenalty(simplified,a.id,b.id);
-   return bestDirect&&bestDirect.score<=score?bestDirect.points:simplified;
+   return simplified;
   }
  }
  // If local detours cannot resolve a dense obstacle cluster within the iteration
@@ -173,17 +147,14 @@ function routePointsFast(w,a,b,p,q){
   for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
   return out;
  };
- let bestPerimeter=null;
  for(const laneY of [topLane,bottomLane]){
   const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
   let clear=true;
   for(let i=1;i<candidate.length;i++){
    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){clear=false;break}
   }
-  if(clear){const score=routePathWirePenalty(candidate,a.id,b.id);if(!bestPerimeter||score<bestPerimeter.score)bestPerimeter={points:candidate,score};if(score===0)return candidate;}
+  if(clear)return candidate;
  }
- if(bestPerimeter&&(!bestDirect||bestPerimeter.score<bestDirect.score))return bestPerimeter.points;
- if(bestDirect)return bestDirect.points;
  // Preserve geometry only as a last resort if even the outer corridor is blocked.
  const partial=simplify(path);
  return partial;
@@ -194,9 +165,7 @@ function routePoints(w){
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
  const result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
- routeCache.set(w.id,result);
- for(let i=1;i<result.length;i++)routedSegments.push({wire:w.id,from:a.id,to:b.id,a:result[i-1],b:result[i]});
- return result;
+ routeCache.set(w.id,result);return result;
 }
 function routePointsGraph(w,a,b,p,q){
  const allRects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{
@@ -270,7 +239,7 @@ function routePointsGraph(w,a,b,p,q){
 }
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
-function render(){routeCache=new Map();routedSegments=[];evalCircuit();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const d=wirePath(w),hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+function render(){routeCache=new Map();evalCircuit();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const d=wirePath(w),hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`, 'data-node':n.id});const box=make('rect',{x:0,y:0,width:s.w,height:s.h,rx:12,class:'nodebox'});if(selected?.kind==='node'&&selected.id===n.id)box.setAttribute('stroke','var(--off)');g.append(box);g.append(make('rect',{x:0,y:0,width:s.w,height:25,rx:10,class:'nodehead'}));g.append(make('rect',{x:0,y:15,width:s.w,height:10,fill:'var(--site-secondary)'}));g.append(make('text',{x:12,y:17,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));g.append(make('text',{x:s.w/2,y:48,'text-anchor':'middle',class:'nodetext'},n.name));g.append(make('text',{x:s.w/2,y:64,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+n.value));
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
