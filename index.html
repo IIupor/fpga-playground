@@ -63,12 +63,72 @@ function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:
 function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT')n.value=n.value?1:0;else if(n.type==='VDD')n.value=1;else if(n.type==='GND')n.value=0});for(let pass=0;pass<nodes.length+2;pass++){let changed=false;for(const n of nodes){if(n.type==='INPUT'||n.type==='VDD'||n.type==='GND'||n.type==='DFF'||n.type==='LATCH')continue;const vals=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&nodes.find(x=>x.id===w.from);return src?src.value:0});let v=0;if(n.type==='AND')v=vals.length&&vals.every(Boolean)?1:0;else if(n.type==='NAND')v=vals.length&&vals.every(Boolean)?0:1;else if(n.type==='OR')v=vals.some(Boolean)?1:0;else if(n.type==='NOR')v=vals.some(Boolean)?0:1;else if(n.type==='XOR')v=vals.filter(Boolean).length%2;else if(n.type==='XNOR')v=vals.filter(Boolean).length%2?0:1;else if(n.type==='NOT')v=vals[0]?0:1;else if(n.type==='OUTPUT')v=vals[0]||0;if(v!==n.value){n.value=v;changed=true}}if(!changed)break}if(updateSequential)for(const n of nodes.filter(n=>n.type==='DFF'||n.type==='LATCH')){const vals=Array.from({length:n.inputs},(_,i)=>{const w=wires.find(w=>w.to===n.id&&w.toPin===i),src=w&&nodes.find(x=>x.id===w.from);return src?src.value:0});if(n.type==='LATCH'){if(vals[1])n.state=vals[0]||0}else if(vals[1]&&!n.prevClock)n.state=vals[0]||0;n.prevClock=vals[1]||0;n.value=n.state}if(updateSequential)evalCircuit(false)}
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
-let routeCache=new Map();
+let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
+const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300;
+function prepareRouteObstacleIndex(){
+ routeNodeById=new Map(nodes.map(n=>[n.id,n]));routeRects=[];routeColumns=new Map();routeRows=new Map();
+ for(const n of nodes){const s=spec(n);routeRects.push({id:n.id,l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8})}
+ for(const r of routeRects){
+  for(let x=Math.floor(r.l/ROUTE_CELL);x<=Math.floor(r.r/ROUTE_CELL);x++){if(!routeColumns.has(x))routeColumns.set(x,[]);routeColumns.get(x).push(r)}
+  for(let y=Math.floor(r.t/ROUTE_CELL);y<=Math.floor(r.b/ROUTE_CELL);y++){if(!routeRows.has(y))routeRows.set(y,[]);routeRows.get(y).push(r)}
+ }
+ for(const list of routeColumns.values())list.sort((a,b)=>a.t-b.t);
+ for(const list of routeRows.values())list.sort((a,b)=>a.l-b.l);
+}
+function routeFirstHit(u,v,skipFrom=null,skipTo=null){
+ if(u.x!==v.x&&u.y!==v.y)return {l:Math.min(u.x,v.x),r:Math.max(u.x,v.x),t:Math.min(u.y,v.y),b:Math.max(u.y,v.y),id:null};
+ if(u.x===v.x){
+  const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y),list=routeColumns.get(Math.floor(x/ROUTE_CELL))||[];
+  let lo=0,hi=list.length,threshold=minY-ROUTE_MAX_HEIGHT;
+  while(lo<hi){const m=(lo+hi)>>1;if(list[m].t<threshold)lo=m+1;else hi=m}
+  for(let i=lo;i<list.length&&list[i].t<maxY;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(x>r.l&&x<r.r&&r.b>minY&&Math.max(minY,r.t)<Math.min(maxY,r.b))return r}
+ }else{
+  const y=u.y,minX=Math.min(u.x,v.x),maxX=Math.max(u.x,v.x),list=routeRows.get(Math.floor(y/ROUTE_CELL))||[];
+  let lo=0,hi=list.length,threshold=minX-ROUTE_MAX_WIDTH;
+  while(lo<hi){const m=(lo+hi)>>1;if(list[m].l<threshold)lo=m+1;else hi=m}
+  for(let i=lo;i<list.length&&list[i].l<maxX;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(y>r.t&&y<r.b&&r.r>minX&&Math.max(minX,r.l)<Math.min(maxX,r.r))return r}
+ }
+ return null;
+}
+function routePointsFast(w,a,b,p,q){
+ const middleX=(p.x+q.x)/2;
+ let path=[p,{x:p.x+9,y:p.y},{x:middleX,y:p.y},{x:middleX,y:q.y},{x:q.x-9,y:q.y},q];
+ const maxIterations=Math.min(500,routeRects.length*2+20);
+ for(let iteration=0;iteration<maxIterations;iteration++){
+  let changed=false;
+  for(let i=1;i<path.length;i++){
+   const u=path[i-1],v=path[i],skipFrom=i===1?a.id:null,skipTo=i===path.length-1?b.id:null;
+   const hit=routeFirstHit(u,v,skipFrom,skipTo);
+   if(!hit)continue;
+   let candidates;
+   if(u.x===v.x){
+    const lanes=[Math.floor(hit.l/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.r/ROUTE_CELL+1)*ROUTE_CELL+1];
+    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y})?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
+   }else{
+    const lanes=[Math.floor(hit.t/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.b/ROUTE_CELL+1)*ROUTE_CELL+1];
+    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y})?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
+   }
+   candidates.sort((x,y)=>x.score-y.score);
+   path.splice(i,0,...candidates[0].points);changed=true;break;
+  }
+  if(!changed){
+   const simplified=[];
+   for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))return [];
+   return simplified;
+  }
+ }
+ return [];
+}
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
- const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);
+ const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
+ const result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ routeCache.set(w.id,result);return result;
+}
+function routePointsGraph(w,a,b,p,q){
  const allRects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{
   const s=spec(n);return {l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8};
  });
@@ -140,7 +200,7 @@ function routePoints(w){
 }
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
-function render(){routeCache=new Map();evalCircuit();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const d=wirePath(w),hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+function render(){routeCache=new Map();evalCircuit();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const d=wirePath(w),hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`, 'data-node':n.id});const box=make('rect',{x:0,y:0,width:s.w,height:s.h,rx:12,class:'nodebox'});if(selected?.kind==='node'&&selected.id===n.id)box.setAttribute('stroke','var(--off)');g.append(box);g.append(make('rect',{x:0,y:0,width:s.w,height:25,rx:10,class:'nodehead'}));g.append(make('rect',{x:0,y:15,width:s.w,height:10,fill:'var(--site-secondary)'}));g.append(make('text',{x:12,y:17,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));g.append(make('text',{x:s.w/2,y:48,'text-anchor':'middle',class:'nodetext'},n.name));g.append(make('text',{x:s.w/2,y:64,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+n.value));
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
