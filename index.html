@@ -209,8 +209,10 @@ function routePointsFast(w,a,b,p,q){
   if(!changed){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w))break;
-   return simplified;
+   let valid=true;
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w)){valid=false;break}
+   if(valid)return simplified;
+   break;
   }
  }
  // If local detours cannot resolve a dense obstacle cluster within the iteration
@@ -224,17 +226,19 @@ function routePointsFast(w,a,b,p,q){
   for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
   return out;
  };
- for(const laneY of [topLane,bottomLane]){
-  const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
+ const outerLanes=[];
+ for(let step=0;step<6;step++){outerLanes.push(topLane-step*ROUTE_CELL,bottomLane+step*ROUTE_CELL)}
+ for(const laneY of outerLanes)for(let sx=0;sx<4;sx++)for(let tx=0;tx<4;tx++){
+  const sourceX=p.x+9+sx*ROUTE_CELL,targetX=q.x-9-tx*ROUTE_CELL;
+  const candidate=simplify([p,{x:sourceX,y:p.y},{x:sourceX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q]);
   let clear=true;
   for(let i=1;i<candidate.length;i++){
    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){clear=false;break}
   }
   if(clear)return candidate;
  }
- // Preserve geometry only as a last resort if even the outer corridor is blocked.
- const partial=simplify(path);
- return partial;
+ // Never silently return a route that still crosses another net.
+ return [];
 }
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
