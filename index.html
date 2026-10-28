@@ -116,7 +116,7 @@ function prepareRouteObstacleIndex(){
  for(const list of routeColumns.values())list.sort((a,b)=>a.t-b.t);
  for(const list of routeRows.values())list.sort((a,b)=>a.l-b.l);
 }
-function routeFirstHit(u,v,skipFrom=null,skipTo=null){
+function routeFirstHit(u,v,skipFrom=null,skipTo=null,wire=null){
  if(u.x!==v.x&&u.y!==v.y)return {l:Math.min(u.x,v.x),r:Math.max(u.x,v.x),t:Math.min(u.y,v.y),b:Math.max(u.y,v.y),id:null};
  if(u.x===v.x){
   const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y),list=routeColumns.get(Math.floor(x/ROUTE_CELL))||[];
@@ -128,6 +128,37 @@ function routeFirstHit(u,v,skipFrom=null,skipTo=null){
   let lo=0,hi=list.length,threshold=minX-ROUTE_MAX_WIDTH;
   while(lo<hi){const m=(lo+hi)>>1;if(list[m].l<threshold)lo=m+1;else hi=m}
   for(let i=lo;i<list.length&&list[i].l<maxX;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(y>r.t&&y<r.b&&r.r>minX&&Math.max(minX,r.l)<Math.min(maxX,r.r))return r}
+ }
+ // Previously routed wires are hard obstacles too. Use the same spatial bins
+ // as the scoring function and return a thin keep-out rectangle around the
+ // conflicting segment so the detour logic can route around its endpoint.
+ const x1=Math.floor(Math.min(u.x,v.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(u.x,v.x)/ROUTE_WIRE_BIN);
+ const y1=Math.floor(Math.min(u.y,v.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(u.y,v.y)/ROUTE_WIRE_BIN);
+ const seen=new Set();
+ for(let bx=x1;bx<=x2;bx++)for(let by=y1;by<=y2;by++){
+  const list=routedSegmentBins.get(bx+','+by)||[];
+  for(const s of list){
+   if(seen.has(s.indexId))continue;seen.add(s.indexId);
+   if(wire&&(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to))continue;
+   const sx1=Math.min(s.a.x,s.b.x),sx2=Math.max(s.a.x,s.b.x),sy1=Math.min(s.a.y,s.b.y),sy2=Math.max(s.a.y,s.b.y);
+   if(u.x===v.x){
+    if(s.a.y===s.b.y){
+     if(u.x>sx1&&u.x<sx2&&s.a.y>Math.min(u.y,v.y)&&s.a.y<Math.max(u.y,v.y))
+      return {l:sx1,r:sx2,t:s.a.y-1,b:s.a.y+1,id:null,wire:true};
+    }else if(s.a.x===u.x){
+     const from=Math.max(Math.min(u.y,v.y),sy1),to=Math.min(Math.max(u.y,v.y),sy2);
+     if(from<to)return {l:u.x-1,r:u.x+1,t:from,b:to,id:null,wire:true};
+    }
+   }else{
+    if(s.a.x===s.b.x){
+     if(s.a.x>Math.min(u.x,v.x)&&s.a.x<Math.max(u.x,v.x)&&u.y>sy1&&u.y<sy2)
+      return {l:s.a.x-1,r:s.a.x+1,t:sy1,b:sy2,id:null,wire:true};
+    }else if(s.a.y===u.y){
+     const from=Math.max(Math.min(u.x,v.x),sx1),to=Math.min(Math.max(u.x,v.x),sx2);
+     if(from<to)return {l:from,r:to,t:u.y-1,b:u.y+1,id:null,wire:true};
+    }
+   }
+  }
  }
  return null;
 }
@@ -154,20 +185,16 @@ function routePointsFast(w,a,b,p,q){
    const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q];
    let blocked=false;
    for(let i=1;i<candidate.length;i++){
-    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){blocked=true;break}
+    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){blocked=true;break}
    }
    if(blocked)continue;
    const simplified=candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);
-   const score=routeCandidateWireCost(simplified,w);
+   const score=simplified.slice(1).reduce((sum,pt,i)=>sum+Math.abs(pt.x-simplified[i].x)+Math.abs(pt.y-simplified[i].y),0)+Math.max(0,simplified.length-2)*8;
    if(Number.isFinite(score)&&score<bestScore){bestScore=score;bestCandidate=simplified}
    }
   }
  }
  if(bestCandidate)return bestCandidate;
- // The fast corridor search found no crossing-free candidate. Fall back to
- // the visibility graph, which treats already-routed wires as hard obstacles.
- const graphFallback=routePointsGraph(w,a,b,p,q);
- if(graphFallback.length)return graphFallback;
  const middleX=(p.x+q.x)/2;
  let path=[p,{x:p.x+9,y:p.y},{x:middleX,y:p.y},{x:middleX,y:q.y},{x:q.x-9,y:q.y},q];
  const maxIterations=Math.min(80,routeRects.length*2+20);
@@ -175,15 +202,15 @@ function routePointsFast(w,a,b,p,q){
   let changed=false;
   for(let i=1;i<path.length;i++){
    const u=path[i-1],v=path[i],skipFrom=i===1?a.id:null,skipTo=i===path.length-1?b.id:null;
-   const hit=routeFirstHit(u,v,skipFrom,skipTo);
+   const hit=routeFirstHit(u,v,skipFrom,skipTo,w);
    if(!hit)continue;
    let candidates;
    if(u.x===v.x){
     const lanes=[Math.floor(hit.l/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.r/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y})?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
+    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null,w)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y},null,null,w)?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo,w)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
    }else{
     const lanes=[Math.floor(hit.t/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.b/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y})?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
+    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null,w)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y},null,null,w)?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo,w)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
    }
    candidates.sort((x,y)=>x.score-y.score);
    path.splice(i,0,...candidates[0].points);changed=true;break;
@@ -191,7 +218,7 @@ function routePointsFast(w,a,b,p,q){
   if(!changed){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))break;
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w))break;
    return simplified;
   }
  }
@@ -210,7 +237,7 @@ function routePointsFast(w,a,b,p,q){
   const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
   let clear=true;
   for(let i=1;i<candidate.length;i++){
-   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){clear=false;break}
+   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){clear=false;break}
   }
   if(clear)return candidate;
  }
