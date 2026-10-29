@@ -24,10 +24,10 @@
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.control{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface2)}.control label{font-size:12px;color:var(--muted);font-weight:750;display:block;margin-bottom:8px}.toggle{display:flex;width:100%;align-items:center;justify-content:space-between;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:9px 11px;cursor:pointer;font-weight:800}.toggle .bit{font-size:11px;letter-spacing:.08em}.toggle[aria-pressed="true"] .bit{color:var(--on)}.toggle[aria-pressed="false"] .bit{color:var(--off)}button:focus-visible{outline:3px solid var(--off);outline-offset:2px}.result{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;border-radius:14px;padding:15px 16px;background:var(--site-primary);color:var(--site-on-primary)}.result small{display:block;opacity:.8;font-weight:700;letter-spacing:.1em;text-transform:uppercase}.result strong{font-size:12px}.bigbit{font-size:32px;font-weight:900;line-height:1}.explain{color:var(--muted);font-size:13px;line-height:1.5;margin:14px 0 0}.tablewrap{overflow-x:auto}.truth{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}.truth th,.truth td{padding:9px 10px;text-align:center;border-bottom:1px solid var(--border)}.truth th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.truth tr.current{background:var(--site-secondary);color:var(--site-on-secondary);font-weight:900}.truth tr:last-child td{border-bottom:0}.bitbadge{display:inline-grid;place-items:center;min-width:23px;height:23px;border-radius:7px;font-weight:900;background:var(--surface2)}.current .bitbadge{background:var(--site-primary);color:var(--site-on-primary)}.foot{margin-top:18px;color:var(--muted);font-size:12px;line-height:1.5}.reset{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:8px 11px;border-radius:9px;font-weight:750;cursor:pointer}.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:11px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:var(--on)}.dot.low{background:var(--wire)}
 @media(max-width:760px){.layout{grid-template-columns:1fr}.top h1{font-size:calc(26px * var(--site-heading-scale))}.body{padding:15px}#app{padding:16px}.circuit{min-height:220px}}
 /* Graphical logic editor */
-.editor-panel{grid-column:1/-1}.editor-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.toolbtn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}.toolbtn.primary{background:var(--site-primary);color:var(--site-on-primary);border-color:var(--site-primary)}.editor-hint{color:var(--muted);font-size:12px;line-height:1.5;margin:12px 0}.editor-viewport{width:100%;height:min(68vh,850px);min-height:480px;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:14px;overscroll-behavior:contain}.editor-stage{width:900px;height:390px;display:block;background:var(--surface2);border:0;border-radius:0;touch-action:none;max-width:none}.nodebox{fill:var(--surface);stroke:var(--site-primary);stroke-width:2}.nodehead{fill:var(--site-secondary)}.nodetext{fill:var(--text);font-size:13px;font-weight:800;pointer-events:none}.nodemeta{fill:var(--muted);font-size:10px;pointer-events:none}.nodepin{fill:var(--surface);stroke:var(--site-primary);stroke-width:2;cursor:crosshair;transition:stroke-width .12s,filter .12s}.nodepin.high{fill:var(--on);stroke:var(--on)}.nodepin.pending{stroke:var(--off);stroke-width:4}.nodepin.available{stroke:var(--on);stroke-width:3;filter:drop-shadow(0 0 3px var(--on))}#editorStage.connection-active{background-image:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--site-primary) 7%,transparent),transparent 70%)}#editorStage.connection-active .nodepin.available{animation:pin-pulse 1s ease-in-out infinite alternate}@keyframes pin-pulse{from{stroke-width:3}to{stroke-width:5}}.wire-hit-area{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}.editor-wire{fill:none;stroke:var(--wire);stroke-width:3;stroke-linecap:round;pointer-events:stroke;cursor:pointer}.editor-wire.high{stroke:var(--on)}.editor-wire.pending{stroke:var(--off);stroke-dasharray:6 5}.editor-status{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.status-chip{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12px;color:var(--muted)}.status-chip b{color:var(--text)}.editor-table{width:100%;border-collapse:collapse;font-size:12px}.editor-table th,.editor-table td{text-align:center;padding:8px;border-bottom:1px solid var(--border)}.editor-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.editor-table .highbit{color:var(--on);font-weight:900}.editor-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.editor-lower h3{font-size:13px;margin:0 0 10px}.editor-scroll{overflow:auto;max-height:200px}.toolbtn:disabled{opacity:.45;cursor:not-allowed}@media(max-width:760px){.editor-viewport{height:330px;min-height:330px}.editor-lower{grid-template-columns:1fr}}
+.editor-panel{grid-column:1/-1}.editor-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.toolbtn{border:1px solid var(--border);background:var(--surface);color:var(--text);padding:9px 12px;border-radius:10px;font-weight:800;cursor:pointer}.toolbtn.primary{background:var(--site-primary);color:var(--site-on-primary);border-color:var(--site-primary)}.editor-hint{color:var(--muted);font-size:12px;line-height:1.5;margin:12px 0}.editor-viewport{width:100%;height:min(68vh,850px);min-height:480px;overflow:auto;background:var(--surface2);border:1px solid var(--border);border-radius:14px;overscroll-behavior:contain}.editor-stage{width:900px;height:390px;display:block;background:var(--surface2);border:0;border-radius:0;touch-action:none;max-width:none}.nodebox{fill:transparent;stroke:transparent!important;stroke-width:2}#editorStage g[data-selected=true] path,#editorStage g[data-selected=true] circle,#editorStage g[data-selected=true] line{stroke:var(--off)!important}.nodehead{fill:var(--site-secondary)}.nodetext{fill:var(--text);font-size:13px;font-weight:800;pointer-events:none}.nodemeta{fill:var(--muted);font-size:10px;pointer-events:none}.nodepin{fill:var(--surface);stroke:var(--site-primary);stroke-width:2;cursor:crosshair;transition:stroke-width .12s,filter .12s}.nodepin.high{fill:var(--on);stroke:var(--on)}.nodepin.pending{stroke:var(--off);stroke-width:4}.nodepin.available{stroke:var(--on);stroke-width:3;filter:drop-shadow(0 0 3px var(--on))}#editorStage.connection-active{background-image:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--site-primary) 7%,transparent),transparent 70%)}#editorStage.connection-active .nodepin.available{animation:pin-pulse 1s ease-in-out infinite alternate}@keyframes pin-pulse{from{stroke-width:3}to{stroke-width:5}}.wire-hit-area{fill:none;stroke:transparent;stroke-width:16;pointer-events:stroke;cursor:pointer}.editor-wire{fill:none;stroke:var(--wire);stroke-width:3;stroke-linecap:round;pointer-events:stroke;cursor:pointer}.editor-wire.high{stroke:var(--on)}.editor-wire.pending{stroke:var(--off);stroke-dasharray:6 5}.editor-status{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:12px}.status-chip{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;font-size:12px;color:var(--muted)}.status-chip b{color:var(--text)}.editor-table{width:100%;border-collapse:collapse;font-size:12px}.editor-table th,.editor-table td{text-align:center;padding:8px;border-bottom:1px solid var(--border)}.editor-table th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.editor-table .highbit{color:var(--on);font-weight:900}.editor-lower{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.editor-lower h3{font-size:13px;margin:0 0 10px}.editor-scroll{overflow:auto;max-height:200px}.toolbtn:disabled{opacity:.45;cursor:not-allowed}@media(max-width:760px){.editor-viewport{height:330px;min-height:330px}.editor-lower{grid-template-columns:1fr}}
 </style><style>
 /* The .nodebox class rule overrides SVG stroke attributes, so force selection styling. */
-#editorStage .nodebox[stroke="var(--off)"]{stroke:var(--off)!important;stroke-width:3!important}
+#editorStage .nodebox[stroke="var(--off)"]{stroke:transparent!important;stroke-width:3!important}
 </style></head>
 <body><main id="app"><div class="shell">
 <header class="top"><div class="logo">⌁</div><div><div class="eyebrow">Interactive logic lab · 01</div><h1>FPGA Playground</h1><p>Build a logic circuit, change its inputs, and simulate the output.</p></div></header>
@@ -53,7 +53,96 @@ window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')
  </script><script>
 (()=>{
 const svg=document.getElementById('editorStage'), msg=document.getElementById('editorMessage'), signalRows=document.getElementById('signalRows'), truthHead=document.getElementById('editorTruthHead'), truthBody=document.getElementById('editorTruthBody'), editorControls=document.getElementById('editorControls'), editorResults=document.getElementById('editorResults');
-let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const undoStack=[],redoStack=[];function historySnapshot(){return JSON.parse(JSON.stringify({nodes,wires,selected,nextId}))}function saveHistory(){undoStack.push(historySnapshot());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function pushHistorySnapshot(snapshot){undoStack.push(snapshot);if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function updateHistoryButtons(){const u=document.getElementById("editorUndo"),r=document.getElementById("editorRedo");if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}function restoreHistory(snapshot){nodes=snapshot.nodes;wires=snapshot.wires;selected=snapshot.selected;nextId=snapshot.nextId;pending=null;render();updateHistoryButtons()}function undo(){if(!undoStack.length)return;redoStack.push(historySnapshot());restoreHistory(undoStack.pop());msg.textContent="Last change undone."}function redo(){if(!redoStack.length)return;undoStack.push(historySnapshot());restoreHistory(redoStack.pop());msg.textContent="Change redone."}Object.defineProperty(window,'fpgaNodes',{get:()=>nodes});Object.defineProperty(window,'fpgaWires',{get:()=>wires});Object.defineProperty(window,'fpgaSelected',{get:()=>selected,set:v=>{selected=v}});window.fpgaRender=()=>render();window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;render();updateHistoryButtons()};
+let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const undoStack=[],redoStack=[];function historySnapshot(){return JSON.parse(JSON.stringify({nodes,wires,selected,nextId}))}function saveHistory(){undoStack.push(historySnapshot());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function pushHistorySnapshot(snapshot){undoStack.push(snapshot);if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function updateHistoryButtons(){const u=document.getElementById("editorUndo"),r=document.getElementById("editorRedo");if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}function restoreHistory(snapshot){nodes=snapshot.nodes;wires=snapshot.wires;selected=snapshot.selected;nextId=snapshot.nextId;pending=null;render();updateHistoryButtons()}function undo(){if(!undoStack.length)return;redoStack.push(historySnapshot());restoreHistory(undoStack.pop());msg.textContent="Last change undone."}function redo(){if(!redoStack.length)return;undoStack.push(historySnapshot());restoreHistory(redoStack.pop());msg.textContent="Change redone."}Object.defineProperty(window,'fpgaNodes',{get:()=>nodes});Object.defineProperty(window,'fpgaWires',{get:()=>wires});Object.defineProperty(window,'fpgaSelected',{get:()=>selected,set:v=>{selected=v}});window.fpgaRender=()=>render();
+// Placement-feedback prototype: measure the rendered routes, identify the gates
+// attached to conflicts, and test a small set of legal vertical placement moves.
+// This runs only when the structural benchmark importer explicitly requests it.
+window.fpgaOptimizePlacement=()=>{
+ // Simulated annealing over placement. Each candidate is scored cheaply using
+ // orthogonal proxy routes; Pathfinder is run only after the best placement is
+ // restored, avoiding a full expensive route for every annealing move.
+ const movable=n=>n&&!['INPUT','OUTPUT','VDD','GND'].includes(n.type);
+ const original=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));
+ const wiresByNode=new Map();
+ for(const w of wires){for(const id of [w.from,w.to]){if(!wiresByNode.has(id))wiresByNode.set(id,[]);wiresByNode.get(id).push(w)}}
+ const box=(n,x=n.x,y=n.y)=>({x,y,w:spec(n).w,h:spec(n).h});
+ const overlaps=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+ const legal=(n,x,y)=>x>=20&&y>=20&&x+spec(n).w<=6000&&y+spec(n).h<=6000&&
+   !nodes.some(o=>o.id!==n.id&&overlaps(box(n,x,y),box(o)));
+ const proxyScore=()=>{
+  const segs=[],nodeBoxes=nodes.map(n=>({id:n.id,...box(n)}));
+  let length=0,blocked=0;
+  for(const w of wires){
+   const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b){blocked+=1000;continue}
+   const p=pin(a,'out'),q=pin(b,'in',w.toPin||0),mx=Math.round((p.x+q.x)/2);
+   const pts=[p,{x:mx,y:p.y},{x:mx,y:q.y},q];
+   for(let i=1;i<pts.length;i++){
+    const u=pts[i-1],v=pts[i];length+=Math.abs(v.x-u.x)+Math.abs(v.y-u.y);
+    if(u.x===v.x&&u.y===v.y)continue;
+    for(const r of nodeBoxes){if(r.id===a.id||r.id===b.id)continue;
+     if(u.y===v.y){if(u.y>r.y&&u.y<r.y+r.h&&Math.max(Math.min(u.x,v.x),r.x)<Math.min(Math.max(u.x,v.x),r.x+r.w))blocked+=1}
+     else if(u.x>r.x&&u.x<r.x+r.w&&Math.max(Math.min(u.y,v.y),r.y)<Math.min(Math.max(u.y,v.y),r.y+r.h))blocked+=1;
+    }
+    segs.push({wire:String(w.id),a:u,b:v});
+   }
+  }
+  let crossings=0;
+  for(let i=0;i<segs.length;i++)for(let j=i+1;j<segs.length;j++){
+   const a=segs[i],b=segs[j];if(a.wire===b.wire)continue;
+   const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let hit=false;
+   if(ah!==bh){const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;hit=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)}
+   else if(ah&&a.a.y===b.a.y)hit=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+   else if(!ah&&a.a.x===b.a.x)hit=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+   if(hit)crossings++;
+  }
+  return {score:crossings*100000+blocked*100000+length,crossings,blocked,length};
+ };
+ const movableNodes=nodes.filter(movable);
+ if(!movableNodes.length)return {attempts:0,before:0,after:0};
+ const startScore=proxyScore();let current=startScore,bestScore=startScore;
+ let best=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));
+ let seed=(nodes.length*7919+wires.length*104729)>>>0;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
+ const steps=wires.length>250?36:100,grid=20;
+ const initialTemp=Math.max(1000,current.score*0.025),finalTemp=Math.max(1,current.score*0.0001);
+ let attempts=0,accepted=0;
+ for(let i=0;i<steps;i++){
+  const n=movableNodes[Math.floor(random()*movableNodes.length)],old={x:n.x,y:n.y};
+  const dirs=[[grid,0],[-grid,0],[0,grid],[0,-grid],[grid,grid],[grid,-grid],[-grid,grid],[-grid,-grid]];
+  const d=dirs[Math.floor(random()*dirs.length)],nx=old.x+d[0],ny=old.y+d[1];
+  if(!legal(n,nx,ny))continue;
+  n.x=nx;n.y=ny;const trial=proxyScore();attempts++;
+  const t=initialTemp*Math.pow(finalTemp/initialTemp,i/Math.max(1,steps-1));
+  const delta=trial.score-current.score;
+  if(delta<=0||random()<Math.exp(-delta/t)){
+   current=trial;accepted++;
+   if(trial.score<bestScore.score){bestScore=trial;best=new Map(nodes.map(x=>[x.id,{x:x.x,y:x.y}]))}
+  }else{n.x=old.x;n.y=old.y}
+ }
+ for(const [id,p] of best){const n=nodes.find(x=>x.id===id);if(n){n.x=p.x;n.y=p.y}}
+ render();
+ // Record both proxy-score movement and the actual routed geometry after
+ // Pathfinder has produced the final candidate.
+ const paths=[...svg.querySelectorAll('path.editor-wire')];
+ let missing=Math.max(0,wires.length-paths.length),crossings=0;const segs=[];
+ for(const path of paths){const id=path.dataset.wire,d=path.getAttribute('d')||'';
+  const pts=[...(d.matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g))].map(m=>({x:Number(m[1]),y:Number(m[2])}));
+  if(pts.length<2){missing++;continue}for(let i=1;i<pts.length;i++)segs.push({wire:id,a:pts[i-1],b:pts[i]});
+ }
+ for(let i=0;i<segs.length;i++)for(let j=i+1;j<segs.length;j++){const a=segs[i],b=segs[j];if(a.wire===b.wire)continue;const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let hit=false;
+  if(ah!==bh){const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;hit=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)}
+  else if(ah&&a.a.y===b.a.y)hit=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+  else if(!ah&&a.a.x===b.a.x)hit=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+  if(hit)crossings++;
+ }
+ svg.dataset.placementOptimizationAttempts=String(attempts);
+ svg.dataset.placementOptimizationAccepted=String(accepted);
+ svg.dataset.placementProxyBefore=String(startScore.score);
+ svg.dataset.placementProxyAfter=String(bestScore.score);
+ svg.dataset.placementConflictsAfter=String(crossings);
+ svg.dataset.placementMissingAfter=String(missing);
+ return {attempts,accepted,proxyBefore:startScore.score,proxyAfter:bestScore.score,conflictsAfter:crossings,missingAfter:missing};
+};
+window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;render();updateHistoryButtons()};
 const NS='http://www.w3.org/2000/svg';
 window.fpgaDeleteNodes=(ids)=>{saveHistory();const doomed=new Set(ids);nodes=nodes.filter(n=>!doomed.has(n.id));wires=wires.filter(w=>!doomed.has(w.from)&&!doomed.has(w.to));if(selected?.kind==='node'&&doomed.has(selected.id))selected=null;pending=null;render()};
 const make=(tag,attrs={},text='')=>{const e=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text)e.textContent=text;return e};
@@ -65,54 +154,108 @@ function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
 let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
-let routedSegments=[], routedSegmentBins=new Map(), nextRoutedSegmentId=1;
+let routeRejectConflicts=false;
+let routedSegments=[], routedSegmentBins=new Map(), routedHorizontalByY=new Map(), routedVerticalByX=new Map(), routedHorizontalYKeys=[], routedVerticalXKeys=[], nextRoutedSegmentId=1;
 const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300,ROUTE_WIRE_BIN=64;
 function indexRoutedSegment(segment){
  const id=nextRoutedSegmentId++;segment.indexId=id;routedSegments.push(segment);
+ if(segment.a.y===segment.b.y){const y=segment.a.y;if(!routedHorizontalByY.has(y)){routedHorizontalByY.set(y,[]);let lo=0,hi=routedHorizontalYKeys.length;while(lo<hi){const m=(lo+hi)>>1;if(routedHorizontalYKeys[m]<y)lo=m+1;else hi=m}routedHorizontalYKeys.splice(lo,0,y)}routedHorizontalByY.get(y).push(segment)}
+ else if(segment.a.x===segment.b.x){const x=segment.a.x;if(!routedVerticalByX.has(x)){routedVerticalByX.set(x,[]);let lo=0,hi=routedVerticalXKeys.length;while(lo<hi){const m=(lo+hi)>>1;if(routedVerticalXKeys[m]<x)lo=m+1;else hi=m}routedVerticalXKeys.splice(lo,0,x)}routedVerticalByX.get(x).push(segment)}
  const x1=Math.floor(Math.min(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN);
  const y1=Math.floor(Math.min(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN);
  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
 }
-function routeCandidateWireCost(points,wire){
- let length=0,bends=Math.max(0,points.length-2),crossings=0,overlaps=0;
- // Bound crossing analysis on large circuits: inspect at most 128 nearby
- // segments per candidate segment. This keeps scoring useful without allowing
- // dense spatial bins to make routing quadratic.
- const MAX_CROSSING_CHECKS=128;
- for(let i=1;i<points.length;i++){
-  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
-  const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
-  const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
-  const nearby=new Map(),binKeys=[];
-  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)binKeys.push(x+','+y);
-  // Sample bins across the entire candidate segment instead of consuming the
-  // first dense bin. Then sample each selected bin's segment list evenly too.
-  const MAX_SAMPLED_BINS=16,MAX_SEGMENTS_PER_BIN=8;
-  const binStep=Math.max(1,Math.ceil(binKeys.length/MAX_SAMPLED_BINS));
-  for(let bi=0;bi<binKeys.length&&nearby.size<MAX_CROSSING_CHECKS;bi+=binStep){
-   const list=routedSegmentBins.get(binKeys[bi])||[];
-   const segmentStep=Math.max(1,Math.ceil(list.length/MAX_SEGMENTS_PER_BIN));
-   for(let si=0;si<list.length&&nearby.size<MAX_CROSSING_CHECKS;si+=segmentStep){
-    const s=list[si];
-    if(!nearby.has(s.indexId))nearby.set(s.indexId,s);
-   }
-  }
-  for(const s of nearby.values()){
-   if(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to)continue;
-   const ah=a.y===b.y,bh=s.a.y===s.b.y;
+let routeCongestionHistory=new Map(),routeHistoryByY=new Map(),routeHistoryByX=new Map();
+function routeHistoryPenalty(a,b){
+ let penalty=0,items;
+ if(a.y===b.y){
+  items=routeHistoryByY.get(a.y)||[];
+  for(const item of items)if(item.x>Math.min(a.x,b.x)&&item.x<Math.max(a.x,b.x))penalty+=item.cost;
+ }else if(a.x===b.x){
+  items=routeHistoryByX.get(a.x)||[];
+  for(const item of items)if(item.y>Math.min(a.y,b.y)&&item.y<Math.max(a.y,b.y))penalty+=item.cost;
+ }
+ return penalty;
+}
+function countRoutedConflicts(){
+ const seen=new Set();let conflicts=0;
+ for(const bucket of routedSegmentBins.values()){
+  for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
+   const a=bucket[i],b=bucket[j];
+   if(a.indexId===b.indexId||a.wire===b.wire)continue;
+   const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
+   if(seen.has(pair))continue;seen.add(pair);
+   const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;
    if(ah!==bh){
-    const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
-    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))crossings++;
-   }else if(ah&&s.a.y===a.y){
-    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))overlaps++;
-   }else if(!ah&&s.a.x===a.x){
-    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))overlaps++;
+    const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))conflicts++;
+   }else if(ah&&a.a.y===b.a.y){
+    if(Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x)))conflicts++;
+   }else if(!ah&&a.a.x===b.a.x){
+    if(Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y)))conflicts++;
    }
   }
  }
- // Keep crossing/overlap penalties moderate: heavier weights caused
- // large benchmark import/export tests to exceed their time budget.
- return length+crossings*120+overlaps*90+bends*8;
+ return conflicts;
+}
+function recordCongestionHistory(){
+ const seen=new Set();
+ for(const bucket of routedSegmentBins.values()){
+  for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
+   const a=bucket[i],b=bucket[j];
+   if(a.indexId===b.indexId||a.wire===b.wire)continue;
+   const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
+   if(seen.has(pair))continue;seen.add(pair);
+   const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;
+   let x=null,y=null,overlap=false;
+   if(ah!==bh){
+    const h=ah?a:b,v=ah?b:a;x=v.a.x;y=h.a.y;
+    if(!(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)))continue;
+   }else if(ah&&a.a.y===b.a.y){
+    const lo=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x)),hi=Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+    if(lo>=hi)continue;x=(lo+hi)/2;y=a.a.y;overlap=true;
+   }else if(!ah&&a.a.x===b.a.x){
+    const lo=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y)),hi=Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+    if(lo>=hi)continue;x=a.a.x;y=(lo+hi)/2;overlap=true;
+   }else continue;
+   const key=x+','+y,cost=(routeCongestionHistory.get(key)||0)+1;
+   routeCongestionHistory.set(key,cost);
+   if(!routeHistoryByY.has(y))routeHistoryByY.set(y,[]);
+   if(!routeHistoryByX.has(x))routeHistoryByX.set(x,[]);
+   const row=routeHistoryByY.get(y),col=routeHistoryByX.get(x),existing=row.find(p=>p.x===x&&p.y===y);
+   if(existing)existing.cost=cost;else {row.push({x,y,cost});col.push({x,y,cost});}
+  }
+ }
+}
+function routeCandidateWireCost(points,wire){
+ let length=0,bends=Math.max(0,points.length-2),conflicts=0,historyPenalty=0;
+ // Exact checks against every already-routed segment in the spatial bins.
+ // Return Infinity rather than allowing the router to trade correctness for
+ // a shorter path.
+ for(let i=1;i<points.length;i++){
+  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);historyPenalty+=routeHistoryPenalty(a,b)*2400;
+  const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
+  const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
+  const nearby=new Map();
+  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){
+   const list=routedSegmentBins.get(x+','+y)||[];
+   for(const s of list)if(!nearby.has(s.indexId))nearby.set(s.indexId,s);
+  }
+  for(const s of nearby.values()){
+   if(s.wire===wire.id)continue;
+   if(routeRejectConflicts){const ah=a.y===b.y,bh=s.a.y===s.b.y;if(ah!==bh){const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))return Infinity;}else if(ah&&s.a.y===a.y){if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))return Infinity;}else if(!ah&&s.a.x===a.x){if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))return Infinity;}}
+   const ah=a.y===b.y,bh=s.a.y===s.b.y;
+   if(ah!==bh){
+    const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))conflicts++;
+   }else if(ah&&s.a.y===a.y){
+    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))conflicts++;
+   }else if(!ah&&s.a.x===a.x){
+    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))conflicts++;
+   }
+  }
+ }
+ return length+bends*8+conflicts*5000+historyPenalty;
 }
 function rememberRoutedWire(w,points){
  for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
@@ -128,7 +271,7 @@ function prepareRouteObstacleIndex(){
  for(const list of routeColumns.values())list.sort((a,b)=>a.t-b.t);
  for(const list of routeRows.values())list.sort((a,b)=>a.l-b.l);
 }
-function routeFirstHit(u,v,skipFrom=null,skipTo=null){
+function routeFirstHit(u,v,skipFrom=null,skipTo=null,wire=null,allowWireCongestion=false){
  if(u.x!==v.x&&u.y!==v.y)return {l:Math.min(u.x,v.x),r:Math.max(u.x,v.x),t:Math.min(u.y,v.y),b:Math.max(u.y,v.y),id:null};
  if(u.x===v.x){
   const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y),list=routeColumns.get(Math.floor(x/ROUTE_CELL))||[];
@@ -141,6 +284,28 @@ function routeFirstHit(u,v,skipFrom=null,skipTo=null){
   while(lo<hi){const m=(lo+hi)>>1;if(list[m].l<threshold)lo=m+1;else hi=m}
   for(let i=lo;i<list.length&&list[i].l<maxX;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(y>r.t&&y<r.b&&r.r>minX&&Math.max(minX,r.l)<Math.min(maxX,r.r))return r}
  }
+ // During negotiated routing, existing wires are soft congestion rather than
+ // hard obstacles; routeCandidateWireCost scores their crossings/overlaps.
+ if(allowWireCongestion)return null;
+ // In strict obstacle checks, previously routed wires are hard obstacles.
+ const ignore=s=>wire&&s.wire===wire.id;
+ if(u.x===v.x){
+  const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y);
+  let rowLo=0,rowHi=routedHorizontalYKeys.length;while(rowLo<rowHi){const m=(rowLo+rowHi)>>1;if(routedHorizontalYKeys[m]<=minY)rowLo=m+1;else rowHi=m}
+  for(let ri=rowLo;ri<routedHorizontalYKeys.length&&routedHorizontalYKeys[ri]<maxY;ri++){const y=routedHorizontalYKeys[ri],list=routedHorizontalByY.get(y)||[];for(const s of list){if(ignore(s))continue;const lo=Math.min(s.a.x,s.b.x),hi=Math.max(s.a.x,s.b.x);if(x>lo&&x<hi)return {l:lo,r:hi,t:y-1,b:y+1,id:null,wire:true}}}
+  for(const s of routedVerticalByX.get(x)||[]){
+   if(ignore(s))continue;const lo=Math.max(minY,Math.min(s.a.y,s.b.y)),hi=Math.min(maxY,Math.max(s.a.y,s.b.y));
+   if(lo<hi)return {l:x-1,r:x+1,t:lo,b:hi,id:null,wire:true};
+  }
+ }else{
+  const y=u.y,minX=Math.min(u.x,v.x),maxX=Math.max(u.x,v.x);
+  let colLo=0,colHi=routedVerticalXKeys.length;while(colLo<colHi){const m=(colLo+colHi)>>1;if(routedVerticalXKeys[m]<=minX)colLo=m+1;else colHi=m}
+  for(let ci=colLo;ci<routedVerticalXKeys.length&&routedVerticalXKeys[ci]<maxX;ci++){const x=routedVerticalXKeys[ci],list=routedVerticalByX.get(x)||[];for(const s of list){if(ignore(s))continue;const lo=Math.min(s.a.y,s.b.y),hi=Math.max(s.a.y,s.b.y);if(y>lo&&y<hi)return {l:x-1,r:x+1,t:lo,b:hi,id:null,wire:true}}}
+  for(const s of routedHorizontalByY.get(y)||[]){
+   if(ignore(s))continue;const lo=Math.max(minX,Math.min(s.a.x,s.b.x)),hi=Math.min(maxX,Math.max(s.a.x,s.b.x));
+   if(lo<hi)return {l:lo,r:hi,t:y-1,b:y+1,id:null,wire:true};
+  }
+ }
  return null;
 }
 function routePointsFast(w,a,b,p,q){
@@ -150,20 +315,53 @@ function routePointsFast(w,a,b,p,q){
  const sourceLane0=Math.floor((p.x+8)/ROUTE_CELL+1)*ROUTE_CELL+1;
  const targetLane=q.x-9;
  const targetSpec=spec(b);
- const rowLanes=[b.y-9,b.y+targetSpec.h+9];
+ const midY=(p.y+q.y)/2;
+ const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
+ const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ // Pathfinder-style negotiated congestion needs alternatives beyond a handful
+ // of midpoint corridors. Include obstacle-edge channels, then try the closest
+ // channels first to keep the search bounded on large benchmark circuits.
+ const obstacleLanes=routeRects.flatMap(r=>[r.t-ROUTE_CELL-1,r.b+ROUTE_CELL+1])
+  .filter(y=>y>Math.min(p.y,q.y)-ROUTE_CELL*4&&y<Math.max(p.y,q.y)+ROUTE_CELL*4);
+ // Existing wires are routing resources too: create escape channels on
+ // both sides of occupied horizontal segments and around vertical segment ends.
+ // This gives the negotiated router actual alternatives near current congestion,
+ // rather than repeatedly choosing among the same fixed midpoint corridors.
+ const wireLanes=[];
+ const seenSegments=new Set();
+ for(const bucket of routedSegmentBins.values())for(const seg of bucket){
+  if(seg.wire===w.id||seenSegments.has(seg.indexId))continue;
+  seenSegments.add(seg.indexId);
+  const u=seg.a,v=seg.b;
+  if(u.y===v.y){
+   if(u.y>Math.min(p.y,q.y)-ROUTE_CELL*8&&u.y<Math.max(p.y,q.y)+ROUTE_CELL*8)
+    wireLanes.push(u.y-ROUTE_CELL,u.y+ROUTE_CELL);
+  }else if(u.x===v.x&&u.x>Math.min(p.x,q.x)-ROUTE_CELL*3&&u.x<Math.max(p.x,q.x)+ROUTE_CELL*3){
+   wireLanes.push(Math.min(u.y,v.y)-ROUTE_CELL,Math.max(u.y,v.y)+ROUTE_CELL);
+  }
+ }
+ const rowLanes=[p.y,q.y,b.y-9,b.y+targetSpec.h+9,topLane,bottomLane,
+  ...Array.from({length:5},(_,i)=>Math.round(midY)+(i-2)*ROUTE_CELL),
+  ...obstacleLanes,...wireLanes]
+  .filter((y,i,arr)=>Number.isFinite(y)&&arr.indexOf(y)===i)
+  .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY))
+  .filter((y,i)=>i<36);
+ const targetLanes=Array.from({length:5},(_,i)=>targetLane-i*ROUTE_CELL);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
-  for(let step=0;step<12;step++){
+  for(let step=0;step<6;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
-   const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetLane,y:laneY},{x:targetLane,y:q.y},q];
+   for(const targetX of targetLanes){
+   const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q];
    let blocked=false;
    for(let i=1;i<candidate.length;i++){
-    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){blocked=true;break}
+    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w,true)){blocked=true;break}
    }
    if(blocked)continue;
    const simplified=candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);
    const score=routeCandidateWireCost(simplified,w);
-   if(score<bestScore){bestScore=score;bestCandidate=simplified}
+   if(Number.isFinite(score)&&score<bestScore){bestScore=score;bestCandidate=simplified}
+   }
   }
  }
  if(bestCandidate)return bestCandidate;
@@ -174,15 +372,15 @@ function routePointsFast(w,a,b,p,q){
   let changed=false;
   for(let i=1;i<path.length;i++){
    const u=path[i-1],v=path[i],skipFrom=i===1?a.id:null,skipTo=i===path.length-1?b.id:null;
-   const hit=routeFirstHit(u,v,skipFrom,skipTo);
+   const hit=routeFirstHit(u,v,skipFrom,skipTo,w);
    if(!hit)continue;
    let candidates;
    if(u.x===v.x){
     const lanes=[Math.floor(hit.l/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.r/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y})?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
+    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null,w)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y},null,null,w)?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo,w)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
    }else{
     const lanes=[Math.floor(hit.t/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.b/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y})?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
+    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null,w)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y},null,null,w)?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo,w)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
    }
    candidates.sort((x,y)=>x.score-y.score);
    path.splice(i,0,...candidates[0].points);changed=true;break;
@@ -190,39 +388,46 @@ function routePointsFast(w,a,b,p,q){
   if(!changed){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))break;
-   return simplified;
+   let valid=true;
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w)){valid=false;break}
+   if(valid)return simplified;
+   break;
   }
  }
  // If local detours cannot resolve a dense obstacle cluster within the iteration
  // budget, use a perimeter corridor outside every block's keep-out rectangle.
  // The source leaves to the right and the target is approached from the left,
  // so the long vertical legs stay outside the endpoint columns.
- const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
- const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ // Reuse topLane and bottomLane computed above; redeclaring these consts
+ // would prevent the entire editor script from parsing.
  const simplify=points=>{
   const out=[];
   for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
   return out;
  };
- for(const laneY of [topLane,bottomLane]){
-  const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
+ const outerLanes=[];
+ for(let step=0;step<6;step++){outerLanes.push(topLane-step*ROUTE_CELL,bottomLane+step*ROUTE_CELL)}
+ for(const laneY of outerLanes)for(let sx=0;sx<4;sx++)for(let tx=0;tx<4;tx++){
+  const sourceX=p.x+9+sx*ROUTE_CELL,targetX=q.x-9-tx*ROUTE_CELL;
+  const candidate=simplify([p,{x:sourceX,y:p.y},{x:sourceX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q]);
   let clear=true;
   for(let i=1;i<candidate.length;i++){
-   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){clear=false;break}
+   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){clear=false;break}
   }
   if(clear)return candidate;
  }
- // Preserve geometry only as a last resort if even the outer corridor is blocked.
- const partial=simplify(path);
- return partial;
+ // Never silently return a route that still crosses another net.
+ return [];
 }
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
  const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
- const result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ let result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ // The bounded fast router can fail in dense obstacle clusters. Retry with
+ // the visibility-graph router instead of rendering a wire with an empty path.
+ if(!result.length&&nodes.length>100)result=routePointsGraph(w,a,b,p,q);
  routeCache.set(w.id,result);return result;
 }
 function routePointsGraph(w,a,b,p,q){
@@ -281,7 +486,9 @@ function routePointsGraph(w,a,b,p,q){
    const cur=pop();if(cur.cost!==dist[cur.v][cur.dir])continue;
    if(cur.v===ti){finish=cur;break}
    for(const edge of adj[cur.v]){
-    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd;
+    const segmentCost=routeCandidateWireCost([vertices[cur.v],vertices[edge.to]],w);
+    const crossingPenalty=Math.max(0,segmentCost-edge.d);
+    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd+crossingPenalty;
     if(cost<dist[edge.to][edge.dir]){dist[edge.to][edge.dir]=cost;prev[edge.to][edge.dir]=[cur.v,cur.dir];push({v:edge.to,dir:edge.dir,cost})}
    }
   }
@@ -290,7 +497,7 @@ function routePointsGraph(w,a,b,p,q){
    while(v>=0){reversed.push(vertices[v]);const back=prev[v][dir];if(!back)break;[v,dir]=back}
    const path=reversed.reverse(),simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))){routeCache.set(w.id,simplified);return simplified}
+   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))&&Number.isFinite(routeCandidateWireCost(simplified,w))){routeCache.set(w.id,simplified);return simplified}
   }
  }
  routeCache.set(w.id,[]);return [];
@@ -298,8 +505,159 @@ function routePointsGraph(w,a,b,p,q){
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
-function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
-for(const n of nodes){const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`, 'data-node':n.id});const box=make('rect',{x:0,y:0,width:s.w,height:s.h,rx:12,class:'nodebox'});if(selected?.kind==='node'&&selected.id===n.id)box.setAttribute('stroke','var(--off)');g.append(box);g.append(make('rect',{x:0,y:0,width:s.w,height:25,rx:10,class:'nodehead'}));g.append(make('rect',{x:0,y:15,width:s.w,height:10,fill:'var(--site-secondary)'}));g.append(make('text',{x:12,y:17,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));g.append(make('text',{x:s.w/2,y:48,'text-anchor':'middle',class:'nodetext'},n.name));g.append(make('text',{x:s.w/2,y:64,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+n.value));
+function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();
+// Negotiated-congestion routing: rip up every net each iteration, then reroute
+// in alternating orders. Congestion history survives rip-up and raises the cost
+// of repeatedly used crossing/overlap locations (Pathfinder-style history cost).
+const resetRoutedWireIndex=()=>{
+ routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();
+ routedHorizontalByY=new Map();routedVerticalByX=new Map();
+ routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;
+};
+const routeOrder=[...wires];
+let finalRoutes=new Map();
+routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
+// Pathfinder-style negotiation uses explicit per-net conflict occupancy. A
+// resource is considered congested when two distinct nets occupy crossing or
+// overlapping geometry; conflict scores decide which nets are ripped up first.
+function routedWireConflictScores(){
+ const scores=new Map(),seen=new Set();
+ for(const bucket of routedSegmentBins.values())for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
+  const a=bucket[i],b=bucket[j];
+  if(a.indexId===b.indexId||a.wire===b.wire)continue;
+  const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
+  if(seen.has(pair))continue;seen.add(pair);
+  const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let conflict=false;
+  if(ah!==bh){
+   const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;
+   conflict=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y);
+  }else if(ah&&a.a.y===b.a.y){
+   conflict=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+  }else if(!ah&&a.a.x===b.a.x){
+   conflict=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+  }
+  if(conflict){scores.set(a.wire,(scores.get(a.wire)||0)+1);scores.set(b.wire,(scores.get(b.wire)||0)+1)}
+ }
+ return scores;
+}
+const maxNegotiatedPasses=12;
+let finalConflictCount=Infinity,negotiatedPasses=0;
+let bestMissingRoutes=Infinity,bestConflictCount=Infinity,stalePasses=0;
+// Keep per-pass measurements so the next tuning decision is based on the
+// actual convergence curve, not just the final geometry count.
+const routingConflictTrajectory=[];
+for(let pass=0;pass<maxNegotiatedPasses;pass++){
+ negotiatedPasses=pass+1;
+ let reroutedThisPass=0;
+ if(pass===0){
+  resetRoutedWireIndex();routeCache=new Map();
+  for(const w of routeOrder){const points=routePoints(w);routeCache.set(w.id,points);rememberRoutedWire(w,points)}
+ }else{
+  // Preserve the previous complete solution, then rip up the most congested
+  // nets one at a time. Rebuilding occupancy after each rip-up ensures the
+  // selected net is not charged for colliding with its own old geometry.
+  const scores=routedWireConflictScores();
+  // Rip up the most-conflicted nets first. During this pass, crossings and
+  // overlaps with retained nets are hard constraints, not merely expensive
+  // choices. This is the key negotiation step: a replacement route is accepted
+  // only if it can avoid every retained route.
+  const rerouteIds=[...scores.entries()].sort((a,b)=>b[1]-a[1]).map(entry=>entry[0]);
+  reroutedThisPass=rerouteIds.length;
+  routeRejectConflicts=true;
+  for(const id of rerouteIds){
+   const w=routeOrder.find(item=>item.id===id);if(!w)continue;
+   const retained=routedSegments.filter(segment=>segment.wire!==id);
+   const savedRoutes=new Map(routeCache);
+   const previous=savedRoutes.get(id)||[];
+   resetRoutedWireIndex();
+   routeCache=savedRoutes;
+   for(const segment of retained)indexRoutedSegment({...segment,indexId:undefined});
+   routeCache.delete(id);
+   const points=routePoints(w);
+   if(points.length>=2){
+    routeCache.set(id,points);
+    rememberRoutedWire(w,points);
+   }else{
+    // Never sacrifice an existing valid connection because this iteration
+    // could not find a conflict-free replacement. Restore the previous route
+    // and keep it in the occupancy index for subsequent reroutes.
+    routeCache.set(id,previous);
+    rememberRoutedWire(w,previous);
+   }
+  }
+  routeRejectConflicts=false;
+ }
+ routeRejectConflicts=false;
+ const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
+ finalConflictCount=countRoutedConflicts();
+ routingConflictTrajectory.push({pass:negotiatedPasses,missingRoutes,conflicts:finalConflictCount,rerouted:pass===0?routeOrder.length:reroutedThisPass});
+ if(missingRoutes<bestMissingRoutes||(missingRoutes===bestMissingRoutes&&finalConflictCount<bestConflictCount)){
+  bestMissingRoutes=missingRoutes;bestConflictCount=finalConflictCount;
+  finalRoutes=new Map(routeCache);stalePasses=0;
+ }else stalePasses++;
+ if(bestMissingRoutes===0&&bestConflictCount===0)break;
+ if(stalePasses>=4)break;
+ // Historical congestion persists across iterations, so repeatedly contested
+ // crossing/overlap resources become progressively more expensive.
+ recordCongestionHistory();
+}
+routeRejectConflicts=false;
+// Rebuild the segment index for the best snapshot; validation must inspect the
+// exact routes that will be rendered, not the discarded final iteration.
+resetRoutedWireIndex();routeCache=new Map(finalRoutes);
+for(const w of routeOrder)rememberRoutedWire(w,routeCache.get(w.id)||[]);
+// Final independent validation of the exact routes that will be rendered.
+const finalValidation=countRoutedConflicts();
+svg.dataset.routingConflicts=String(finalValidation);
+svg.dataset.routingPasses=String(negotiatedPasses);
+svg.dataset.routingConflictTrajectory=JSON.stringify(routingConflictTrajectory);
+svg.dataset.routingValidated=finalValidation===0?'true':'false';
+for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+for(const n of nodes){
+ const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`,'data-node':n.id});
+ const selectedNode=selected?.kind==='node'&&selected.id===n.id;
+ if(selectedNode)g.setAttribute('data-selected','true');
+ // Invisible geometry is retained for selection, drag bounds and pin-label code.
+ g.append(make('rect',{x:0,y:0,width:s.w,height:s.h,rx:4,class:'nodebox',fill:'transparent',stroke:'transparent'}));
+ const cy=s.h/2,top=13,bottom=s.h-10,left=18,right=s.w-18;
+ const line=(x1,y1,x2,y2,attrs={})=>g.append(make('line',{x1,y1,x2,y2,stroke:'var(--site-primary)','stroke-width':2.5,'stroke-linecap':'round',...attrs}));
+ const path=(d,attrs={})=>g.append(make('path',{d,fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5,'stroke-linejoin':'round',...attrs}));
+ const bubble=(x,y)=>g.append(make('circle',{cx:x,cy:y,r:5,fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));
+ const isInv=['NAND','NOR','XNOR','NOT'].includes(n.type);
+ if(n.type==='AND'||n.type==='NAND'){
+  const face=right-9,rad=(bottom-top)/2;
+  path(`M ${left} ${top} L ${face-rad} ${top} A ${rad} ${rad} 0 0 1 ${face-rad} ${bottom} L ${left} ${bottom} Z`);
+  line(0,cy,left,cy);line(face+(isInv?10:0),cy,s.w,cy);if(isInv)bubble(face+5,cy);
+ }else if(['OR','NOR','XOR','XNOR'].includes(n.type)){
+  const face=right-9,extra=n.type==='XOR'||n.type==='XNOR';
+  path(`M ${left} ${top} Q ${left+18} ${cy} ${left} ${bottom} Q ${left+34} ${bottom-1} ${face-18} ${cy} Q ${left+34} ${top+1} ${left} ${top} Z`);
+  if(extra)path(`M ${left-7} ${top} Q ${left+11} ${cy} ${left-7} ${bottom}`,{fill:'none'});
+  line(0,cy,left,cy);line(face+(isInv?10:0),cy,s.w,cy);if(isInv)bubble(face+5,cy);
+ }else if(n.type==='NOT'){
+  const tip=right-10;
+  path(`M ${left} ${top} L ${tip} ${cy} L ${left} ${bottom} Z`);
+  line(0,cy,left,cy);bubble(tip+6,cy);line(tip+11,cy,s.w,cy);
+ }else if(n.type==='DFF'||n.type==='LATCH'){
+  g.append(make('rect',{x:left,y:top,width:right-left,height:bottom-top,rx:1,fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));
+  line(0,cy,left,cy);line(right,cy,s.w,cy);
+  if(n.type==='DFF')path(`M ${left} ${cy+12} l 7 5 -7 5`,{fill:'none'});
+  g.append(make('text',{x:left+8,y:cy-8,class:'nodemeta'},'D'));
+  g.append(make('text',{x:left+8,y:cy+19,class:'nodemeta'},n.type==='DFF'?'CLK':'EN'));
+  g.append(make('text',{x:right-7,y:cy+4,'text-anchor':'end',class:'nodemeta'},'Q'));
+ }else if(n.type==='INPUT'){
+  path(`M 12 ${cy-17} L ${right} ${cy-17} L ${right} ${cy+17} L 12 ${cy+17} Z`);line(0,cy,12,cy);
+ }else if(n.type==='OUTPUT'){
+  path(`M 12 ${cy-17} L ${right-13} ${cy-17} L ${right} ${cy} L ${right-13} ${cy+17} L 12 ${cy+17} Z`);line(right,cy,s.w,cy);
+ }else if(n.type==='VDD'){
+  line(s.w/2,cy-17,s.w/2,cy-8);path(`M ${s.w/2} ${cy-29} l -12 15 h 24 Z`);line(s.w/2,cy+10,s.w/2,cy+17,{stroke:'var(--on)'});
+ }else if(n.type==='GND'){
+  line(s.w/2,cy-17,s.w/2,cy-8);line(s.w/2-14,cy-8,s.w/2+14,cy-8);line(s.w/2-9,cy-2,s.w/2+9,cy-2);line(s.w/2-4,cy+4,s.w/2+4,cy+4);
+ }
+ const labelY=['INPUT','OUTPUT','VDD','GND'].includes(n.type)?cy+4:cy+5;
+ g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
+ if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-4,'text-anchor':'middle',class:'nodemeta'},String(n.value)));
+ g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));
+
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
 updateTables()}
@@ -317,10 +675,10 @@ let multi=new Set(),box=null,start=null,moving=null,suppressClick=false,marqueeS
 const style=document.createElement('style');style.textContent='.selection-marquee{fill:rgba(40,91,206,.14);stroke:#285bce;stroke-width:2;stroke-dasharray:7 4;pointer-events:none}';document.head.append(style);
 const point=e=>{const r=svg.getBoundingClientRect();return {x:(e.clientX-r.left)*900/r.width,y:(e.clientY-r.top)*390/r.height}};
 window.fpgaMultiSelection=multi;
-const drawSelection=()=>{svg.querySelectorAll('g[data-node] rect.nodebox').forEach(r=>{const id=Number(r.parentNode.getAttribute('data-node')),active=multi.has(id);r.setAttribute('stroke',active?'var(--off)':'var(--site-primary)');r.setAttribute('stroke-width',active?'3':'2');r.style.stroke=active?'var(--off)':'var(--site-primary)';r.style.strokeWidth=active?'3px':'2px'})};
+const drawSelection=()=>{svg.querySelectorAll('g[data-node]').forEach(g=>{const id=Number(g.getAttribute('data-node')),active=multi.has(id);g.setAttribute('data-selected',active?'true':'false');const r=g.querySelector('rect.nodebox');if(r){r.setAttribute('stroke','transparent');r.setAttribute('stroke-width','2');r.style.stroke='transparent';r.style.strokeWidth='2px'}})};
 new MutationObserver(()=>drawSelection()).observe(svg,{childList:true,subtree:true});
 const paintBox=()=>{svg.querySelector('.selection-marquee')?.remove();if(!box)return;const r=document.createElementNS('http://www.w3.org/2000/svg','rect');r.setAttribute('class','selection-marquee');svg.appendChild(r);r.setAttribute('x',Math.min(box.x,start.x));r.setAttribute('y',Math.min(box.y,start.y));r.setAttribute('width',Math.abs(box.x-start.x));r.setAttribute('height',Math.abs(box.y-start.y))};
-svg.addEventListener('pointerdown',e=>{const g=e.target.closest('g[data-node]');if(g&&multi.size>1&&multi.has(Number(g.getAttribute('data-node')))){const p=point(e);moving={ids:[...multi],lastX:p.x,lastY:p.y};pressedNode=null;pressPoint=null;suppressClick=true;e.stopPropagation();e.stopImmediatePropagation();return}if(g&&(e.ctrlKey||e.metaKey)){const id=Number(g.getAttribute('data-node'));e.preventDefault();e.stopPropagation();if(multi.has(id))multi.delete(id);else multi.add(id);drawSelection();msg.textContent=`Selected ${multi.size} block(s). Ctrl-click toggles blocks in the selection.`;return}if(g){pressedNode=g;pressPoint={x:e.clientX,y:e.clientY};const r=g.querySelector('rect.nodebox');if(r){r.setAttribute('stroke','var(--off)');r.setAttribute('stroke-width','3')}return}if(e.target===svg){pressedNode=null;pressPoint=null;const p=point(e);box={x:p.x,y:p.y};start=p;svg.setPointerCapture(e.pointerId)}},true);
+svg.addEventListener('pointerdown',e=>{const g=e.target.closest('g[data-node]');if(g&&multi.size>1&&multi.has(Number(g.getAttribute('data-node')))){const p=point(e);moving={ids:[...multi],lastX:p.x,lastY:p.y};pressedNode=null;pressPoint=null;suppressClick=true;e.stopPropagation();e.stopImmediatePropagation();return}if(g&&(e.ctrlKey||e.metaKey)){const id=Number(g.getAttribute('data-node'));e.preventDefault();e.stopPropagation();if(multi.has(id))multi.delete(id);else multi.add(id);drawSelection();msg.textContent=`Selected ${multi.size} block(s). Ctrl-click toggles blocks in the selection.`;return}if(g){pressedNode=g;pressPoint={x:e.clientX,y:e.clientY};const r=g.querySelector('rect.nodebox');if(r){r.setAttribute('stroke','transparent');r.setAttribute('stroke-width','2');r.style.stroke='transparent';g.setAttribute('data-selected','true')}return}if(e.target===svg){pressedNode=null;pressPoint=null;const p=point(e);box={x:p.x,y:p.y};start=p;svg.setPointerCapture(e.pointerId)}},true);
 svg.addEventListener('pointermove',e=>{if(moving){const p=point(e),dx=p.x-moving.lastX,dy=p.y-moving.lastY;moving.lastX=p.x;moving.lastY=p.y;if(dx||dy)svg.dispatchEvent(new CustomEvent('multi-drag',{detail:{ids:moving.ids,dx,dy}}));e.preventDefault();e.stopImmediatePropagation();return}if(box&&start){box=point(e);paintBox();e.preventDefault();e.stopImmediatePropagation()}},true);
 svg.addEventListener('pointerup',e=>{if(moving){moving=null;marqueeStarted=false;suppressClick=true;e.preventDefault();e.stopImmediatePropagation();return}if(pressedNode&&pressPoint){const moved=Math.abs(e.clientX-pressPoint.x)+Math.abs(e.clientY-pressPoint.y)>4;const g=pressedNode;pressedNode=null;pressPoint=null;if(!moved){queueMicrotask(()=>{if(g.isConnected)g.dispatchEvent(new MouseEvent('click',{bubbles:true,detail:1}))})}}if(box&&start){const x1=Math.min(start.x,box.x),x2=Math.max(start.x,box.x),y1=Math.min(start.y,box.y),y2=Math.max(start.y,box.y);multi.clear();svg.querySelectorAll('g[data-node]').forEach(g=>{const m=/translate\(([-\d.]+) ([-\d.]+)\)/.exec(g.getAttribute('transform'));const id=Number(g.getAttribute('data-node')),nbox=g.querySelector('rect.nodebox'),w=+nbox.getAttribute('width'),h=+nbox.getAttribute('height'),x=+m[1],y=+m[2];if(x+w>=x1&&x<=x2&&y+h>=y1&&y<=y2)multi.add(id)});box=null;start=null;svg.querySelector('.selection-marquee')?.remove();drawSelection();msg.textContent=`Selected ${multi.size} block(s). Use Delete selected to remove them.`;e.stopImmediatePropagation()}},true);
 svg.addEventListener('pointerdown',e=>{if(e.target===svg)marqueeStarted=true},true);
@@ -385,7 +743,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
 (()=>{const svg=document.getElementById('editorStage');const mark=(g,id)=>{window.fpgaSelected={kind:'node',id};for(const other of svg.querySelectorAll('g[data-node] rect.nodebox')){const active=other.parentNode===g||window.fpgaMultiSelection?.has(Number(other.parentNode.getAttribute('data-node')));other.setAttribute('stroke',active?'var(--off)':'var(--site-primary)');other.setAttribute('stroke-width',active?'3':'2');other.style.stroke=active?'var(--off)':'var(--site-primary)';other.style.strokeWidth=active?'3px':'2px'}};svg.addEventListener('click',e=>{if(e.target.closest('.nodepin'))return;const g=e.target.closest('g[data-node]');if(!g||e.ctrlKey||e.metaKey)return;const id=Number(g.getAttribute('data-node')),n=window.fpgaNodes?.find(x=>x.id===id);if(!n)return;if(n.type==='INPUT'&&e.detail===2)return;e.preventDefault();e.stopImmediatePropagation();mark(g,id)},true)})();
 </script><script>
 // Keep the single-selection border visible after the multi-select observer styles nodes.
-(()=>{const svg=document.getElementById('editorStage');const paint=()=>{for(const g of svg.querySelectorAll('g[data-node]')){const id=Number(g.getAttribute('data-node')),r=g.querySelector('rect.nodebox');if(!r)continue;const single=window.fpgaSelected?.kind==='node'&&window.fpgaSelected.id===id,multi=window.fpgaMultiSelection?.has(id);if(single||multi){r.setAttribute('stroke','var(--off)');r.setAttribute('stroke-width','3');r.style.stroke='var(--off)';r.style.strokeWidth='3px'}else{r.setAttribute('stroke','var(--site-primary)');r.setAttribute('stroke-width','2');r.style.stroke='var(--site-primary)';r.style.strokeWidth='2px'}}};new MutationObserver(paint).observe(svg,{childList:true,subtree:true});svg.addEventListener('click',()=>requestAnimationFrame(paint),true);paint()})();
+(()=>{const svg=document.getElementById('editorStage');const paint=()=>{for(const g of svg.querySelectorAll('g[data-node]')){const id=Number(g.getAttribute('data-node')),r=g.querySelector('rect.nodebox');if(!r)continue;const single=window.fpgaSelected?.kind==='node'&&window.fpgaSelected.id===id,multi=window.fpgaMultiSelection?.has(id),active=!!(single||multi);g.setAttribute('data-selected',active?'true':'false');r.setAttribute('stroke','transparent');r.setAttribute('stroke-width','2');r.style.stroke='transparent';r.style.strokeWidth='2px'}};new MutationObserver(paint).observe(svg,{childList:true,subtree:true});svg.addEventListener('click',()=>requestAnimationFrame(paint),true);paint()})();
 </script><script>
 // Export/import the editor's structural Verilog subset.
 (()=>{
@@ -479,9 +837,11 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     for(const w of wires){if(neighbors.has(w.from)&&neighbors.has(w.to)){neighbors.get(w.from).push(w.to);neighbors.get(w.to).push(w.from)}}
     // Barycentric sweeps order connected nodes similarly across adjacent levels to reduce crossings.
     for(let pass=0;pass<4;pass++){const keys=pass%2===0?layerKeys:layerKeys.slice().reverse();for(const l of keys){const ids=layers.get(l);if(ids.length<2)continue;const score=nid=>{const ns=neighbors.get(nid).filter(other=>level.get(other)!==l);return ns.length?ns.reduce((sum,other)=>sum+(order.get(other)??0),0)/ns.length:order.get(nid)};ids.sort((a,b)=>{const d=score(a)-score(b);return Math.abs(d)>1e-6?d:a-b});ids.forEach((nid,i)=>order.set(nid,i))}}
-    const xGap=210,yGap=24,topPad=28,leftPad=40;
+    // Approach 1: give the router more physical room by spreading auto-placed blocks.
+    // Wire-clearance and routing-lane changes are deliberately kept separate for comparison.
+    const xGap=260,yGap=40,topPad=36,leftPad=40;
     for(const l of layerKeys){let y=topPad;for(const nid of layers.get(l)){const n=nodeById.get(nid);n.x=leftPad+l*xGap;n.y=y;const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap}}
-    window.fpgaLoadCircuit(next,wires,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
+    window.fpgaLoadCircuit(next,wires,id);const placementResult=window.fpgaEnablePlacementAnnealing===true?window.fpgaOptimizePlacement?.():null;area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`+(placementResult&&placementResult.attempts? ` Simulated annealing: ${placementResult.attempts} moves, proxy score ${placementResult.proxyBefore} to ${placementResult.proxyAfter}; final geometry has ${placementResult.conflictsAfter} crossings and ${placementResult.missingAfter} missing routes.`:'');
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
  },true);
 })();
@@ -496,6 +856,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  const reset=document.getElementById('editorZoomReset');
  const label=document.getElementById('editorZoomLevel');
  const fit=document.getElementById('editorFitView');
+ const msg=document.getElementById('editorMessage');
  if(!viewport||!svg||!out||!inc||!reset||!label||!fit)return;
  window.fpgaZoom=1;
  const clamp=z=>Math.max(0.25,Math.min(2.5,Math.round(z*100)/100));
@@ -535,6 +896,15 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   msg.textContent='Fitted the complete circuit into the workspace.';
  }
  fit.addEventListener('click',fitToView);
+ window.addEventListener('keydown',e=>{
+  if(e.key.toLowerCase()!=='f'||e.ctrlKey||e.metaKey||e.altKey)return;
+  const target=e.target;
+  if(target instanceof HTMLElement&&(target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))return;
+  // Handle the shortcut in capture phase before editor-level keyboard handlers.
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  fitToView();
+ },true);
  let spaceHeld=false,pan=null;
  window.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||'')){spaceHeld=true;viewport.style.cursor='grab'}});
  window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceHeld=false;if(!pan)viewport.style.cursor=''}});

@@ -528,3 +528,38 @@ test('holding Space and dragging pans the circuit workspace', async ({ page }) =
   expect(after.left).toBeGreaterThan(before.left);
   expect(after.top).toBeGreaterThan(before.top);
 });
+
+
+test('F and f fit the complete circuit to the workspace', async ({ page }) => {
+  const viewport = page.locator('#editorViewport');
+  const svg = page.locator('#editorStage');
+  await page.locator('#editorZoomIn').click();
+  await page.keyboard.press('f');
+  await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
+  const zoomByLowerF = await page.locator('#editorZoomLevel').textContent();
+
+  await page.locator('#editorZoomIn').click();
+  await page.locator('#editorFitView').click();
+  const zoomByButton = await page.locator('#editorZoomLevel').textContent();
+  expect(zoomByLowerF).toBe(zoomByButton);
+
+  await page.locator('#editorZoomIn').click();
+  await page.keyboard.press('Shift+F');
+  await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
+  const zoomByUpperF = await page.locator('#editorZoomLevel').textContent();
+  expect(zoomByUpperF).toBe(zoomByButton);
+
+  await page.locator('#instanceName').focus();
+  await page.locator('#instanceName').fill('x');
+  await page.keyboard.press('f');
+  await expect(page.locator('#instanceName')).toHaveValue('xf');
+  await expect(viewport).toBeVisible();
+  await expect(svg).toBeVisible();
+});
+
+test('logic gates use schematic symbols instead of visible rectangular bodies', async ({ page }) => {
+  const gate = page.locator('#editorStage g[data-node="3"]');
+  await expect(gate.locator('path')).toHaveCount(1);
+  await expect(gate.locator('rect.nodebox')).toHaveAttribute('stroke', 'transparent');
+  await expect(gate.locator('path')).toHaveAttribute('stroke', 'var(--site-primary)');
+});

@@ -24,5 +24,7 @@ jobs:
         run: npm install
       - name: Install Playwright Chromium
         run: npx playwright install chromium
-      - name: Run tests
+      - name: Run focused Pathfinder diagnostics
+        run: npx playwright test tests/pathfinder.spec.js --reporter=list
+      - name: Run full test suite
         run: npm test
