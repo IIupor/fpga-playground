@@ -259,15 +259,15 @@ function routePointsFast(w,a,b,p,q){
   let changed=false;
   for(let i=1;i<path.length;i++){
    const u=path[i-1],v=path[i],skipFrom=i===1?a.id:null,skipTo=i===path.length-1?b.id:null;
-   const hit=routeFirstHit(u,v,skipFrom,skipTo,w,true);
+   const hit=routeFirstHit(u,v,skipFrom,skipTo,w);
    if(!hit)continue;
    let candidates;
    if(u.x===v.x){
     const lanes=[Math.floor(hit.l/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.r/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null,w,true)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y},null,null,w,true)?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo,w,true)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
+    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null,w)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y},null,null,w)?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo,w)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
    }else{
     const lanes=[Math.floor(hit.t/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.b/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null,w,true)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y},null,null,w,true)?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo,w,true)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
+    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null,w)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y},null,null,w)?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo,w)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
    }
    candidates.sort((x,y)=>x.score-y.score);
    path.splice(i,0,...candidates[0].points);changed=true;break;
@@ -276,7 +276,7 @@ function routePointsFast(w,a,b,p,q){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
    let valid=true;
-   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w,true)){valid=false;break}
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w)){valid=false;break}
    if(valid)return simplified;
    break;
   }
@@ -299,7 +299,7 @@ function routePointsFast(w,a,b,p,q){
   const candidate=simplify([p,{x:sourceX,y:p.y},{x:sourceX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q]);
   let clear=true;
   for(let i=1;i<candidate.length;i++){
-   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w,true)){clear=false;break}
+   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){clear=false;break}
   }
   if(clear)return candidate;
  }
