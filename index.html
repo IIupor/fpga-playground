@@ -454,6 +454,9 @@ function routedWireConflictScores(){
 const maxNegotiatedPasses=12;
 let finalConflictCount=Infinity,negotiatedPasses=0;
 let bestMissingRoutes=Infinity,bestConflictCount=Infinity,stalePasses=0;
+// Keep per-pass measurements so the next tuning decision is based on the
+// actual convergence curve, not just the final geometry count.
+const routingConflictTrajectory=[];
 for(let pass=0;pass<maxNegotiatedPasses;pass++){
  negotiatedPasses=pass+1;
  if(pass===0){
@@ -481,6 +484,7 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
  routeRejectConflicts=false;
  const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
  finalConflictCount=countRoutedConflicts();
+ routingConflictTrajectory.push({pass:negotiatedPasses,missingRoutes,conflicts:finalConflictCount,rerouted:pass===0?routeOrder.length:Math.min(48,Math.max(12,Math.ceil(routeOrder.length*0.06)))});
  if(missingRoutes<bestMissingRoutes||(missingRoutes===bestMissingRoutes&&finalConflictCount<bestConflictCount)){
   bestMissingRoutes=missingRoutes;bestConflictCount=finalConflictCount;
   finalRoutes=new Map(routeCache);stalePasses=0;
@@ -500,6 +504,7 @@ for(const w of routeOrder)rememberRoutedWire(w,routeCache.get(w.id)||[]);
 const finalValidation=countRoutedConflicts();
 svg.dataset.routingConflicts=String(finalValidation);
 svg.dataset.routingPasses=String(negotiatedPasses);
+svg.dataset.routingConflictTrajectory=JSON.stringify(routingConflictTrajectory);
 svg.dataset.routingValidated=finalValidation===0?'true':'false';
 for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
