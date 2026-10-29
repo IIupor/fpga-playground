@@ -106,7 +106,9 @@ for (const name of benchmarks) {
           }
         }
       }
-      return { nodeCount: nodes.length, wireCount: wires.length, missingGeometry, nonOrthogonal, blocked, crossings, overlaps, examples };
+      let routingConflictTrajectory = [];
+      try { routingConflictTrajectory = JSON.parse(svg.dataset.routingConflictTrajectory || '[]'); } catch {}
+      return { nodeCount: nodes.length, wireCount: wires.length, missingGeometry, nonOrthogonal, blocked, crossings, overlaps, examples, routingConflictTrajectory };
     });
 
     console.log(`WIRE-GEOMETRY-DIAGNOSTIC ${name}: ${JSON.stringify(result)}`);
