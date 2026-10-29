@@ -468,11 +468,13 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
   // nets one at a time. Rebuilding occupancy after each rip-up ensures the
   // selected net is not charged for colliding with its own old geometry.
   const scores=routedWireConflictScores();
-  // Experimental Pathfinder pass: reroute every net currently involved in
-  // congestion, not just the top 6%. This tests whether the small rip-up set
-  // is trapping the solution in a local minimum.
+  // Rip up the most-conflicted nets first. During this pass, crossings and
+  // overlaps with retained nets are hard constraints, not merely expensive
+  // choices. This is the key negotiation step: a replacement route is accepted
+  // only if it can avoid every retained route.
   const rerouteIds=[...scores.entries()].sort((a,b)=>b[1]-a[1]).map(entry=>entry[0]);
   reroutedThisPass=rerouteIds.length;
+  routeRejectConflicts=true;
   for(const id of rerouteIds){
    const w=routeOrder.find(item=>item.id===id);if(!w)continue;
    const retained=routedSegments.filter(segment=>segment.wire!==id);
@@ -481,9 +483,20 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
    routeCache=savedRoutes;
    for(const segment of retained)indexRoutedSegment({...segment,indexId:undefined});
    routeCache.delete(id);
-   const points=routePoints(w);routeCache.set(id,points);
-   rememberRoutedWire(w,points);
+   const points=routePoints(w);
+   if(points.length>=2){
+    routeCache.set(id,points);
+    rememberRoutedWire(w,points);
+   }else{
+    // Never sacrifice an existing valid connection because this iteration
+    // could not find a conflict-free replacement. Restore the previous route
+    // and keep it in the occupancy index for subsequent reroutes.
+    const previous=savedRoutes.get(id)||[];
+    routeCache.set(id,previous);
+    rememberRoutedWire(w,previous);
+   }
   }
+  routeRejectConflicts=false;
  }
  routeRejectConflicts=false;
  const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
