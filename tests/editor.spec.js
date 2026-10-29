@@ -531,10 +531,24 @@ test('holding Space and dragging pans the circuit workspace', async ({ page }) =
 
 
 test('F and f fit the complete circuit to the workspace', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__fitDebug = [];
+    window.addEventListener('keydown', e => {
+      if (e.key.toLowerCase() !== 'f') return;
+      window.__fitDebug.push({ phase: 'capture', key: e.key, target: e.target?.id || e.target?.tagName, active: document.activeElement?.id || document.activeElement?.tagName, prevented: e.defaultPrevented, zoom: window.fpgaZoom, message: document.querySelector('#editorMessage')?.textContent });
+      queueMicrotask(() => window.__fitDebug.push({ phase: 'microtask', prevented: e.defaultPrevented, zoom: window.fpgaZoom, message: document.querySelector('#editorMessage')?.textContent }));
+    }, true);
+    document.addEventListener('DOMContentLoaded', () => {
+      const msg = document.querySelector('#editorMessage');
+      if (msg) new MutationObserver(() => window.__fitDebug.push({ phase: 'message-change', message: msg.textContent, zoom: window.fpgaZoom })).observe(msg, { childList: true, characterData: true, subtree: true });
+    });
+  });
+  await page.reload();
   const viewport = page.locator('#editorViewport');
   const svg = page.locator('#editorStage');
   await page.locator('#editorZoomIn').click();
   await page.keyboard.press('f');
+  console.log('FIT DEBUG after lower f:', JSON.stringify(await page.evaluate(() => ({ events: window.__fitDebug, active: document.activeElement?.id || document.activeElement?.tagName, zoom: window.fpgaZoom, zoomLabel: document.querySelector('#editorZoomLevel')?.textContent, message: document.querySelector('#editorMessage')?.textContent }))));
   await expect(page.locator('#editorMessage')).toContainText('Fitted the complete circuit');
   const zoomByLowerF = await page.locator('#editorZoomLevel').textContent();
 
