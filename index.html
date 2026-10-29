@@ -341,7 +341,8 @@ const bestRoutes=new Map();
 for(let pass=0;pass<4;pass++){
  resetRoutedWireIndex();
  const order=pass===1||pass===3?[...routeOrder].reverse():routeOrder;
- routeRejectConflicts=pass===3;
+ // Hard rejection can strand nets; use congestion penalties on every pass.
+ routeRejectConflicts=false;
  for(const w of order){
   let points=routePoints(w);
   if(points.length)bestRoutes.set(w.id,points);
