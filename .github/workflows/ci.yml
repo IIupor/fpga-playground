@@ -29,5 +29,5 @@ jobs:
         if: ${{ github.ref_name == 'experiment/restore-simple-routing' }}
         run: npx playwright test tests/benchmark-all.spec.js -g "c880: browser import/export/import preserves circuit structure" --reporter=list
       - name: Run full browser test suite
-        if: github.ref_name != 'experiment/restore-simple-routing'
+        if: ${{ github.ref_name != 'experiment/restore-simple-routing' }}
         run: npm test
