@@ -410,7 +410,9 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
  negotiatedPasses=pass+1;
  resetRoutedWireIndex();routeCache=new Map();
  const order=pass%2?[...routeOrder].reverse():routeOrder;
- routeRejectConflicts=false;
+ // The final pass is a hard-feasibility pass: candidates with any crossing
+ // or collinear overlap are rejected instead of merely receiving a penalty.
+ routeRejectConflicts=pass===maxNegotiatedPasses-1;
  for(const w of order){
   const points=routePoints(w);
   routeCache.set(w.id,points);
