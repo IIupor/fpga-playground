@@ -234,13 +234,30 @@ function routePointsFast(w,a,b,p,q){
  // channels first to keep the search bounded on large benchmark circuits.
  const obstacleLanes=routeRects.flatMap(r=>[r.t-ROUTE_CELL-1,r.b+ROUTE_CELL+1])
   .filter(y=>y>Math.min(p.y,q.y)-ROUTE_CELL*4&&y<Math.max(p.y,q.y)+ROUTE_CELL*4);
+ // Existing wires are routing resources too: create escape channels on
+ // both sides of occupied horizontal segments and around vertical segment ends.
+ // This gives the negotiated router actual alternatives near current congestion,
+ // rather than repeatedly choosing among the same fixed midpoint corridors.
+ const wireLanes=[];
+ const seenSegments=new Set();
+ for(const bucket of routedSegmentBins.values())for(const seg of bucket){
+  if(seg.wire===w.id||seenSegments.has(seg.indexId))continue;
+  seenSegments.add(seg.indexId);
+  const u=seg.a,v=seg.b;
+  if(u.y===v.y){
+   if(u.y>Math.min(p.y,q.y)-ROUTE_CELL*8&&u.y<Math.max(p.y,q.y)+ROUTE_CELL*8)
+    wireLanes.push(u.y-ROUTE_CELL,u.y+ROUTE_CELL);
+  }else if(u.x===v.x&&u.x>Math.min(p.x,q.x)-ROUTE_CELL*3&&u.x<Math.max(p.x,q.x)+ROUTE_CELL*3){
+   wireLanes.push(Math.min(u.y,v.y)-ROUTE_CELL,Math.max(u.y,v.y)+ROUTE_CELL);
+  }
+ }
  const rowLanes=[p.y,q.y,b.y-9,b.y+targetSpec.h+9,topLane,bottomLane,
   ...Array.from({length:5},(_,i)=>Math.round(midY)+(i-2)*ROUTE_CELL),
-  ...obstacleLanes]
-  .filter((y,i,arr)=>arr.indexOf(y)===i)
+  ...obstacleLanes,...wireLanes]
+  .filter((y,i,arr)=>Number.isFinite(y)&&arr.indexOf(y)===i)
   .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY))
-  .filter((y,i)=>i<18);
- const targetLanes=Array.from({length:3},(_,i)=>targetLane-i*ROUTE_CELL);
+  .filter((y,i)=>i<36);
+ const targetLanes=Array.from({length:5},(_,i)=>targetLane-i*ROUTE_CELL);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
   for(let step=0;step<6;step++){
