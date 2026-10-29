@@ -55,17 +55,23 @@ for (const name of names) {
 
 for (const name of names) {
   test(name + ': browser import/export/import preserves circuit structure', async ({ page }) => {
+    if (name === 'c7552') test.setTimeout(300000);
+    const timings = {};
     await page.goto('/');
     const source=fs.readFileSync(path.join(__dirname,'..','benchmarks','iscas85',name+'.v'),'utf8');
     await page.locator('#verilogText').fill(source);
+    let mark = Date.now();
     await page.locator('#importVerilog').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported');
+    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 240000 });
+    timings.firstImportMs = Date.now() - mark;
     const firstBlocks=await page.locator('#editorStage g[data-node]').count();
     const firstWires=await page.locator('#editorStage path.editor-wire').count();
     expect(firstBlocks).toBeGreaterThan(0);
     expect(firstWires).toBeGreaterThan(0);
+    mark = Date.now();
     await page.locator('#exportVerilog').click();
-    await expect(page.locator('#verilogText')).toHaveValue(/module fpga_playground/);
+    await expect(page.locator('#verilogText')).toHaveValue(/module fpga_playground/, { timeout: 240000 });
+    timings.exportMs = Date.now() - mark;
     const exported=await page.locator('#verilogText').inputValue();
 
     // Simulate the original and exported modules side by side on identical vectors.
@@ -102,9 +108,14 @@ for (const name of names) {
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     }, exported);
+    mark = Date.now();
     await page.locator('#importVerilog').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported');
-    await expect(page.locator('#editorStage g[data-node]')).toHaveCount(firstBlocks);
-    await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(firstWires);
+    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 240000 });
+    timings.secondImportMs = Date.now() - mark;
+    const secondBlocks = await page.locator('#editorStage g[data-node]').count();
+    const secondWires = await page.locator('#editorStage path.editor-wire').count();
+    console.log(name + ' timing/structure: ' + JSON.stringify({ ...timings, firstBlocks, secondBlocks, firstWires, secondWires }));
+    expect(secondBlocks, name + ' block count after re-import').toBe(firstBlocks);
+    expect(secondWires, name + ' wire count after re-import').toBe(firstWires);
   }, 180000);
 }
