@@ -72,7 +72,7 @@ for (const name of benchmarks) {
     await loadBenchmark(page,name);
     const baseline=await diagnostics(page);
     const started=Date.now();
-    await page.locator('#routingMode').selectOption('mikami');
+    await page.locator('#routingMode').evaluate(el => { el.value = 'mikami'; el.dispatchEvent(new Event('change', { bubbles: true })); });
     await expect(page.locator('#routingStats')).toContainText('Mikami');
     await expect.poll(async()=> (await page.locator('#editorStage path.editor-wire').count()), {timeout:30000})
       .toBe(baseline.wireCount);
