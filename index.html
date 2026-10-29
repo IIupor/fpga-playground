@@ -101,18 +101,19 @@ window.fpgaOptimizePlacement=()=>{
  if(!movableNodes.length)return {attempts:0,before:0,after:0};
  const startScore=proxyScore();let current=startScore,bestScore=startScore;
  let best=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));
+ let seed=(nodes.length*7919+wires.length*104729)>>>0;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
  const steps=wires.length>250?36:100,grid=20;
  const initialTemp=Math.max(1000,current.score*0.025),finalTemp=Math.max(1,current.score*0.0001);
  let attempts=0,accepted=0;
  for(let i=0;i<steps;i++){
-  const n=movableNodes[Math.floor(Math.random()*movableNodes.length)],old={x:n.x,y:n.y};
+  const n=movableNodes[Math.floor(random()*movableNodes.length)],old={x:n.x,y:n.y};
   const dirs=[[grid,0],[-grid,0],[0,grid],[0,-grid],[grid,grid],[grid,-grid],[-grid,grid],[-grid,-grid]];
-  const d=dirs[Math.floor(Math.random()*dirs.length)],nx=old.x+d[0],ny=old.y+d[1];
+  const d=dirs[Math.floor(random()*dirs.length)],nx=old.x+d[0],ny=old.y+d[1];
   if(!legal(n,nx,ny))continue;
   n.x=nx;n.y=ny;const trial=proxyScore();attempts++;
   const t=initialTemp*Math.pow(finalTemp/initialTemp,i/Math.max(1,steps-1));
   const delta=trial.score-current.score;
-  if(delta<=0||Math.random()<Math.exp(-delta/t)){
+  if(delta<=0||random()<Math.exp(-delta/t)){
    current=trial;accepted++;
    if(trial.score<bestScore.score){bestScore=trial;best=new Map(nodes.map(x=>[x.id,{x:x.x,y:x.y}]))}
   }else{n.x=old.x;n.y=old.y}
