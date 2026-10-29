@@ -245,7 +245,10 @@ function routePoints(w){
  const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
- const result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ let result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ // The bounded fast router can fail in dense obstacle clusters. Retry with
+ // the visibility-graph router instead of rendering a wire with an empty path.
+ if(!result.length&&nodes.length>100)result=routePointsGraph(w,a,b,p,q);
  routeCache.set(w.id,result);return result;
 }
 function routePointsGraph(w,a,b,p,q){
