@@ -38,9 +38,9 @@ jobs:
       - name: Run focused Pathfinder diagnostics
         if: ${{ github.ref_name != 'experiment/restore-simple-routing' }}
         run: npx playwright test tests/pathfinder.spec.js --reporter=list
-      - name: Measure c7552 browser import/export/import timings
+      - name: Run all ISCAS85 browser import/export/import tests
         if: ${{ github.ref_name == 'experiment/restore-simple-routing' }}
-        run: 'npx playwright test tests/benchmark-all.spec.js -g "c7552: browser import/export/import preserves circuit structure" --reporter=list'
+        run: npx playwright test tests/benchmark-all.spec.js --reporter=list
       - name: Run full browser test suite
         if: ${{ github.ref_name != 'experiment/restore-simple-routing' }}
         run: npm test
