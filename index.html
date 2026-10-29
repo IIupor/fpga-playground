@@ -144,7 +144,7 @@ function routeCandidateWireCost(points,wire){
  // Return Infinity rather than allowing the router to trade correctness for
  // a shorter path.
  for(let i=1;i<points.length;i++){
-  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);historyPenalty+=routeHistoryPenalty(a,b)*1800;
+  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);historyPenalty+=routeHistoryPenalty(a,b)*2400;
   const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
   const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
   const nearby=new Map();
@@ -166,7 +166,7 @@ function routeCandidateWireCost(points,wire){
    }
   }
  }
- return length+bends*8+conflicts*1200+historyPenalty;
+ return length+bends*8+conflicts*5000+historyPenalty;
 }
 function rememberRoutedWire(w,points){
  for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
@@ -229,14 +229,21 @@ function routePointsFast(w,a,b,p,q){
  const midY=(p.y+q.y)/2;
  const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
  const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ // Pathfinder-style negotiated congestion needs alternatives beyond a handful
+ // of midpoint corridors. Include obstacle-edge channels, then try the closest
+ // channels first to keep the search bounded on large benchmark circuits.
+ const obstacleLanes=routeRects.flatMap(r=>[r.t-ROUTE_CELL-1,r.b+ROUTE_CELL+1])
+  .filter(y=>y>Math.min(p.y,q.y)-ROUTE_CELL*4&&y<Math.max(p.y,q.y)+ROUTE_CELL*4);
  const rowLanes=[p.y,q.y,b.y-9,b.y+targetSpec.h+9,topLane,bottomLane,
-  ...Array.from({length:3},(_,i)=>Math.round(midY)+(i-1)*ROUTE_CELL)]
+  ...Array.from({length:5},(_,i)=>Math.round(midY)+(i-2)*ROUTE_CELL),
+  ...obstacleLanes]
   .filter((y,i,arr)=>arr.indexOf(y)===i)
-  .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY));
- const targetLanes=Array.from({length:2},(_,i)=>targetLane-i*ROUTE_CELL);
+  .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY))
+  .filter((y,i)=>i<18);
+ const targetLanes=Array.from({length:3},(_,i)=>targetLane-i*ROUTE_CELL);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
-  for(let step=0;step<4;step++){
+  for(let step=0;step<6;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
    for(const targetX of targetLanes){
    const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q];
