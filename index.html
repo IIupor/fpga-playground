@@ -76,13 +76,54 @@ function indexRoutedSegment(segment){
  const y1=Math.floor(Math.min(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN);
  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
 }
+let routeCongestionHistory=new Map(),routeHistoryByY=new Map(),routeHistoryByX=new Map();
+function routeHistoryPenalty(a,b){
+ let penalty=0,items;
+ if(a.y===b.y){
+  items=routeHistoryByY.get(a.y)||[];
+  for(const item of items)if(item.x>Math.min(a.x,b.x)&&item.x<Math.max(a.x,b.x))penalty+=item.cost;
+ }else if(a.x===b.x){
+  items=routeHistoryByX.get(a.x)||[];
+  for(const item of items)if(item.y>Math.min(a.y,b.y)&&item.y<Math.max(a.y,b.y))penalty+=item.cost;
+ }
+ return penalty;
+}
+function recordCongestionHistory(){
+ const seen=new Set();
+ for(const bucket of routedSegmentBins.values()){
+  for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
+   const a=bucket[i],b=bucket[j];
+   if(a.indexId===b.indexId||a.wire===b.wire||a.from===b.from||a.from===b.to||a.to===b.from||a.to===b.to)continue;
+   const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
+   if(seen.has(pair))continue;seen.add(pair);
+   const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;
+   let x=null,y=null,overlap=false;
+   if(ah!==bh){
+    const h=ah?a:b,v=ah?b:a;x=v.a.x;y=h.a.y;
+    if(!(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)))continue;
+   }else if(ah&&a.a.y===b.a.y){
+    const lo=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x)),hi=Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+    if(lo>=hi)continue;x=(lo+hi)/2;y=a.a.y;overlap=true;
+   }else if(!ah&&a.a.x===b.a.x){
+    const lo=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y)),hi=Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+    if(lo>=hi)continue;x=a.a.x;y=(lo+hi)/2;overlap=true;
+   }else continue;
+   const key=x+','+y,cost=(routeCongestionHistory.get(key)||0)+1;
+   routeCongestionHistory.set(key,cost);
+   if(!routeHistoryByY.has(y))routeHistoryByY.set(y,[]);
+   if(!routeHistoryByX.has(x))routeHistoryByX.set(x,[]);
+   const row=routeHistoryByY.get(y),col=routeHistoryByX.get(x),existing=row.find(p=>p.x===x&&p.y===y);
+   if(existing)existing.cost=cost;else {row.push({x,y,cost});col.push({x,y,cost});}
+  }
+ }
+}
 function routeCandidateWireCost(points,wire){
- let length=0,bends=Math.max(0,points.length-2),conflicts=0;
+ let length=0,bends=Math.max(0,points.length-2),conflicts=0,historyPenalty=0;
  // Exact checks against every already-routed segment in the spatial bins.
  // Return Infinity rather than allowing the router to trade correctness for
  // a shorter path.
  for(let i=1;i<points.length;i++){
-  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
+  const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);historyPenalty+=routeHistoryPenalty(a,b)*1800;
   const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
   const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
   const nearby=new Map();
@@ -104,7 +145,7 @@ function routeCandidateWireCost(points,wire){
    }
   }
  }
- return length+bends*8+conflicts*1200;
+ return length+bends*8+conflicts*1200+historyPenalty;
 }
 function rememberRoutedWire(w,points){
  for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
@@ -329,34 +370,33 @@ function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
 function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();
-// Pathfinder-style negotiated routing: reroute all nets in alternating orders.
-// Congested crossings carry a high cost, so each pass can choose alternate corridors.
+// Negotiated-congestion routing: rip up every net each iteration, then reroute
+// in alternating orders. Congestion history survives rip-up and raises the cost
+// of repeatedly used crossing/overlap locations (Pathfinder-style history cost).
 const resetRoutedWireIndex=()=>{
  routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();
  routedHorizontalByY=new Map();routedVerticalByX=new Map();
  routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;
 };
 const routeOrder=[...wires];
-const bestRoutes=new Map();
-for(let pass=0;pass<4;pass++){
- resetRoutedWireIndex();
- const order=pass===1||pass===3?[...routeOrder].reverse():routeOrder;
- // Hard rejection can strand nets; use congestion penalties on every pass.
+let finalRoutes=new Map();
+routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
+const maxNegotiatedPasses=8;
+for(let pass=0;pass<maxNegotiatedPasses;pass++){
+ resetRoutedWireIndex();routeCache=new Map();
+ const order=pass%2?[...routeOrder].reverse():routeOrder;
  routeRejectConflicts=false;
  for(const w of order){
-  let points=routePoints(w);
-  if(points.length)bestRoutes.set(w.id,points);
-  else if(bestRoutes.has(w.id)){
-   // A later congestion-rejection pass may not find a conflict-free path.
-   // Preserve the last valid route instead of silently dropping this wire.
-   points=bestRoutes.get(w.id);
-   routeCache.set(w.id,points);
-  }
+  const points=routePoints(w);
+  routeCache.set(w.id,points);
   rememberRoutedWire(w,points);
  }
+ finalRoutes=new Map(routeCache);
+ // Record present conflicts before ripping up the current iteration's routes.
+ recordCongestionHistory();
 }
 routeRejectConflicts=false;
-routeCache=bestRoutes;
+routeCache=finalRoutes;
 for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
  const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`,'data-node':n.id});
