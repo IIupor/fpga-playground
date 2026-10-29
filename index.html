@@ -335,7 +335,7 @@ function routePoints(w){
  const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
- let result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ let result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsMikamiTabuchi(w,a,b,p,q);
  // The bounded fast router can fail in dense obstacle clusters. Retry with
  // the visibility-graph router instead of rendering a wire with an empty path.
  if(!result.length&&nodes.length>100)result=routePointsGraph(w,a,b,p,q);
@@ -400,6 +400,81 @@ function routePointsGraph(w,a,b,p,q){
     const segmentCost=routeCandidateWireCost([vertices[cur.v],vertices[edge.to]],w);
     const crossingPenalty=Math.max(0,segmentCost-edge.d);
     const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd+crossingPenalty;
+    if(cost<dist[edge.to][edge.dir]){dist[edge.to][edge.dir]=cost;prev[edge.to][edge.dir]=[cur.v,cur.dir];push({v:edge.to,dir:edge.dir,cost})}
+   }
+  }
+  if(finish){
+   const reversed=[];let v=finish.v,dir=finish.dir;
+   while(v>=0){reversed.push(vertices[v]);const back=prev[v][dir];if(!back)break;[v,dir]=back}
+   const path=reversed.reverse(),simplified=[];
+   for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
+   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))&&Number.isFinite(routeCandidateWireCost(simplified,w))){routeCache.set(w.id,simplified);return simplified}
+  }
+ }
+ routeCache.set(w.id,[]);return [];
+}
+function routePointsMikamiTabuchi(w,a,b,p,q){
+ // Mikami–Tabuchi-inspired line search: use obstacle-edge visibility lines and
+ // prioritize fewer bends, then wire length and negotiated-congestion cost.
+ // Unlike the paper's prototype, this adaptation also scores existing wires.
+ const allRects=nodes.filter(n=>n.id!==a.id&&n.id!==b.id).map(n=>{
+  const s=spec(n);return {l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8};
+ });
+ const inside=(pt,rs)=>rs.some(r=>pt.x>r.l&&pt.x<r.r&&pt.y>r.t&&pt.y<r.b);
+ const clear=(u,v,rs)=>{
+  if(u.x!==v.x&&u.y!==v.y)return false;
+  for(const r of rs){
+   if(u.y===v.y&&u.y>r.t&&u.y<r.b&&Math.max(Math.min(u.x,v.x),r.l)<Math.min(Math.max(u.x,v.x),r.r))return false;
+   if(u.x===v.x&&u.x>r.l&&u.x<r.r&&Math.max(Math.min(u.y,v.y),r.t)<Math.min(Math.max(u.y,v.y),r.b))return false;
+  }
+  return true;
+ };
+ // Sparse orthogonal visibility graph: endpoints, obstacle corners and their
+ // projections onto endpoint rows/columns. This avoids the Cartesian grid's
+ // O(obstacles^2) vertices on large ISCAS benchmarks.
+ for(const margin of [80,180,360,720,1440]){
+  const minX=Math.min(p.x,q.x)-margin,maxX=Math.max(p.x,q.x)+margin;
+  const minY=Math.min(p.y,q.y)-margin,maxY=Math.max(p.y,q.y)+margin;
+  const rs=allRects.filter(r=>r.r>=minX&&r.l<=maxX&&r.b>=minY&&r.t<=maxY);
+  const points=new Map();
+  const add=(x,y)=>{if(x<minX||x>maxX||y<minY||y>maxY)return;const key=x+','+y;if(!points.has(key))points.set(key,{x,y,key})};
+  add(p.x,p.y);add(q.x,q.y);
+  for(const r of rs){
+   const left=r.l-1,right=r.r+1,top=r.t-1,bottom=r.b+1;
+   add(left,top);add(left,bottom);add(right,top);add(right,bottom);
+   add(left,p.y);add(right,p.y);add(p.x,top);add(p.x,bottom);
+   add(left,q.y);add(right,q.y);add(q.x,top);add(q.x,bottom);
+  }
+  const vertices=[...points.values()].filter(pt=>!inside(pt,rs));
+  const byKey=new Map(vertices.map((pt,i)=>[pt.key,i]));
+  const adj=vertices.map(()=>[]);
+  const connectLine=group=>{
+   const items=group.items;
+   items.sort((i,j)=>group.axis==='x'?vertices[i].y-vertices[j].y:vertices[i].x-vertices[j].x);
+   for(let k=1;k<items.length;k++){
+    const i=items[k-1],j=items[k],u=vertices[i],v=vertices[j];
+    if(clear(u,v,rs)){const d=Math.abs(u.x-v.x)+Math.abs(u.y-v.y);adj[i].push({to:j,d,dir:u.x===v.x?2:1});adj[j].push({to:i,d,dir:u.x===v.x?2:1});}
+   }
+  };
+  const columns=new Map(),rows=new Map();
+  vertices.forEach((pt,i)=>{if(!columns.has(pt.x))columns.set(pt.x,{axis:'x',items:[]});columns.get(pt.x).items.push(i);if(!rows.has(pt.y))rows.set(pt.y,{axis:'y',items:[]});rows.get(pt.y).items.push(i)});
+  for(const g of columns.values())connectLine(g);
+  for(const g of rows.values())connectLine(Object.assign(g,{sort:undefined}));
+  const si=byKey.get(p.x+','+p.y),ti=byKey.get(q.x+','+q.y);
+  if(si===undefined||ti===undefined)continue;
+  const dist=vertices.map(()=>[Infinity,Infinity,Infinity]),prev=vertices.map(()=>[null,null,null]);
+  const heap=[];
+  const push=item=>{heap.push(item);let i=heap.length-1;while(i){const par=(i-1)>>1;if(heap[par].cost<=item.cost)break;heap[i]=heap[par];i=par}heap[i]=item};
+  const pop=()=>{const top=heap[0],last=heap.pop();if(heap.length){let i=0;while(true){let c=i*2+1;if(c>=heap.length)break;if(c+1<heap.length&&heap[c+1].cost<heap[c].cost)c++;if(heap[c].cost>=last.cost)break;heap[i]=heap[c];i=c}heap[i]=last}return top};
+  dist[si][0]=0;push({v:si,dir:0,cost:0});
+  let finish=null;
+  while(heap.length){
+   const cur=pop();if(cur.cost!==dist[cur.v][cur.dir])continue;
+   if(cur.v===ti){finish=cur;break}
+   for(const edge of adj[cur.v]){
+    const segmentCost=routeCandidateWireCost([vertices[cur.v],vertices[edge.to]],w);
+    const crossingPenalty=Math.max(0,segmentCost-edge.d);
+    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?1800:0),cost=cur.cost+nd+crossingPenalty;
     if(cost<dist[edge.to][edge.dir]){dist[edge.to][edge.dir]=cost;prev[edge.to][edge.dir]=[cur.v,cur.dir];push({v:edge.to,dir:edge.dir,cost})}
    }
   }
