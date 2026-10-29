@@ -428,21 +428,55 @@ const resetRoutedWireIndex=()=>{
 const routeOrder=[...wires];
 let finalRoutes=new Map();
 routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
+// Pathfinder-style negotiation uses explicit per-net conflict occupancy. A
+// resource is considered congested when two distinct nets occupy crossing or
+// overlapping geometry; conflict scores decide which nets are ripped up first.
+function routedWireConflictScores(){
+ const scores=new Map(),seen=new Set();
+ for(const bucket of routedSegmentBins.values())for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
+  const a=bucket[i],b=bucket[j];
+  if(a.indexId===b.indexId||a.wire===b.wire)continue;
+  const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
+  if(seen.has(pair))continue;seen.add(pair);
+  const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let conflict=false;
+  if(ah!==bh){
+   const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;
+   conflict=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y);
+  }else if(ah&&a.a.y===b.a.y){
+   conflict=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+  }else if(!ah&&a.a.x===b.a.x){
+   conflict=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+  }
+  if(conflict){scores.set(a.wire,(scores.get(a.wire)||0)+1);scores.set(b.wire,(scores.get(b.wire)||0)+1)}
+ }
+ return scores;
+}
 const maxNegotiatedPasses=12;
 let finalConflictCount=Infinity,negotiatedPasses=0;
 let bestMissingRoutes=Infinity,bestConflictCount=Infinity,stalePasses=0;
 for(let pass=0;pass<maxNegotiatedPasses;pass++){
  negotiatedPasses=pass+1;
- resetRoutedWireIndex();routeCache=new Map();
- const order=pass%2?[...routeOrder].reverse():routeOrder;
- // Never reject a route solely because it conflicts with an earlier net.
- // Keep the best complete snapshot, and let historical congestion guide later passes.
- routeRejectConflicts=false;
- for(const w of order){
-  const points=routePoints(w);
-  routeCache.set(w.id,points);
-  rememberRoutedWire(w,points);
+ if(pass===0){
+  resetRoutedWireIndex();routeCache=new Map();
+  for(const w of routeOrder){const points=routePoints(w);routeCache.set(w.id,points);rememberRoutedWire(w,points)}
+ }else{
+  // Preserve the previous complete solution, then rip up the most congested
+  // nets one at a time. Rebuilding occupancy after each rip-up ensures the
+  // selected net is not charged for colliding with its own old geometry.
+  const scores=routedWireConflictScores();
+  const limit=Math.min(48,Math.max(12,Math.ceil(routeOrder.length*0.06)));
+  const rerouteIds=[...scores.entries()].sort((a,b)=>b[1]-a[1]).slice(0,limit).map(entry=>entry[0]);
+  for(const id of rerouteIds){
+   const w=routeOrder.find(item=>item.id===id);if(!w)continue;
+   const retained=routedSegments.filter(segment=>segment.wire!==id);
+   resetRoutedWireIndex();
+   for(const segment of retained)indexRoutedSegment({...segment,indexId:undefined});
+   routeCache.delete(id);
+   const points=routePoints(w);routeCache.set(id,points);
+   rememberRoutedWire(w,points);
+  }
  }
+ routeRejectConflicts=false;
  const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
  finalConflictCount=countRoutedConflicts();
  if(missingRoutes<bestMissingRoutes||(missingRoutes===bestMissingRoutes&&finalConflictCount<bestConflictCount)){
@@ -451,7 +485,8 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
  }else stalePasses++;
  if(bestMissingRoutes===0&&bestConflictCount===0)break;
  if(stalePasses>=4)break;
- // Historical congestion persists across rip-up/reroute iterations.
+ // Historical congestion persists across iterations, so repeatedly contested
+ // crossing/overlap resources become progressively more expensive.
  recordCongestionHistory();
 }
 routeRejectConflicts=false;
