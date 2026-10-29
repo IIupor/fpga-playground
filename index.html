@@ -65,6 +65,7 @@ function evalCircuit(updateSequential=true){nodes.forEach(n=>{if(n.type==='INPUT
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
 let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
+let routeRejectConflicts=false;
 let routedSegments=[], routedSegmentBins=new Map(), routedHorizontalByY=new Map(), routedVerticalByX=new Map(), routedHorizontalYKeys=[], routedVerticalXKeys=[], nextRoutedSegmentId=1;
 const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300,ROUTE_WIRE_BIN=64;
 function indexRoutedSegment(segment){
@@ -91,6 +92,7 @@ function routeCandidateWireCost(points,wire){
   }
   for(const s of nearby.values()){
    if(s.wire===wire.id||s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to)continue;
+   if(routeRejectConflicts){const ah=a.y===b.y,bh=s.a.y===s.b.y;if(ah!==bh){const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))return Infinity;}else if(ah&&s.a.y===a.y){if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))return Infinity;}else if(!ah&&s.a.x===a.x){if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))return Infinity;}}
    const ah=a.y===b.y,bh=s.a.y===s.b.y;
    if(ah!==bh){
     const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
@@ -335,12 +337,14 @@ const resetRoutedWireIndex=()=>{
  routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;
 };
 const routeOrder=[...wires];
-for(let pass=0;pass<3;pass++){
+for(let pass=0;pass<4;pass++){
  resetRoutedWireIndex();
- const order=pass===1?[...routeOrder].reverse():routeOrder;
+ const order=pass===1||pass===3?[...routeOrder].reverse():routeOrder;
+ routeRejectConflicts=pass===3;
  for(const w of order){const points=routePoints(w);rememberRoutedWire(w,points)}
 }
-for(const w of routeOrder){const points=routePoints(w);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+routeRejectConflicts=false;
+for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
  const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`,'data-node':n.id});
  const selectedNode=selected?.kind==='node'&&selected.id===n.id;
