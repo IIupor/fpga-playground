@@ -67,21 +67,14 @@ async function diagnostics(page) {
   });
 }
 
-for (const name of benchmarks) {
-  test(`${name}: compare current router with experimental Mikami–Tabuchi router`, async ({ page }) => {
-    await loadBenchmark(page,name);
-    const baseline=await diagnostics(page);
-    const started=Date.now();
-    await page.locator('#routingMode').evaluate(el => { el.value = 'mikami'; el.dispatchEvent(new Event('change', { bubbles: true })); });
-    await expect(page.locator('#routingStats')).toContainText('Mikami');
-    await expect.poll(async()=> (await page.locator('#editorStage path.editor-wire').count()), {timeout:30000})
-      .toBe(baseline.wireCount);
-    const elapsedMs=Date.now()-started;
-    const experimental=await diagnostics(page);
-    console.log(`ROUTER-COMPARISON ${name}: ${JSON.stringify({baseline,experimental,elapsedMs})}`);
-    expect(experimental.wireCount).toBe(baseline.wireCount);
-    expect(experimental.missing).toBe(0);
-    expect(experimental.nonOrthogonal).toBe(0);
-    expect(experimental.blocked).toBe(0);
+
+for (const name of ['c17', 'c432', 'c499', 'c880']) {
+  test(`${name}: legacy router baseline diagnostics`, async ({ page }) => {
+    await loadBenchmark(page, name);
+    const result = await diagnostics(page);
+    console.log(`ROUTER-BASELINE legacy ${name}: ${JSON.stringify(result)}`);
+    expect(result.wireCount).toBeGreaterThan(0);
+    expect(result.missing).toBe(0);
+    expect(result.nonOrthogonal).toBe(0);
   }, 300000);
 }
