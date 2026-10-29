@@ -608,9 +608,11 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   if(e.key.toLowerCase()!=='f'||e.ctrlKey||e.metaKey||e.altKey)return;
   const target=e.target;
   if(target instanceof HTMLElement&&(target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)))return;
+  // Handle the shortcut in capture phase before editor-level keyboard handlers.
   e.preventDefault();
+  e.stopImmediatePropagation();
   fitToView();
- });
+ },true);
  let spaceHeld=false,pan=null;
  window.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||'')){spaceHeld=true;viewport.style.cursor='grab'}});
  window.addEventListener('keyup',e=>{if(e.code==='Space'){spaceHeld=false;if(!pan)viewport.style.cursor=''}});
