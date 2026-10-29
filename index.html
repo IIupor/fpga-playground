@@ -657,7 +657,9 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     for(const w of wires){if(neighbors.has(w.from)&&neighbors.has(w.to)){neighbors.get(w.from).push(w.to);neighbors.get(w.to).push(w.from)}}
     // Barycentric sweeps order connected nodes similarly across adjacent levels to reduce crossings.
     for(let pass=0;pass<4;pass++){const keys=pass%2===0?layerKeys:layerKeys.slice().reverse();for(const l of keys){const ids=layers.get(l);if(ids.length<2)continue;const score=nid=>{const ns=neighbors.get(nid).filter(other=>level.get(other)!==l);return ns.length?ns.reduce((sum,other)=>sum+(order.get(other)??0),0)/ns.length:order.get(nid)};ids.sort((a,b)=>{const d=score(a)-score(b);return Math.abs(d)>1e-6?d:a-b});ids.forEach((nid,i)=>order.set(nid,i))}}
-    const xGap=210,yGap=24,topPad=28,leftPad=40;
+    // Approach 1: give the router more physical room by spreading auto-placed blocks.
+    // Wire-clearance and routing-lane changes are deliberately kept separate for comparison.
+    const xGap=260,yGap=40,topPad=36,leftPad=40;
     for(const l of layerKeys){let y=topPad;for(const nid of layers.get(l)){const n=nodeById.get(nid);n.x=leftPad+l*xGap;n.y=y;const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap}}
     window.fpgaLoadCircuit(next,wires,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
