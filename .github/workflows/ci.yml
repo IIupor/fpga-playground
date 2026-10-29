@@ -16,7 +16,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - name: Install Icarus Verilog and Yosys if missing
         run: |
           if ! command -v iverilog >/dev/null 2>&1 || ! command -v yosys >/dev/null 2>&1; then
@@ -26,13 +25,13 @@ jobs:
             echo "Icarus Verilog and Yosys are already available on this runner."
           fi
       - name: Install dependencies
-        run: npm ci
+        run: npm install
       - name: Cache Playwright Chromium
         id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package.json') }}
       - name: Install Playwright Chromium and system dependencies
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
