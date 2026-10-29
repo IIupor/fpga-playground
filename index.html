@@ -404,29 +404,37 @@ const resetRoutedWireIndex=()=>{
 const routeOrder=[...wires];
 let finalRoutes=new Map();
 routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
-const maxNegotiatedPasses=24;
+const maxNegotiatedPasses=12;
 let finalConflictCount=Infinity,negotiatedPasses=0;
+let bestMissingRoutes=Infinity,bestConflictCount=Infinity,stalePasses=0;
 for(let pass=0;pass<maxNegotiatedPasses;pass++){
  negotiatedPasses=pass+1;
  resetRoutedWireIndex();routeCache=new Map();
  const order=pass%2?[...routeOrder].reverse():routeOrder;
- // The final pass is a hard-feasibility pass: candidates with any crossing
- // or collinear overlap are rejected instead of merely receiving a penalty.
- routeRejectConflicts=pass===maxNegotiatedPasses-1;
+ // Never reject a route solely because it conflicts with an earlier net.
+ // Keep the best complete snapshot, and let historical congestion guide later passes.
+ routeRejectConflicts=false;
  for(const w of order){
   const points=routePoints(w);
   routeCache.set(w.id,points);
   rememberRoutedWire(w,points);
  }
- finalRoutes=new Map(routeCache);
- // Count present conflicts explicitly before ripping up this iteration.
+ const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
  finalConflictCount=countRoutedConflicts();
- if(finalConflictCount===0)break;
+ if(missingRoutes<bestMissingRoutes||(missingRoutes===bestMissingRoutes&&finalConflictCount<bestConflictCount)){
+  bestMissingRoutes=missingRoutes;bestConflictCount=finalConflictCount;
+  finalRoutes=new Map(routeCache);stalePasses=0;
+ }else stalePasses++;
+ if(bestMissingRoutes===0&&bestConflictCount===0)break;
+ if(stalePasses>=4)break;
  // Historical congestion persists across rip-up/reroute iterations.
  recordCongestionHistory();
 }
 routeRejectConflicts=false;
-routeCache=finalRoutes;
+// Rebuild the segment index for the best snapshot; validation must inspect the
+// exact routes that will be rendered, not the discarded final iteration.
+resetRoutedWireIndex();routeCache=new Map(finalRoutes);
+for(const w of routeOrder)rememberRoutedWire(w,routeCache.get(w.id)||[]);
 // Final independent validation of the exact routes that will be rendered.
 const finalValidation=countRoutedConflicts();
 svg.dataset.routingConflicts=String(finalValidation);
