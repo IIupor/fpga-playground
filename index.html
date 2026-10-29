@@ -58,54 +58,88 @@ let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const u
 // attached to conflicts, and test a small set of legal vertical placement moves.
 // This runs only when the structural benchmark importer explicitly requests it.
 window.fpgaOptimizePlacement=()=>{
- const measure=()=>{
-  const paths=[...svg.querySelectorAll('path.editor-wire')],segments=[],conflicted=new Set();let missing=0,conflicts=0;
-  for(const path of paths){
-   const id=path.dataset.wire,d=path.getAttribute('d')||'';
-   const pts=[...(d.matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g))].map(m=>({x:Number(m[1]),y:Number(m[2])}));
-   if(pts.length<2){missing++;continue}
-   for(let i=1;i<pts.length;i++)segments.push({wire:id,a:pts[i-1],b:pts[i]});
+ // Simulated annealing over placement. Each candidate is scored cheaply using
+ // orthogonal proxy routes; Pathfinder is run only after the best placement is
+ // restored, avoiding a full expensive route for every annealing move.
+ const movable=n=>n&&!['INPUT','OUTPUT','VDD','GND'].includes(n.type);
+ const original=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));
+ const wiresByNode=new Map();
+ for(const w of wires){for(const id of [w.from,w.to]){if(!wiresByNode.has(id))wiresByNode.set(id,[]);wiresByNode.get(id).push(w)}}
+ const box=(n,x=n.x,y=n.y)=>({x,y,w:spec(n).w,h:spec(n).h});
+ const overlaps=(a,b)=>a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+ const legal=(n,x,y)=>x>=20&&y>=20&&x+spec(n).w<=6000&&y+spec(n).h<=6000&&
+   !nodes.some(o=>o.id!==n.id&&overlaps(box(n,x,y),box(o)));
+ const proxyScore=()=>{
+  const segs=[],nodeBoxes=nodes.map(n=>({id:n.id,...box(n)}));
+  let length=0,blocked=0;
+  for(const w of wires){
+   const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b){blocked+=1000;continue}
+   const p=pin(a,'out'),q=pin(b,'in',w.toPin||0),mx=Math.round((p.x+q.x)/2);
+   const pts=[p,{x:mx,y:p.y},{x:mx,y:q.y},q];
+   for(let i=1;i<pts.length;i++){
+    const u=pts[i-1],v=pts[i];length+=Math.abs(v.x-u.x)+Math.abs(v.y-u.y);
+    if(u.x===v.x&&u.y===v.y)continue;
+    for(const r of nodeBoxes){if(r.id===a.id||r.id===b.id)continue;
+     if(u.y===v.y){if(u.y>r.y&&u.y<r.y+r.h&&Math.max(Math.min(u.x,v.x),r.x)<Math.min(Math.max(u.x,v.x),r.x+r.w))blocked+=1}
+     else if(u.x>r.x&&u.x<r.x+r.w&&Math.max(Math.min(u.y,v.y),r.y)<Math.min(Math.max(u.y,v.y),r.y+r.h))blocked+=1;
+    }
+    segs.push({wire:String(w.id),a:u,b:v});
+   }
   }
-  for(let i=0;i<segments.length;i++)for(let j=i+1;j<segments.length;j++){
-   const a=segments[i],b=segments[j];if(a.wire===b.wire)continue;
+  let crossings=0;
+  for(let i=0;i<segs.length;i++)for(let j=i+1;j<segs.length;j++){
+   const a=segs[i],b=segs[j];if(a.wire===b.wire)continue;
    const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let hit=false;
    if(ah!==bh){const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;hit=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)}
    else if(ah&&a.a.y===b.a.y)hit=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
    else if(!ah&&a.a.x===b.a.x)hit=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
-   if(hit){conflicts++;conflicted.add(a.wire);conflicted.add(b.wire)}
+   if(hit)crossings++;
   }
-  return {missing,conflicts,conflicted,score:missing*10000000+conflicts};
+  return {score:crossings*100000+blocked*100000+length,crossings,blocked,length};
  };
- const initial=measure();
- if(initial.conflicts===0&&initial.missing===0)return {attempts:0,before:initial.score,after:initial.score};
- const original=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));let best=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}])),bestResult=initial,attempts=0;
- const wireById=new Map(wires.map(w=>[String(w.id),w]));
- const candidateIds=new Set();
- for(const id of initial.conflicted){const w=wireById.get(String(id));if(w){candidateIds.add(w.from);candidateIds.add(w.to)}}
- const candidates=[...candidateIds].map(id=>nodes.find(n=>n.id===id)).filter(n=>n&&!['INPUT','OUTPUT','VDD','GND'].includes(n.type)).slice(0,4);
- for(const n of candidates){
-  if(attempts>=4)break;
-  const base=best.get(n.id);if(!base)continue;
-  const step=spec(n).h+20;
-  for(const delta of [step,-step]){
-   if(attempts>=4)break;
-   for(const [id,p] of best) {const target=nodes.find(x=>x.id===id);if(target){target.x=p.x;target.y=p.y}}
-   const trialY=base.y+delta,box=spec(n);
-   const collides=nodes.some(other=>other.id!==n.id&&other.x===n.x&&Math.max(trialY,other.y)<Math.min(trialY+box.h,other.y+spec(other).h));
-   if(collides)continue;
-   n.y=trialY;render();attempts++;
-   const result=measure();
-   if(result.score<bestResult.score){bestResult=result;best=new Map(nodes.map(x=>[x.id,{x:x.x,y:x.y}]))}
-  }
+ const movableNodes=nodes.filter(movable);
+ if(!movableNodes.length)return {attempts:0,before:0,after:0};
+ const startScore=proxyScore();let current=startScore,bestScore=startScore;
+ let best=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));
+ const steps=wires.length>250?36:100,grid=20;
+ const initialTemp=Math.max(1000,current.score*0.025),finalTemp=Math.max(1,current.score*0.0001);
+ let attempts=0,accepted=0;
+ for(let i=0;i<steps;i++){
+  const n=movableNodes[Math.floor(Math.random()*movableNodes.length)],old={x:n.x,y:n.y};
+  const dirs=[[grid,0],[-grid,0],[0,grid],[0,-grid],[grid,grid],[grid,-grid],[-grid,grid],[-grid,-grid]];
+  const d=dirs[Math.floor(Math.random()*dirs.length)],nx=old.x+d[0],ny=old.y+d[1];
+  if(!legal(n,nx,ny))continue;
+  n.x=nx;n.y=ny;const trial=proxyScore();attempts++;
+  const t=initialTemp*Math.pow(finalTemp/initialTemp,i/Math.max(1,steps-1));
+  const delta=trial.score-current.score;
+  if(delta<=0||Math.random()<Math.exp(-delta/t)){
+   current=trial;accepted++;
+   if(trial.score<bestScore.score){bestScore=trial;best=new Map(nodes.map(x=>[x.id,{x:x.x,y:x.y}]))}
+  }else{n.x=old.x;n.y=old.y}
  }
  for(const [id,p] of best){const n=nodes.find(x=>x.id===id);if(n){n.x=p.x;n.y=p.y}}
  render();
+ // Record both proxy-score movement and the actual routed geometry after
+ // Pathfinder has produced the final candidate.
+ const paths=[...svg.querySelectorAll('path.editor-wire')];
+ let missing=Math.max(0,wires.length-paths.length),crossings=0;const segs=[];
+ for(const path of paths){const id=path.dataset.wire,d=path.getAttribute('d')||'';
+  const pts=[...(d.matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g))].map(m=>({x:Number(m[1]),y:Number(m[2])}));
+  if(pts.length<2){missing++;continue}for(let i=1;i<pts.length;i++)segs.push({wire:id,a:pts[i-1],b:pts[i]});
+ }
+ for(let i=0;i<segs.length;i++)for(let j=i+1;j<segs.length;j++){const a=segs[i],b=segs[j];if(a.wire===b.wire)continue;const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let hit=false;
+  if(ah!==bh){const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;hit=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)}
+  else if(ah&&a.a.y===b.a.y)hit=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+  else if(!ah&&a.a.x===b.a.x)hit=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+  if(hit)crossings++;
+ }
  svg.dataset.placementOptimizationAttempts=String(attempts);
- svg.dataset.placementConflictsBefore=String(initial.conflicts);
- svg.dataset.placementConflictsAfter=String(bestResult.conflicts);
- svg.dataset.placementMissingBefore=String(initial.missing);
- svg.dataset.placementMissingAfter=String(bestResult.missing);
- return {attempts,before:initial.score,after:bestResult.score,conflictsBefore:initial.conflicts,conflictsAfter:bestResult.conflicts,missingBefore:initial.missing,missingAfter:bestResult.missing};
+ svg.dataset.placementOptimizationAccepted=String(accepted);
+ svg.dataset.placementProxyBefore=String(startScore.score);
+ svg.dataset.placementProxyAfter=String(bestScore.score);
+ svg.dataset.placementConflictsAfter=String(crossings);
+ svg.dataset.placementMissingAfter=String(missing);
+ return {attempts,accepted,proxyBefore:startScore.score,proxyAfter:bestScore.score,conflictsAfter:crossings,missingAfter:missing};
 };
 window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;render();updateHistoryButtons()};
 const NS='http://www.w3.org/2000/svg';
