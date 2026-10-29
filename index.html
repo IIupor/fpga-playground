@@ -53,7 +53,61 @@ window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')
  </script><script>
 (()=>{
 const svg=document.getElementById('editorStage'), msg=document.getElementById('editorMessage'), signalRows=document.getElementById('signalRows'), truthHead=document.getElementById('editorTruthHead'), truthBody=document.getElementById('editorTruthBody'), editorControls=document.getElementById('editorControls'), editorResults=document.getElementById('editorResults');
-let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const undoStack=[],redoStack=[];function historySnapshot(){return JSON.parse(JSON.stringify({nodes,wires,selected,nextId}))}function saveHistory(){undoStack.push(historySnapshot());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function pushHistorySnapshot(snapshot){undoStack.push(snapshot);if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function updateHistoryButtons(){const u=document.getElementById("editorUndo"),r=document.getElementById("editorRedo");if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}function restoreHistory(snapshot){nodes=snapshot.nodes;wires=snapshot.wires;selected=snapshot.selected;nextId=snapshot.nextId;pending=null;render();updateHistoryButtons()}function undo(){if(!undoStack.length)return;redoStack.push(historySnapshot());restoreHistory(undoStack.pop());msg.textContent="Last change undone."}function redo(){if(!redoStack.length)return;undoStack.push(historySnapshot());restoreHistory(redoStack.pop());msg.textContent="Change redone."}Object.defineProperty(window,'fpgaNodes',{get:()=>nodes});Object.defineProperty(window,'fpgaWires',{get:()=>wires});Object.defineProperty(window,'fpgaSelected',{get:()=>selected,set:v=>{selected=v}});window.fpgaRender=()=>render();window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;render();updateHistoryButtons()};
+let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const undoStack=[],redoStack=[];function historySnapshot(){return JSON.parse(JSON.stringify({nodes,wires,selected,nextId}))}function saveHistory(){undoStack.push(historySnapshot());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function pushHistorySnapshot(snapshot){undoStack.push(snapshot);if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function updateHistoryButtons(){const u=document.getElementById("editorUndo"),r=document.getElementById("editorRedo");if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}function restoreHistory(snapshot){nodes=snapshot.nodes;wires=snapshot.wires;selected=snapshot.selected;nextId=snapshot.nextId;pending=null;render();updateHistoryButtons()}function undo(){if(!undoStack.length)return;redoStack.push(historySnapshot());restoreHistory(undoStack.pop());msg.textContent="Last change undone."}function redo(){if(!redoStack.length)return;undoStack.push(historySnapshot());restoreHistory(redoStack.pop());msg.textContent="Change redone."}Object.defineProperty(window,'fpgaNodes',{get:()=>nodes});Object.defineProperty(window,'fpgaWires',{get:()=>wires});Object.defineProperty(window,'fpgaSelected',{get:()=>selected,set:v=>{selected=v}});window.fpgaRender=()=>render();
+// Placement-feedback prototype: measure the rendered routes, identify the gates
+// attached to conflicts, and test a small set of legal vertical placement moves.
+// This runs only when the structural benchmark importer explicitly requests it.
+window.fpgaOptimizePlacement=()=>{
+ const measure=()=>{
+  const paths=[...svg.querySelectorAll('path.editor-wire')],segments=[],conflicted=new Set();let missing=0,conflicts=0;
+  for(const path of paths){
+   const id=path.dataset.wire,d=path.getAttribute('d')||'';
+   const pts=[...(d.matchAll(/[ML]\\s*([-\\d.]+)[, ]+([-\\d.]+)/g))].map(m=>({x:Number(m[1]),y:Number(m[2])}));
+   if(pts.length<2){missing++;continue}
+   for(let i=1;i<pts.length;i++)segments.push({wire:id,a:pts[i-1],b:pts[i]});
+  }
+  for(let i=0;i<segments.length;i++)for(let j=i+1;j<segments.length;j++){
+   const a=segments[i],b=segments[j];if(a.wire===b.wire)continue;
+   const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let hit=false;
+   if(ah!==bh){const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;hit=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y)}
+   else if(ah&&a.a.y===b.a.y)hit=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+   else if(!ah&&a.a.x===b.a.x)hit=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+   if(hit){conflicts++;conflicted.add(a.wire);conflicted.add(b.wire)}
+  }
+  return {missing,conflicts,conflicted,score:missing*10000000+conflicts};
+ };
+ const initial=measure();
+ if(initial.conflicts===0&&initial.missing===0)return {attempts:0,before:initial.score,after:initial.score};
+ const original=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}]));let best=new Map(nodes.map(n=>[n.id,{x:n.x,y:n.y}])),bestResult=initial,attempts=0;
+ const wireById=new Map(wires.map(w=>[String(w.id),w]));
+ const candidateIds=new Set();
+ for(const id of initial.conflicted){const w=wireById.get(String(id));if(w){candidateIds.add(w.from);candidateIds.add(w.to)}}
+ const candidates=[...candidateIds].map(id=>nodes.find(n=>n.id===id)).filter(n=>n&&!['INPUT','OUTPUT','VDD','GND'].includes(n.type)).slice(0,4);
+ for(const n of candidates){
+  if(attempts>=4)break;
+  const base=best.get(n.id);if(!base)continue;
+  const step=spec(n).h+20;
+  for(const delta of [step,-step]){
+   if(attempts>=4)break;
+   for(const [id,p] of best) {const target=nodes.find(x=>x.id===id);if(target){target.x=p.x;target.y=p.y}}
+   const trialY=base.y+delta,box=spec(n);
+   const collides=nodes.some(other=>other.id!==n.id&&other.x===n.x&&Math.max(trialY,other.y)<Math.min(trialY+box.h,other.y+spec(other).h));
+   if(collides)continue;
+   n.y=trialY;render();attempts++;
+   const result=measure();
+   if(result.score<bestResult.score){bestResult=result;best=new Map(nodes.map(x=>[x.id,{x:x.x,y:x.y}]))}
+  }
+ }
+ for(const [id,p] of best){const n=nodes.find(x=>x.id===id);if(n){n.x=p.x;n.y=p.y}}
+ render();
+ svg.dataset.placementOptimizationAttempts=String(attempts);
+ svg.dataset.placementConflictsBefore=String(initial.conflicts);
+ svg.dataset.placementConflictsAfter=String(bestResult.conflicts);
+ svg.dataset.placementMissingBefore=String(initial.missing);
+ svg.dataset.placementMissingAfter=String(bestResult.missing);
+ return {attempts,before:initial.score,after:bestResult.score,conflictsBefore:initial.conflicts,conflictsAfter:bestResult.conflicts,missingBefore:initial.missing,missingAfter:bestResult.missing};
+};
+window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;render();updateHistoryButtons()};
 const NS='http://www.w3.org/2000/svg';
 window.fpgaDeleteNodes=(ids)=>{saveHistory();const doomed=new Set(ids);nodes=nodes.filter(n=>!doomed.has(n.id));wires=wires.filter(w=>!doomed.has(w.from)&&!doomed.has(w.to));if(selected?.kind==='node'&&doomed.has(selected.id))selected=null;pending=null;render()};
 const make=(tag,attrs={},text='')=>{const e=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text)e.textContent=text;return e};
@@ -752,7 +806,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     // Wire-clearance and routing-lane changes are deliberately kept separate for comparison.
     const xGap=260,yGap=40,topPad=36,leftPad=40;
     for(const l of layerKeys){let y=topPad;for(const nid of layers.get(l)){const n=nodeById.get(nid);n.x=leftPad+l*xGap;n.y=y;const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap}}
-    window.fpgaLoadCircuit(next,wires,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
+    window.fpgaLoadCircuit(next,wires,id);const placementResult=window.fpgaOptimizePlacement?.();area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`+(placementResult&&placementResult.attempts? ` Placement feedback: ${placementResult.conflictsBefore} to ${placementResult.conflictsAfter} conflicts.`:'');
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
  },true);
 })();
