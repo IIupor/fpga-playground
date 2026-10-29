@@ -77,8 +77,10 @@ for (const name of benchmarks) {
         const ay1 = Math.min(a.a.y, a.b.y), ay2 = Math.max(a.a.y, a.b.y);
         for (let j = i + 1; j < segments.length; j++) {
           const b = segments[j];
-          if (a.wire === b.wire || a.from === b.from || a.from === b.to ||
-              a.to === b.from || a.to === b.to) continue;
+          // Only segments belonging to the same wire are exempt. Two wires
+          // sharing an endpoint node can still cross or overlap elsewhere;
+          // skipping the whole pair hides real geometry defects.
+          if (a.wire === b.wire) continue;
           if (a.horizontal !== b.horizontal) {
             const h = a.horizontal ? a : b, v = a.horizontal ? b : a;
             const x = v.a.x, y = h.a.y;
