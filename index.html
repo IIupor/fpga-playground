@@ -455,111 +455,24 @@ function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
 function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();
-// Negotiated-congestion routing: rip up every net each iteration, then reroute
-// in alternating orders. Congestion history survives rip-up and raises the cost
-// of repeatedly used crossing/overlap locations (Pathfinder-style history cost).
-const resetRoutedWireIndex=()=>{
- routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();
- routedHorizontalByY=new Map();routedVerticalByX=new Map();
- routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;
-};
-const routeOrder=[...wires];
-let finalRoutes=new Map();
-routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
-// Pathfinder-style negotiation uses explicit per-net conflict occupancy. A
-// resource is considered congested when two distinct nets occupy crossing or
-// overlapping geometry; conflict scores decide which nets are ripped up first.
-function routedWireConflictScores(){
- const scores=new Map(),seen=new Set();
- for(const bucket of routedSegmentBins.values())for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
-  const a=bucket[i],b=bucket[j];
-  if(a.indexId===b.indexId||a.wire===b.wire)continue;
-  const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
-  if(seen.has(pair))continue;seen.add(pair);
-  const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;let conflict=false;
-  if(ah!==bh){
-   const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;
-   conflict=x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y);
-  }else if(ah&&a.a.y===b.a.y){
-   conflict=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
-  }else if(!ah&&a.a.x===b.a.x){
-   conflict=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
-  }
-  if(conflict){scores.set(a.wire,(scores.get(a.wire)||0)+1);scores.set(b.wire,(scores.get(b.wire)||0)+1)}
- }
- return scores;
-}
-const maxNegotiatedPasses=12;
-let finalConflictCount=Infinity,negotiatedPasses=0;
-let bestMissingRoutes=Infinity,bestConflictCount=Infinity,stalePasses=0;
-// Keep per-pass measurements so the next tuning decision is based on the
-// actual convergence curve, not just the final geometry count.
-const routingConflictTrajectory=[];
-for(let pass=0;pass<maxNegotiatedPasses;pass++){
- negotiatedPasses=pass+1;
- let reroutedThisPass=0;
- if(pass===0){
-  resetRoutedWireIndex();routeCache=new Map();
-  for(const w of routeOrder){const points=routePoints(w);routeCache.set(w.id,points);rememberRoutedWire(w,points)}
- }else{
-  // Preserve the previous complete solution, then rip up the most congested
-  // nets one at a time. Rebuilding occupancy after each rip-up ensures the
-  // selected net is not charged for colliding with its own old geometry.
-  const scores=routedWireConflictScores();
-  // Rip up the most-conflicted nets first. During this pass, crossings and
-  // overlaps with retained nets are hard constraints, not merely expensive
-  // choices. This is the key negotiation step: a replacement route is accepted
-  // only if it can avoid every retained route.
-  const rerouteIds=[...scores.entries()].sort((a,b)=>b[1]-a[1]).map(entry=>entry[0]);
-  reroutedThisPass=rerouteIds.length;
-  routeRejectConflicts=true;
-  for(const id of rerouteIds){
-   const w=routeOrder.find(item=>item.id===id);if(!w)continue;
-   const retained=routedSegments.filter(segment=>segment.wire!==id);
-   const savedRoutes=new Map(routeCache);
-   const previous=savedRoutes.get(id)||[];
-   resetRoutedWireIndex();
-   routeCache=savedRoutes;
-   for(const segment of retained)indexRoutedSegment({...segment,indexId:undefined});
-   routeCache.delete(id);
-   const points=routePoints(w);
-   if(points.length>=2){
-    routeCache.set(id,points);
-    rememberRoutedWire(w,points);
-   }else{
-    // Never sacrifice an existing valid connection because this iteration
-    // could not find a conflict-free replacement. Restore the previous route
-    // and keep it in the occupancy index for subsequent reroutes.
-    routeCache.set(id,previous);
-    rememberRoutedWire(w,previous);
-   }
-  }
-  routeRejectConflicts=false;
- }
- routeRejectConflicts=false;
- const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
- finalConflictCount=countRoutedConflicts();
- routingConflictTrajectory.push({pass:negotiatedPasses,missingRoutes,conflicts:finalConflictCount,rerouted:pass===0?routeOrder.length:reroutedThisPass});
- if(missingRoutes<bestMissingRoutes||(missingRoutes===bestMissingRoutes&&finalConflictCount<bestConflictCount)){
-  bestMissingRoutes=missingRoutes;bestConflictCount=finalConflictCount;
-  finalRoutes=new Map(routeCache);stalePasses=0;
- }else stalePasses++;
- if(bestMissingRoutes===0&&bestConflictCount===0)break;
- if(stalePasses>=4)break;
- // Historical congestion persists across iterations, so repeatedly contested
- // crossing/overlap resources become progressively more expensive.
- recordCongestionHistory();
-}
+// Single-pass routing: visual crossings between wires are allowed, so do not
+// run negotiated-congestion rip-up/reroute iterations. For large imported
+// circuits, repeatedly rebuilding the segment index blocked the browser during
+// the import click. Route each net once, using obstacle avoidance and a modest
+// cost for wire crossings; then validate and render this exact route set.
 routeRejectConflicts=false;
-// Rebuild the segment index for the best snapshot; validation must inspect the
-// exact routes that will be rendered, not the discarded final iteration.
-resetRoutedWireIndex();routeCache=new Map(finalRoutes);
-for(const w of routeOrder)rememberRoutedWire(w,routeCache.get(w.id)||[]);
-// Final independent validation of the exact routes that will be rendered.
+const routeOrder=[...wires];
+routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
+routeCache=new Map();
+for(const w of routeOrder){
+ const points=routePoints(w);
+ routeCache.set(w.id,points);
+ rememberRoutedWire(w,points);
+}
 const finalValidation=countRoutedConflicts();
 svg.dataset.routingConflicts=String(finalValidation);
-svg.dataset.routingPasses=String(negotiatedPasses);
-svg.dataset.routingConflictTrajectory=JSON.stringify(routingConflictTrajectory);
+svg.dataset.routingPasses='1';
+svg.dataset.routingConflictTrajectory=JSON.stringify([{pass:1,missingRoutes:routeOrder.reduce((n,w)=>n+((routeCache.get(w.id)||[]).length<2?1:0),0),conflicts:finalValidation,rerouted:routeOrder.length}]);
 svg.dataset.routingValidated=finalValidation===0?'true':'false';
 for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
