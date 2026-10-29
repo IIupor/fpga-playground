@@ -533,6 +533,7 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
    const w=routeOrder.find(item=>item.id===id);if(!w)continue;
    const retained=routedSegments.filter(segment=>segment.wire!==id);
    const savedRoutes=new Map(routeCache);
+   const previous=savedRoutes.get(id)||[];
    resetRoutedWireIndex();
    routeCache=savedRoutes;
    for(const segment of retained)indexRoutedSegment({...segment,indexId:undefined});
@@ -545,7 +546,6 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
     // Never sacrifice an existing valid connection because this iteration
     // could not find a conflict-free replacement. Restore the previous route
     // and keep it in the occupancy index for subsequent reroutes.
-    const previous=savedRoutes.get(id)||[];
     routeCache.set(id,previous);
     rememberRoutedWire(w,previous);
    }
