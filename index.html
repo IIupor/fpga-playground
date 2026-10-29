@@ -459,6 +459,7 @@ let bestMissingRoutes=Infinity,bestConflictCount=Infinity,stalePasses=0;
 const routingConflictTrajectory=[];
 for(let pass=0;pass<maxNegotiatedPasses;pass++){
  negotiatedPasses=pass+1;
+ let reroutedThisPass=0;
  if(pass===0){
   resetRoutedWireIndex();routeCache=new Map();
   for(const w of routeOrder){const points=routePoints(w);routeCache.set(w.id,points);rememberRoutedWire(w,points)}
@@ -467,8 +468,11 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
   // nets one at a time. Rebuilding occupancy after each rip-up ensures the
   // selected net is not charged for colliding with its own old geometry.
   const scores=routedWireConflictScores();
-  const limit=Math.min(48,Math.max(12,Math.ceil(routeOrder.length*0.06)));
-  const rerouteIds=[...scores.entries()].sort((a,b)=>b[1]-a[1]).slice(0,limit).map(entry=>entry[0]);
+  // Experimental Pathfinder pass: reroute every net currently involved in
+  // congestion, not just the top 6%. This tests whether the small rip-up set
+  // is trapping the solution in a local minimum.
+  const rerouteIds=[...scores.entries()].sort((a,b)=>b[1]-a[1]).map(entry=>entry[0]);
+  reroutedThisPass=rerouteIds.length;
   for(const id of rerouteIds){
    const w=routeOrder.find(item=>item.id===id);if(!w)continue;
    const retained=routedSegments.filter(segment=>segment.wire!==id);
@@ -484,7 +488,7 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
  routeRejectConflicts=false;
  const missingRoutes=routeOrder.reduce((count,w)=>count+((routeCache.get(w.id)||[]).length<2?1:0),0);
  finalConflictCount=countRoutedConflicts();
- routingConflictTrajectory.push({pass:negotiatedPasses,missingRoutes,conflicts:finalConflictCount,rerouted:pass===0?routeOrder.length:Math.min(48,Math.max(12,Math.ceil(routeOrder.length*0.06)))});
+ routingConflictTrajectory.push({pass:negotiatedPasses,missingRoutes,conflicts:finalConflictCount,rerouted:pass===0?routeOrder.length:reroutedThisPass});
  if(missingRoutes<bestMissingRoutes||(missingRoutes===bestMissingRoutes&&finalConflictCount<bestConflictCount)){
   bestMissingRoutes=missingRoutes;bestConflictCount=finalConflictCount;
   finalRoutes=new Map(routeCache);stalePasses=0;
