@@ -76,7 +76,7 @@ function indexRoutedSegment(segment){
  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
 }
 function routeCandidateWireCost(points,wire){
- let length=0,bends=Math.max(0,points.length-2);
+ let length=0,bends=Math.max(0,points.length-2),conflicts=0;
  // Exact checks against every already-routed segment in the spatial bins.
  // Return Infinity rather than allowing the router to trade correctness for
  // a shorter path.
@@ -94,15 +94,15 @@ function routeCandidateWireCost(points,wire){
    const ah=a.y===b.y,bh=s.a.y===s.b.y;
    if(ah!==bh){
     const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
-    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))return Infinity;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))conflicts++;
    }else if(ah&&s.a.y===a.y){
-    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))return Infinity;
+    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))conflicts++;
    }else if(!ah&&s.a.x===a.x){
-    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))return Infinity;
+    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))conflicts++;
    }
   }
  }
- return length+bends*8;
+ return length+bends*8+conflicts*1200;
 }
 function rememberRoutedWire(w,points){
  for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
@@ -326,7 +326,21 @@ function routePointsGraph(w,a,b,p,q){
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
-function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();
+// Pathfinder-style negotiated routing: reroute all nets in alternating orders.
+// Congested crossings carry a high cost, so each pass can choose alternate corridors.
+const resetRoutedWireIndex=()=>{
+ routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();
+ routedHorizontalByY=new Map();routedVerticalByX=new Map();
+ routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;
+};
+const routeOrder=[...wires];
+for(let pass=0;pass<3;pass++){
+ resetRoutedWireIndex();
+ const order=pass===1?[...routeOrder].reverse():routeOrder;
+ for(const w of order){const points=routePoints(w);rememberRoutedWire(w,points)}
+}
+for(const w of routeOrder){const points=routePoints(w);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
  const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`,'data-node':n.id});
  const selectedNode=selected?.kind==='node'&&selected.id===n.id;
