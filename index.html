@@ -841,7 +841,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     // Wire-clearance and routing-lane changes are deliberately kept separate for comparison.
     const xGap=260,yGap=40,topPad=36,leftPad=40;
     for(const l of layerKeys){let y=topPad;for(const nid of layers.get(l)){const n=nodeById.get(nid);n.x=leftPad+l*xGap;n.y=y;const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap}}
-    window.fpgaLoadCircuit(next,wires,id);const placementResult=window.fpgaOptimizePlacement?.();area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`+(placementResult&&placementResult.attempts? ` Simulated annealing: ${placementResult.attempts} moves, proxy score ${placementResult.proxyBefore} to ${placementResult.proxyAfter}; final geometry has ${placementResult.conflictsAfter} crossings and ${placementResult.missingAfter} missing routes.`:'');
+    window.fpgaLoadCircuit(next,wires,id);const placementResult=window.fpgaEnablePlacementAnnealing===true?window.fpgaOptimizePlacement?.():null;area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`+(placementResult&&placementResult.attempts? ` Simulated annealing: ${placementResult.attempts} moves, proxy score ${placementResult.proxyBefore} to ${placementResult.proxyAfter}; final geometry has ${placementResult.conflictsAfter} crossings and ${placementResult.missingAfter} missing routes.`:'');
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
  },true);
 })();
