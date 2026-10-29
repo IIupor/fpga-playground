@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // Keep routing diagnostics focused on the smallest benchmark until c17 routing is correct.
-const benchmarks = ['c17'];
+const benchmarks = ['c17', 'c432'];
 
 async function loadBenchmark(page, name) {
   await page.route(`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`, async route => {
