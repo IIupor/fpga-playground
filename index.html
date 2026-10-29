@@ -469,7 +469,9 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
   for(const id of rerouteIds){
    const w=routeOrder.find(item=>item.id===id);if(!w)continue;
    const retained=routedSegments.filter(segment=>segment.wire!==id);
+   const savedRoutes=new Map(routeCache);
    resetRoutedWireIndex();
+   routeCache=savedRoutes;
    for(const segment of retained)indexRoutedSegment({...segment,indexId:undefined});
    routeCache.delete(id);
    const points=routePoints(w);routeCache.set(id,points);
