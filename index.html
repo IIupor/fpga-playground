@@ -62,7 +62,7 @@ window.fpgaOptimizePlacement=()=>{
   const paths=[...svg.querySelectorAll('path.editor-wire')],segments=[],conflicted=new Set();let missing=0,conflicts=0;
   for(const path of paths){
    const id=path.dataset.wire,d=path.getAttribute('d')||'';
-   const pts=[...(d.matchAll(/[ML]\s*([-\\d.]+)[, ]+([-\\d.]+)/g))].map(m=>({x:Number(m[1]),y:Number(m[2])}));
+   const pts=[...(d.matchAll(/[ML]\s*([-\d.]+)[, ]+([-\d.]+)/g))].map(m=>({x:Number(m[1]),y:Number(m[2])}));
    if(pts.length<2){missing++;continue}
    for(let i=1;i<pts.length;i++)segments.push({wire:id,a:pts[i-1],b:pts[i]});
   }
