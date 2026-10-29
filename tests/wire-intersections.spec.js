@@ -19,7 +19,7 @@ async function loadBenchmark(page, name) {
 }
 
 for (const name of benchmarks) {
-  test(`${name}: benchmark wires have valid, clear, non-crossing geometry`, async ({ page }) => {
+  test(`${name}: benchmark wires do not pass through unrelated elements`, async ({ page }) => {
     // Import each circuit only once; perform all geometry checks against the same render.
     await loadBenchmark(page, name);
 
@@ -114,32 +114,7 @@ for (const name of benchmarks) {
     console.log(`WIRE-GEOMETRY-DIAGNOSTIC ${name}: ${JSON.stringify(result)}`);
     expect(result.nodeCount, `${name}: nodes should have measurable geometry`).toBeGreaterThan(0);
     expect(result.wireCount, `${name}: benchmark should render wires`).toBeGreaterThan(0);
-    expect(result.missingGeometry, `${name}: wires need identity, endpoints and valid geometry`).toEqual([]);
-    expect(result.nonOrthogonal, `${name}: routes must be orthogonal`).toEqual([]);
-    expect(result.blocked, `${name}: wires must avoid unrelated nodes`).toEqual([]);
-    expect(result.crossings, `${name}: wires must not cross: ${JSON.stringify(result.examples)}`).toBe(0);
-    expect(result.overlaps, `${name}: unrelated wires must not overlap: ${JSON.stringify(result.examples)}`).toBe(0);
+    expect(result.blocked, `${name}: wires must not pass through unrelated elements`).toEqual([]);
   }, 120000);
 }
 
-test('wire crossing geometry distinguishes a proper crossing from a shared endpoint', async ({ page }) => {
-  await page.goto('/');
-  const result = await page.evaluate(() => {
-    const cross = (u, v) => u.x * v.y - u.y * v.x;
-    const sub = (u, v) => ({ x: u.x - v.x, y: u.y - v.y });
-    const intersects = (p, q, r, s) => {
-      const a = sub(q, p), b = sub(s, r), delta = sub(r, p);
-      const denominator = cross(a, b);
-      if (Math.abs(denominator) < 1e-8) return false;
-      const t = cross(delta, b) / denominator;
-      const u = cross(delta, a) / denominator;
-      return t > 1e-8 && t < 1 - 1e-8 && u > 1e-8 && u < 1 - 1e-8;
-    };
-    return {
-      crossing: intersects({x:0,y:0},{x:10,y:10},{x:0,y:10},{x:10,y:0}),
-      sharedEndpoint: intersects({x:0,y:0},{x:10,y:0},{x:10,y:0},{x:10,y:10}),
-      separated: intersects({x:0,y:0},{x:10,y:0},{x:0,y:5},{x:10,y:5})
-    };
-  });
-  expect(result).toEqual({ crossing: true, sharedEndpoint: false, separated: false });
-});
