@@ -16,11 +16,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install Icarus Verilog and Yosys
-        run: sudo apt-get update && sudo apt-get install --yes iverilog yosys
+          cache: npm
+      - name: Install Icarus Verilog and Yosys if missing
+        run: |
+          if ! command -v iverilog >/dev/null 2>&1 || ! command -v yosys >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes iverilog yosys
+          else
+            echo "Icarus Verilog and Yosys are already available on this runner."
+          fi
       - name: Install dependencies
-        run: npm install
-      - name: Install Playwright Chromium
+        run: npm ci
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright Chromium and system dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
       - name: Run focused Pathfinder diagnostics
         if: ${{ github.ref_name != 'experiment/restore-simple-routing' }}
