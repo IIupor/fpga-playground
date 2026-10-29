@@ -88,6 +88,27 @@ function routeHistoryPenalty(a,b){
  }
  return penalty;
 }
+function countRoutedConflicts(){
+ const seen=new Set();let conflicts=0;
+ for(const bucket of routedSegmentBins.values()){
+  for(let i=0;i<bucket.length;i++)for(let j=i+1;j<bucket.length;j++){
+   const a=bucket[i],b=bucket[j];
+   if(a.indexId===b.indexId||a.wire===b.wire)continue;
+   const pair=a.indexId<b.indexId?a.indexId+':'+b.indexId:b.indexId+':'+a.indexId;
+   if(seen.has(pair))continue;seen.add(pair);
+   const ah=a.a.y===a.b.y,bh=b.a.y===b.b.y;
+   if(ah!==bh){
+    const h=ah?a:b,v=ah?b:a,x=v.a.x,y=h.a.y;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))conflicts++;
+   }else if(ah&&a.a.y===b.a.y){
+    if(Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x))<Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x)))conflicts++;
+   }else if(!ah&&a.a.x===b.a.x){
+    if(Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y))<Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y)))conflicts++;
+   }
+  }
+ }
+ return conflicts;
+}
 function recordCongestionHistory(){
  const seen=new Set();
  for(const bucket of routedSegmentBins.values()){
@@ -223,7 +244,7 @@ function routePointsFast(w,a,b,p,q){
    }
    if(blocked)continue;
    const simplified=candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);
-   const score=simplified.slice(1).reduce((sum,pt,i)=>sum+Math.abs(pt.x-simplified[i].x)+Math.abs(pt.y-simplified[i].y),0)+Math.max(0,simplified.length-2)*8;
+   const score=routeCandidateWireCost(simplified,w);
    if(Number.isFinite(score)&&score<bestScore){bestScore=score;bestCandidate=simplified}
    }
   }
@@ -381,7 +402,8 @@ const resetRoutedWireIndex=()=>{
 const routeOrder=[...wires];
 let finalRoutes=new Map();
 routeCongestionHistory=new Map();routeHistoryByY=new Map();routeHistoryByX=new Map();
-const maxNegotiatedPasses=8;
+const maxNegotiatedPasses=24;
+let finalConflictCount=Infinity;
 for(let pass=0;pass<maxNegotiatedPasses;pass++){
  resetRoutedWireIndex();routeCache=new Map();
  const order=pass%2?[...routeOrder].reverse():routeOrder;
@@ -392,11 +414,19 @@ for(let pass=0;pass<maxNegotiatedPasses;pass++){
   rememberRoutedWire(w,points);
  }
  finalRoutes=new Map(routeCache);
- // Record present conflicts before ripping up the current iteration's routes.
+ // Count present conflicts explicitly before ripping up this iteration.
+ finalConflictCount=countRoutedConflicts();
+ if(finalConflictCount===0)break;
+ // Historical congestion persists across rip-up/reroute iterations.
  recordCongestionHistory();
 }
 routeRejectConflicts=false;
 routeCache=finalRoutes;
+// Final independent validation of the exact routes that will be rendered.
+const finalValidation=countRoutedConflicts();
+svg.dataset.routingConflicts=String(finalValidation);
+svg.dataset.routingPasses=String(finalValidation===0?'converged':maxNegotiatedPasses);
+svg.dataset.routingValidated=finalValidation===0?'true':'false';
 for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
  const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`,'data-node':n.id});
