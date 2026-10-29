@@ -318,7 +318,7 @@ function routePointsGraph(w,a,b,p,q){
    while(v>=0){reversed.push(vertices[v]);const back=prev[v][dir];if(!back)break;[v,dir]=back}
    const path=reversed.reverse(),simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))){routeCache.set(w.id,simplified);return simplified}
+   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))&&Number.isFinite(routeCandidateWireCost(simplified,w))){routeCache.set(w.id,simplified);return simplified}
   }
  }
  routeCache.set(w.id,[]);return [];
@@ -568,6 +568,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  const reset=document.getElementById('editorZoomReset');
  const label=document.getElementById('editorZoomLevel');
  const fit=document.getElementById('editorFitView');
+ const msg=document.getElementById('editorMessage');
  if(!viewport||!svg||!out||!inc||!reset||!label||!fit)return;
  window.fpgaZoom=1;
  const clamp=z=>Math.max(0.25,Math.min(2.5,Math.round(z*100)/100));
