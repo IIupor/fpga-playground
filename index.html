@@ -234,7 +234,13 @@ function routePointsMikami(w,a,b,p,q){
   });
  }
  const path=window.routeMikamiTabuchi(p,q,obstacles,{clearance:0,maxStates:50000});
- return path||[];
+ if(path)return path;
+ // A previously routed wire can form a temporary barrier even when the
+ // circuit still has a valid route. Retry against block obstacles only before
+ // declaring the connection unroutable; never silently drop the net.
+ const blockObstacles=routeRects.filter(r=>r.id!==a.id&&r.id!==b.id)
+  .map(r=>({left:r.l,right:r.r,top:r.t,bottom:r.b}));
+ return window.routeMikamiTabuchi(p,q,blockObstacles,{clearance:0,maxStates:50000})||[];
 }
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
