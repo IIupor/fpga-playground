@@ -68,3 +68,39 @@ test('MT-STRESS-12: route remains orthogonal for off-grid terminal coordinates',
   const path = routeMikamiTabuchi(start, end, obstacles);
   assertValidPath(path, start, end, obstacles);
 });
+
+
+test('MT-PROFILE-01: exposes search-cost metrics without changing the route', () => {
+  const start = { x: 0, y: 0 }, end = { x: 200, y: 0 };
+  const obstacles = [
+    { left: 30, right: 44, top: -12, bottom: 12 },
+    { left: 100, right: 116, top: -8, bottom: 8 }
+  ];
+  const expected = routeMikamiTabuchi(start, end, obstacles);
+  const metrics = {};
+  const measured = routeMikamiTabuchi(start, end, obstacles, { metrics });
+  expect(measured).toEqual(expected);
+  expect(metrics.status).toBe('routed');
+  expect(metrics.searchTimeMs).toBeGreaterThanOrEqual(0);
+  expect(metrics.coordinateBuildMs).toBeGreaterThanOrEqual(0);
+  expect(metrics.xLines).toBeGreaterThan(0);
+  expect(metrics.yLines).toBeGreaterThan(0);
+  expect(metrics.coordinateLines).toBe(metrics.xLines + metrics.yLines);
+  expect(metrics.gridPointCount).toBe(metrics.xLines * metrics.yLines);
+  expect(metrics.statesProcessed).toBeGreaterThan(0);
+  expect(metrics.raySteps).toBeGreaterThan(0);
+  expect(metrics.obstacleChecks).toBe(metrics.obstaclePointChecks + metrics.obstacleSegmentChecks);
+  expect(metrics.maxQueueLength).toBeGreaterThan(0);
+});
+
+test('MT-PROFILE-02: reports state-limit separately from an unreachable route', () => {
+  const metrics = {};
+  const path = routeMikamiTabuchi(
+    { x: 0, y: 0 }, { x: 100, y: 0 },
+    [{ left: 40, right: 60, top: -100, bottom: 100 }],
+    { clearance: 0, maxStates: 1, metrics }
+  );
+  expect(path).toBeNull();
+  expect(metrics.status).toBe('state-limit');
+  expect(metrics.statesProcessed).toBe(1);
+});
