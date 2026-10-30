@@ -362,10 +362,64 @@ function routePointsGraph(w,a,b,p,q){
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
+// Independent post-route geometry audit. It never mutates the logical graph.
+function auditRouteGeometry(){
+ const parent=new Map(nodes.map(n=>[n.id,n.id]));
+ const find=x=>{let p=parent.get(x);while(p!==undefined&&p!==parent.get(p))p=parent.get(p);return p};
+ const join=(a,b)=>{const x=find(a),y=find(b);if(x!==undefined&&y!==undefined&&x!==y)parent.set(x,y)};
+ for(const w of wires)join(w.from,w.to);
+ const netOf=w=>find(w.from);
+ const segments=[];
+ for(const w of wires){
+  const pts=routeCache.get(w.id)||[];
+  for(let i=1;i<pts.length;i++){
+   const a=pts[i-1],b=pts[i];
+   if(a.x===b.x&&a.y===b.y)continue;
+   segments.push({wireId:w.id,netId:netOf(w),a:{x:a.x,y:a.y},b:{x:b.x,y:b.y}});
+  }
+ }
+ const conflicts=[];
+ const add=(type,wireIds,point,details={})=>conflicts.push({type,wireIds:[...new Set(wireIds)],coordinates:point,...details});
+ for(let i=0;i<segments.length;i++){
+  const a=segments[i],ah=a.a.y===a.b.y;
+  for(let j=i+1;j<segments.length;j++){
+   const b=segments[j];if(a.wireId===b.wireId||a.netId===b.netId)continue;
+   const bh=b.a.y===b.b.y;
+   if(ah!==bh){
+    const h=ah?a:b,v=ah?b:a;
+    const x=v.a.x,y=h.a.y;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))
+     add('crossing',[a.wireId,b.wireId],{x,y});
+   }else if(ah&&bh&&a.a.y===b.a.y){
+    const lo=Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x));
+    const hi=Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x));
+    if(hi>lo)add('overlap',[a.wireId,b.wireId],{x1:lo,x2:hi,y:a.a.y});
+   }else if(!ah&&!bh&&a.a.x===b.a.x){
+    const lo=Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y));
+    const hi=Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y));
+    if(hi>lo)add('overlap',[a.wireId,b.wireId],{x:a.a.x,y1:lo,y2:hi});
+   }
+  }
+ }
+ for(const seg of segments){
+  const horizontal=seg.a.y===seg.b.y;
+  for(const n of nodes){
+   if(n.id===wires.find(w=>w.id===seg.wireId)?.from||n.id===wires.find(w=>w.id===seg.wireId)?.to)continue;
+   const box=spec(n),l=n.x-8,r=n.x+box.w+8,t=n.y-8,b=n.y+box.h+8;
+   const hit=horizontal?(seg.a.y>t&&seg.a.y<b&&Math.max(Math.min(seg.a.x,seg.b.x),l)<Math.min(Math.max(seg.a.x,seg.b.x),r)):
+    (seg.a.x>l&&seg.a.x<r&&Math.max(Math.min(seg.a.y,seg.b.y),t)<Math.min(Math.max(seg.a.y,seg.b.y),b));
+   if(hit)add('block-penetration',[seg.wireId],horizontal?{x1:Math.max(Math.min(seg.a.x,seg.b.x),l),x2:Math.min(Math.max(seg.a.x,seg.b.x),r),y:seg.a.y}:{x:seg.a.x,y1:Math.max(Math.min(seg.a.y,seg.b.y),t),y2:Math.min(Math.max(seg.a.y,seg.b.y),b)},{blockId:n.id,blockName:n.name});
+  }
+ }
+ return {wireCount:wires.length,segmentCount:segments.length,conflictCount:conflicts.length,conflicts};
+}
+window.fpgaAuditRouteGeometry=auditRouteGeometry;
 function render(){const renderStartedAt=performance.now();routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;const mode=document.getElementById('routingMode')?.value||'legacy';mtRenderMetrics=mode==='mikami'?{wireCount:wires.length,searches:[]}:null;const stats=document.getElementById('routingStats');if(stats)stats.textContent='Router: '+(mode==='mikami'?'Mikami–Tabuchi (profiling…)':'current');evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`, 'data-node':n.id});const box=make('rect',{x:0,y:0,width:s.w,height:s.h,rx:12,class:'nodebox'});if(selected?.kind==='node'&&selected.id===n.id)box.setAttribute('stroke','var(--off)');g.append(box);g.append(make('rect',{x:0,y:0,width:s.w,height:25,rx:10,class:'nodehead'}));g.append(make('rect',{x:0,y:15,width:s.w,height:10,fill:'var(--site-secondary)'}));g.append(make('text',{x:12,y:17,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));g.append(make('text',{x:s.w/2,y:48,'text-anchor':'middle',class:'nodetext'},n.name));g.append(make('text',{x:s.w/2,y:64,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+n.value));
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
+window.fpgaLastGeometryAudit=auditRouteGeometry();
+console.info('FPGA_GEOMETRY_AUDIT '+JSON.stringify(window.fpgaLastGeometryAudit));
 updateTables();
 if(mtRenderMetrics){
  const searches=mtRenderMetrics.searches;
