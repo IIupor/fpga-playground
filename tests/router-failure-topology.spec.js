@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 async function loadBenchmark(page, name) {
-  await page.route(\`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/\${name}.v\`, async route => {
-    const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', \`\${name}.v\`), 'utf8');
+  await page.route(`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`, async route => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', `${name}.v`), 'utf8');
     await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
   });
   await page.goto('/');
@@ -22,7 +22,7 @@ function reasonFor(status) {
     unroutable: 'search exhausted its reachable search space without reaching the target',
     routed: 'a route was found',
     'same-point': 'source and target coordinates are identical'
-  })[status] || \`router returned status \${status}\`;
+  })[status] || `router returned status ${status}`;
 }
 
 test('MT-FAILED-PRIMARY-01: capture endpoints, exact obstacles, failure reasons and retries for two failed first searches', async ({ page }) => {
@@ -100,7 +100,7 @@ test('MT-FAILED-PRIMARY-01: capture endpoints, exact obstacles, failure reasons 
             'blocked-endpoint': 'start or end lies inside an obstacle',
             'state-limit': 'maxStates was reached before the search queue was exhausted',
             unroutable: 'reachable search space was exhausted without reaching the target'
-          })[first.status] || \`router status: \${first.status}\`,
+          })[first.status] || `router status: ${first.status}`,
           searchScope: first.searchScope,
           elapsedMs: first.elapsedMs,
           statesProcessed: first.statesProcessed,
@@ -128,8 +128,8 @@ test('MT-FAILED-PRIMARY-01: capture endpoints, exact obstacles, failure reasons 
   expect(report, 'the first 20 c432 wires should reproduce two failed primary searches').toHaveLength(2);
   for (const item of report) {
     expect(item.primaryFailure.status).not.toBe('routed');
-    expect(item.retry, \`wire \${item.wireId} should have a retry record\`).not.toBeNull();
-    expect(item.retry.status, \`wire \${item.wireId} retry should route\`).toBe('routed');
+    expect(item.retry, `wire ${item.wireId} should have a retry record`).not.toBeNull();
+    expect(item.retry.status, `wire ${item.wireId} retry should route`).toBe('routed');
     expect(item.obstacles.blocks.length).toBe(item.obstacles.blockCount);
     expect(item.obstacles.previousWireSegments.length).toBe(item.obstacles.previousWireSegmentCount);
     expect(item.coordinates.start.x).not.toBeNaN();
@@ -163,8 +163,8 @@ test('TOPOLOGY-GEOMETRY-01: changing SVG wire geometry cannot alter connectivity
     ).map(b => [a, b]));
     if (!candidates.length) throw new Error('Could not find two wires with distinct endpoints');
     const [a, b] = candidates[0];
-    const pathA = document.querySelector(\`path.editor-wire[data-wire="\${a.id}"]\`);
-    const pathB = document.querySelector(\`path.editor-wire[data-wire="\${b.id}"]\`);
+    const pathA = document.querySelector(`path.editor-wire[data-wire="${a.id}"]`);
+    const pathB = document.querySelector(`path.editor-wire[data-wire="${b.id}"]`);
     if (!pathA || !pathB) throw new Error('Could not find SVG paths for selected independent wire segments');
     // Force an obvious geometric crossing in SVG only. The logical wire records are untouched.
     pathA.setAttribute('d', 'M 100 100 L 200 100');
@@ -186,8 +186,8 @@ test('TOPOLOGY-GEOMETRY-01: changing SVG wire geometry cannot alter connectivity
       const byId = new Map(evaluated.map(n => [n.id, n]));
       rows.push({ input: inputs.map(n => n.value), output: outputs.map(n => byId.get(n.id).value) });
     }
-    const p1 = document.querySelector(\`path.editor-wire[data-wire="\${\${0}}"]\`);
-    return { signature, rows, pathA: document.querySelector(\`path.editor-wire[data-wire="\${window.__unusedWireA || ''}"]\`)?.getAttribute('d') };
+    const p1 = document.querySelector(`path.editor-wire[data-wire="${${0}}"]`);
+    return { signature, rows, pathA: document.querySelector(`path.editor-wire[data-wire="${window.__unusedWireA || ''}"]`)?.getAttribute('d') };
   });
 
   expect(before.mutatedGeometry).toEqual(['M 100 100 L 200 100', 'M 150 50 L 150 150']);
