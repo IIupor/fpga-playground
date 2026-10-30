@@ -186,8 +186,7 @@ test('TOPOLOGY-GEOMETRY-01: changing SVG wire geometry cannot alter connectivity
       const byId = new Map(evaluated.map(n => [n.id, n]));
       rows.push({ input: inputs.map(n => n.value), output: outputs.map(n => byId.get(n.id).value) });
     }
-    const p1 = document.querySelector(`path.editor-wire[data-wire="${${0}}"]`);
-    return { signature, rows, pathA: document.querySelector(`path.editor-wire[data-wire="${window.__unusedWireA || ''}"]`)?.getAttribute('d') };
+    return { signature, rows };
   });
 
   expect(before.mutatedGeometry).toEqual(['M 100 100 L 200 100', 'M 150 50 L 150 150']);
