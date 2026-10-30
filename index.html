@@ -248,6 +248,35 @@ function routePointsMikami(w,a,b,p,q){
  if(mtRenderMetrics)mtRenderMetrics.searches.push({...retryMetrics,wireId:w.id,attempt:2,searchScope:'blocks-only'});
  return retryPath||[];
 }
+// Run a bounded MT diagnostic without triggering a synchronous full-editor render.
+// Yield after each net so the browser can publish partial progress and remain responsive.
+window.fpgaStartMikamiDiagnostic=function(limit=20){
+ const oldCache=routeCache,oldSegments=routedSegments,oldBins=routedSegmentBins;
+ const oldNextSegmentId=nextRoutedSegmentId,oldMetrics=mtRenderMetrics;
+ const selectedWires=wires.slice(0,Math.max(0,Math.min(wires.length,Number(limit)||20)));
+ const startedAt=performance.now(),searches=[];
+ const publish=(completed,lastWire)=>{
+  const sum=key=>searches.reduce((n,item)=>n+(Number(item[key])||0),0);
+  window.fpgaLastMikamiDiagnostic={status:completed===selectedWires.length?'completed':'running',completed,total:selectedWires.length,wireCount:wires.length,elapsedMs:performance.now()-startedAt,searchCount:searches.length,retryCount:searches.filter(x=>x.attempt===2).length,routedSearches:searches.filter(x=>x.status==='routed').length,failedSearches:searches.filter(x=>x.status!=='routed').length,totalStatesProcessed:sum('statesProcessed'),totalRaySteps:sum('raySteps'),totalObstacleChecks:sum('obstacleChecks'),slowestSearchMs:Math.max(0,...searches.map(x=>x.searchTimeMs||0)),lastWire:lastWire||null,searches:searches.slice()};
+ };
+ window.fpgaLastMikamiDiagnostic={status:'running',completed:0,total:selectedWires.length,wireCount:wires.length,elapsedMs:0,searches:[]};
+ window.fpgaMikamiDiagnosticPromise=(async()=>{
+  try{
+   routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;
+   mtRenderMetrics={wireCount:wires.length,searches};
+   for(let i=0;i<selectedWires.length;i++){
+    const w=selectedWires[i],a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
+    if(a&&b){const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);const points=routePointsMikami(w,a,b,p,q);rememberRoutedWire(w,points);}
+    publish(i+1,{id:w.id,from:w.from,to:w.to});
+    await new Promise(resolve=>setTimeout(resolve,0));
+   }
+   publish(selectedWires.length,null);
+   return window.fpgaLastMikamiDiagnostic;
+  }catch(error){window.fpgaLastMikamiDiagnostic={...window.fpgaLastMikamiDiagnostic,status:'error',error:String(error),elapsedMs:performance.now()-startedAt};throw error;}
+  finally{routeCache=oldCache;routedSegments=oldSegments;routedSegmentBins=oldBins;nextRoutedSegmentId=oldNextSegmentId;mtRenderMetrics=oldMetrics;}
+ })();
+ return true;
+};
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
  const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
