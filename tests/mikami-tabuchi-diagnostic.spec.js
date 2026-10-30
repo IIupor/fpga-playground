@@ -16,6 +16,7 @@ async function loadBenchmark(page, name) {
 }
 
 test('MT-DIAG-01: profile the first 20 c432 nets with yielding progress', async ({ page }) => {
+  test.setTimeout(300000);
   await loadBenchmark(page, 'c432');
 
   await page.evaluate(() => {
@@ -23,14 +24,14 @@ test('MT-DIAG-01: profile the first 20 c432 nets with yielding progress', async 
       throw new Error('Mikami diagnostic runner was not installed');
     }
     window.fpgaStartMikamiDiagnostic(20);
-  }, { timeout: 180000 });
+  });
 
   let lastCompleted = -1;
   let snapshot;
   const deadline = Date.now() + 240000;
   while (Date.now() < deadline) {
     await page.waitForTimeout(500);
-    snapshot = await page.evaluate(() => window.fpgaLastMikamiDiagnostic || null, { timeout: 180000 });
+    snapshot = await page.evaluate(() => window.fpgaLastMikamiDiagnostic || null);
     if (!snapshot) continue;
     if (snapshot.completed !== lastCompleted) {
       lastCompleted = snapshot.completed;
@@ -64,4 +65,4 @@ test('MT-DIAG-01: profile the first 20 c432 nets with yielding progress', async 
     slowestSearchMs: Number(snapshot.slowestSearchMs.toFixed(1)),
     slowestSearches: snapshot.searches.slice().sort((a,b) => b.searchTimeMs-a.searchTimeMs).slice(0,5)
   })}`);
-}, 300000);
+});
