@@ -104,3 +104,47 @@ test('MT-PROFILE-02: reports state-limit separately from an unreachable route', 
   expect(metrics.status).toBe('state-limit');
   expect(metrics.statesProcessed).toBe(1);
 });
+
+
+test('MT-SPATIAL-01: spatial index preserves the exhaustive route at cell boundaries', () => {
+  const start = { x: 0, y: 0 }, end = { x: 256, y: 0 };
+  const obstacles = [
+    { left: 127, right: 130, top: -12, bottom: 12 },
+    { left: 250, right: 280, top: 2000, bottom: 2100 }
+  ];
+  const indexed = routeMikamiTabuchi(start, end, obstacles, { clearance: 0, spatialCellSize: 128 });
+  const exhaustive = routeMikamiTabuchi(start, end, obstacles, { clearance: 0, useSpatialIndex: false });
+  expect(indexed).toEqual(exhaustive);
+  assertValidPath(indexed, start, end, obstacles, 0);
+});
+
+test('MT-SPATIAL-02: indexed collision candidates reduce checks on a distributed layout', () => {
+  const start = { x: 0, y: 0 }, end = { x: 2400, y: 0 };
+  const obstacles = Array.from({ length: 60 }, (_, i) => ({
+    left: 20 + i * 40, right: 28 + i * 40, top: -6, bottom: 6
+  }));
+  const indexedMetrics = {}, exhaustiveMetrics = {};
+  const indexed = routeMikamiTabuchi(start, end, obstacles, { clearance: 0, metrics: indexedMetrics });
+  const exhaustive = routeMikamiTabuchi(start, end, obstacles, {
+    clearance: 0, useSpatialIndex: false, metrics: exhaustiveMetrics
+  });
+  expect(indexed).toEqual(exhaustive);
+  expect(indexedMetrics.spatialIndexBuildMs).toBeGreaterThanOrEqual(0);
+  expect(indexedMetrics.spatialCandidateChecks).toBeLessThan(exhaustiveMetrics.obstacleChecks / 5);
+  console.log('MT-SPATIAL-COST ' + JSON.stringify({
+    indexedChecks: indexedMetrics.obstacleChecks,
+    exhaustiveChecks: exhaustiveMetrics.obstacleChecks,
+    candidateChecks: indexedMetrics.spatialCandidateChecks,
+    buildMs: indexedMetrics.spatialIndexBuildMs
+  }));
+});
+
+test('MT-SPATIAL-03: independent orthogonal nets may cross geometrically', () => {
+  const horizontal = routeMikamiTabuchi({ x: 0, y: 50 }, { x: 100, y: 50 }, [], { clearance: 0 });
+  const vertical = routeMikamiTabuchi({ x: 50, y: 0 }, { x: 50, y: 100 }, [], { clearance: 0 });
+  expect(horizontal).toEqual([{ x: 0, y: 50 }, { x: 100, y: 50 }]);
+  expect(vertical).toEqual([{ x: 50, y: 0 }, { x: 50, y: 100 }]);
+  // Their interior intersection is purely geometric; this router does not
+  // merge or electrically connect independent net identities.
+  expect(horizontal[0].y).toBe(vertical[0].x);
+});
