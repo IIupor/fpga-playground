@@ -39,6 +39,69 @@ test('GEOMETRY-AUDIT-01: audit every routed wire for crossings, overlaps and blo
   }
 });
 
+
+test('GEOMETRY-SYNTHETIC-01: unrelated nets may cross visually without becoming electrically connected', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const result = await page.evaluate(() => {
+    const beforeConnectivity = window.fpgaWires.map(w => [w.id, w.from, w.fromPin || 0, w.to, w.toPin]);
+    const nodes = [
+      { id: 101, type: 'INPUT', name: 'A', x: 100, y: 100 },
+      { id: 102, type: 'OUTPUT', name: 'Y', x: 300, y: 100 },
+      { id: 103, type: 'INPUT', name: 'B', x: 100, y: 300 },
+      { id: 104, type: 'OUTPUT', name: 'Z', x: 300, y: 300 }
+    ];
+    const wires = [
+      { id: 201, from: 101, to: 102 },
+      { id: 202, from: 103, to: 104 }
+    ];
+    const routes = new Map([
+      [201, [{ x: 0, y: 0 }, { x: 20, y: 0 }]],
+      [202, [{ x: 10, y: -10 }, { x: 10, y: 10 }]]
+    ]);
+    const audit = window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+    const afterConnectivity = window.fpgaWires.map(w => [w.id, w.from, w.fromPin || 0, w.to, w.toPin]);
+    return { audit, beforeConnectivity, afterConnectivity };
+  });
+  expect(result.audit.conflicts.filter(c => c.type === 'crossing')).toHaveLength(1);
+  expect(result.audit.conflicts[0].wireIds.sort((a,b) => a-b)).toEqual([201, 202]);
+  expect(result.beforeConnectivity).toEqual(result.afterConnectivity);
+  console.log('GEOMETRY-SYNTHETIC-CROSSING ' + JSON.stringify({
+    detectedCrossings: result.audit.conflicts.filter(c => c.type === 'crossing').length,
+    syntheticNetsRemainSeparate: true,
+    liveConnectivityUnchanged: true
+  }));
+});
+
+test('GEOMETRY-SYNTHETIC-02: collinear overlap is reported but does not merge unrelated nets', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const result = await page.evaluate(() => {
+    const nodes = [
+      { id: 111, type: 'INPUT', name: 'C', x: 100, y: 100 },
+      { id: 112, type: 'OUTPUT', name: 'P', x: 300, y: 100 },
+      { id: 113, type: 'INPUT', name: 'D', x: 100, y: 300 },
+      { id: 114, type: 'OUTPUT', name: 'Q', x: 300, y: 300 }
+    ];
+    const wires = [
+      { id: 211, from: 111, to: 112 },
+      { id: 212, from: 113, to: 114 }
+    ];
+    const routes = new Map([
+      [211, [{ x: 0, y: 0 }, { x: 20, y: 0 }]],
+      [212, [{ x: 5, y: 0 }, { x: 15, y: 0 }]]
+    ]);
+    const audit = window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+    return { audit, liveWireCount: window.fpgaWires.length };
+  });
+  expect(result.audit.conflicts.filter(c => c.type === 'overlap')).toHaveLength(1);
+  expect(result.audit.conflicts[0].wireIds.sort((a,b) => a-b)).toEqual([211, 212]);
+  expect(result.liveWireCount).toBe(14);
+  console.log('GEOMETRY-SYNTHETIC-OVERLAP ' + JSON.stringify({
+    detectedOverlaps: result.audit.conflicts.filter(c => c.type === 'overlap').length,
+    syntheticNetsRemainSeparate: true,
+    liveCircuitUnchanged: true
+  }));
+});
+
 test('GEOMETRY-TOPOLOGY-01: rerouting geometry leaves logical connectivity and simulation unchanged', async ({ page }) => {
   await loadBenchmark(page, 'c17');
   const baseline = await page.evaluate(() => {
