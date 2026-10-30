@@ -36,6 +36,10 @@ async function diagnostics(page) {
       horizontal:w.points[i].y===p.y
     })));
     let crossings=0, overlaps=0, blocked=0, nonOrthogonal=0, missing=0;
+    const missingWires = wires.filter(w => !w.id || w.points.length < 2).map(w => ({
+      id: w.id, from: w.from, fromName: nodes.find(n => n.id === w.from)?.name,
+      to: w.to, toName: nodes.find(n => n.id === w.to)?.name, points: w.points
+    }));
     for (const w of wires) {
       if (!w.id || w.points.length<2) missing++;
       for (let i=1;i<w.points.length;i++) {
@@ -63,7 +67,7 @@ async function diagnostics(page) {
       }
     }
     return {nodeCount:nodes.length,wireCount:wires.length,segmentCount:segments.length,
-      crossings,overlaps,blocked,nonOrthogonal,missing};
+      crossings,overlaps,blocked,nonOrthogonal,missing,missingWires};
   });
 }
 
