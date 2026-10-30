@@ -219,6 +219,7 @@ function routePointsFast(w,a,b,p,q){
  const partial=simplify(path);
  return partial;
 }
+let mtRenderMetrics=null;
 function routePointsMikami(w,a,b,p,q){
  const obstacles=routeRects.filter(r=>r.id!==a.id&&r.id!==b.id).map(r=>({left:r.l,right:r.r,top:r.t,bottom:r.b}));
  // Reserve earlier independent nets as narrow keep-out rectangles. Wires driven
@@ -233,14 +234,19 @@ function routePointsMikami(w,a,b,p,q){
    bottom:Math.max(s.a.y,s.b.y)+(horizontal?4:0)
   });
  }
- const path=window.routeMikamiTabuchi(p,q,obstacles,{clearance:0,maxStates:50000});
+ const firstMetrics={};
+ const path=window.routeMikamiTabuchi(p,q,obstacles,{clearance:0,maxStates:50000,metrics:firstMetrics});
+ if(mtRenderMetrics)mtRenderMetrics.searches.push({...firstMetrics,wireId:w.id,attempt:1,searchScope:'previous-wires'});
  if(path)return path;
  // A previously routed wire can form a temporary barrier even when the
  // circuit still has a valid route. Retry against block obstacles only before
  // declaring the connection unroutable; never silently drop the net.
  const blockObstacles=routeRects.filter(r=>r.id!==a.id&&r.id!==b.id)
   .map(r=>({left:r.l,right:r.r,top:r.t,bottom:r.b}));
- return window.routeMikamiTabuchi(p,q,blockObstacles,{clearance:0,maxStates:50000})||[];
+ const retryMetrics={};
+ const retryPath=window.routeMikamiTabuchi(p,q,blockObstacles,{clearance:0,maxStates:50000,metrics:retryMetrics});
+ if(mtRenderMetrics)mtRenderMetrics.searches.push({...retryMetrics,wireId:w.id,attempt:2,searchScope:'blocks-only'});
+ return retryPath||[];
 }
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
@@ -324,11 +330,31 @@ function routePointsGraph(w,a,b,p,q){
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
-function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;const mode=document.getElementById('routingMode')?.value||'legacy';const stats=document.getElementById('routingStats');if(stats)stats.textContent='Router: '+(mode==='mikami'?'Mikami–Tabuchi (experimental)':'current');evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
+function render(){const renderStartedAt=performance.now();routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;const mode=document.getElementById('routingMode')?.value||'legacy';mtRenderMetrics=mode==='mikami'?{wireCount:wires.length,searches:[]}:null;const stats=document.getElementById('routingStats');if(stats)stats.textContent='Router: '+(mode==='mikami'?'Mikami–Tabuchi (profiling…)':'current');evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){const s=spec(n),g=make('g',{transform:`translate(${n.x} ${n.y})`, 'data-node':n.id});const box=make('rect',{x:0,y:0,width:s.w,height:s.h,rx:12,class:'nodebox'});if(selected?.kind==='node'&&selected.id===n.id)box.setAttribute('stroke','var(--off)');g.append(box);g.append(make('rect',{x:0,y:0,width:s.w,height:25,rx:10,class:'nodehead'}));g.append(make('rect',{x:0,y:15,width:s.w,height:10,fill:'var(--site-secondary)'}));g.append(make('text',{x:12,y:17,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':n.type));g.append(make('text',{x:s.w/2,y:48,'text-anchor':'middle',class:'nodetext'},n.name));g.append(make('text',{x:s.w/2,y:64,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+n.value));
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
-updateTables()}
+updateTables();
+if(mtRenderMetrics){
+ const searches=mtRenderMetrics.searches;
+ const sum=key=>searches.reduce((total,item)=>total+(Number(item[key])||0),0);
+ const summary={
+  wireCount:mtRenderMetrics.wireCount,searchCount:searches.length,
+  retryCount:searches.filter(item=>item.attempt===2).length,
+  routedSearches:searches.filter(item=>item.status==='routed').length,
+  failedSearches:searches.filter(item=>item.status!=='routed').length,
+  totalSearchTimeMs:sum('searchTimeMs'),renderTimeMs:performance.now()-renderStartedAt,
+  totalStatesProcessed:sum('statesProcessed'),totalRaySteps:sum('raySteps'),
+  totalCoordinateLines:sum('coordinateLines'),totalGridPoints:sum('gridPointCount'),
+  totalObstaclePointChecks:sum('obstaclePointChecks'),totalObstacleSegmentChecks:sum('obstacleSegmentChecks'),
+  maxStatesInOneSearch:Math.max(0,...searches.map(item=>item.statesProcessed||0)),
+  slowestSearches:searches.slice().sort((a,b)=>(b.searchTimeMs||0)-(a.searchTimeMs||0)).slice(0,10)
+ };
+ window.fpgaLastMikamiStats=summary;
+ if(stats)stats.textContent='MT: '+summary.wireCount+' wires · '+summary.searchCount+' searches · '+summary.totalStatesProcessed+' states · '+summary.renderTimeMs.toFixed(1)+' ms';
+ console.info('MT_ROUTING_METRICS '+JSON.stringify(summary));
+ mtRenderMetrics=null;
+}}
 function connectInput(n,i){if(!pending){msg.textContent='First click an output pin on the right side of a block.';return}if(pending.source===n.id){msg.textContent='A block cannot connect to itself in this simple editor.';return}saveHistory();const old=wires.findIndex(w=>w.to===n.id&&w.toPin===i);if(old>=0)wires.splice(old,1);wires.push({id:nextId++,from:pending.source,fromPin:pending.sourcePin||0,to:n.id,toPin:i});pending=null;selected=null;msg.textContent='Wire connected. Signal values recalculated.';render()}
 function add(type){saveHistory();const count=nodes.filter(n=>n.type===type).length;const names={INPUT:'IN',OUTPUT:'OUT',VDD:'VDD',GND:'GND',AND:'AND',OR:'OR',XOR:'XOR',NOT:'NOT',NAND:'NAND',NOR:'NOR',XNOR:'XNOR',DFF:'DFF',LATCH:'LATCH'};const n=node(type,45+(nodes.length%4)*185,25+(nodes.length%3)*110,names[type]+(count+1));if(type==='DFF'||type==='LATCH')n.inputs=2;selected={kind:'node',id:n.id};msg.textContent=`Added ${n.name}. Select it and adjust its ports if needed.`;render()}
 function updateTables(){signalRows.replaceChildren();editorControls.replaceChildren();editorResults.replaceChildren();for(const n of nodes){const tr=document.createElement('tr');tr.innerHTML=`<td>${n.name}</td><td>${n.type}</td><td class="${n.value?'highbit':''}">${n.value}</td>`;signalRows.append(tr)}const ins=nodes.filter(n=>n.type==='INPUT'),outs=nodes.filter(n=>n.type==='OUTPUT');for(const n of ins){const wrap=document.createElement('div');wrap.className='control';const label=document.createElement('label');label.textContent='Input '+n.name;const btn=document.createElement('button');btn.type='button';btn.className='toggle';btn.setAttribute('aria-pressed',String(!!n.value));btn.innerHTML=`<span>${n.name}</span><span class="bit">${n.value} · ${n.value?'HIGH':'LOW'}</span>`;btn.addEventListener('click',()=>{saveHistory();n.value=1-n.value;msg.textContent=`${n.name} set to ${n.value}.`;render()});wrap.append(label,btn);editorControls.append(wrap)}if(!ins.length){editorControls.innerHTML='<p class="editor-hint">Add an Input block to control the circuit.</p>'}for(const n of outs){const chip=document.createElement('span');chip.className='status-chip';chip.innerHTML=`<b>${n.name}</b> = <b class="${n.value?'highbit':''}">${n.value}</b> · ${n.value?'HIGH':'LOW'}`;editorResults.append(chip)}if(!outs.length)editorResults.innerHTML='<span class="status-chip">Add an Output block to see the result.</span>';truthHead.replaceChildren();truthBody.replaceChildren();if(ins.length>4){truthHead.innerHTML='<tr><th>Truth table hidden</th></tr>';truthBody.innerHTML='<tr><td>Use up to four input blocks to generate a truth table.</td></tr>';return}const h=document.createElement('tr');[...ins.map(n=>n.name),...outs.map(n=>n.name||'Y')].forEach(t=>{const th=document.createElement('th');th.textContent=t;h.append(th)});truthHead.append(h);if(!ins.length||!outs.length){truthBody.innerHTML='<tr><td colspan="8">Add at least one input and one output block.</td></tr>';return}const saved=ins.map(n=>n.value);for(let bits=0;bits<2**ins.length;bits++){ins.forEach((n,i)=>n.value=(bits>>(ins.length-1-i))&1);evalCircuit(false);const tr=document.createElement('tr');[...ins.map(n=>n.value),...outs.map(n=>n.value)].forEach(v=>{const td=document.createElement('td');td.textContent=v;if(v)td.className='highbit';tr.append(td)});truthBody.append(tr)}ins.forEach((n,i)=>n.value=saved[i]);evalCircuit();for(const n of nodes){const row=[...signalRows.rows].find(r=>r.cells[0].textContent===n.name);if(row){row.cells[2].textContent=n.value;row.cells[2].className=n.value?'highbit':''}}}
