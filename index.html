@@ -363,15 +363,20 @@ function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
 function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
 // Independent post-route geometry audit. It never mutates the logical graph.
-function auditRouteGeometry(){
- const parent=new Map(nodes.map(n=>[n.id,n.id]));
+function auditRouteGeometry(options={}){
+ // Optional isolated fixture support lets tests exercise geometric intersections
+ // without editing the live circuit or its electrical graph.
+ const auditNodes=options.nodes||nodes;
+ const auditWires=options.wires||wires;
+ const auditRoutes=options.routes||routeCache;
+ const parent=new Map(auditNodes.map(n=>[n.id,n.id]));
  const find=x=>{let p=parent.get(x);while(p!==undefined&&p!==parent.get(p))p=parent.get(p);return p};
  const join=(a,b)=>{const x=find(a),y=find(b);if(x!==undefined&&y!==undefined&&x!==y)parent.set(x,y)};
- for(const w of wires)join(w.from,w.to);
+ for(const w of auditWires)join(w.from,w.to);
  const netOf=w=>find(w.from);
  const segments=[];
- for(const w of wires){
-  const pts=routeCache.get(w.id)||[];
+ for(const w of auditWires){
+  const pts=auditRoutes.get(w.id)||[];
   for(let i=1;i<pts.length;i++){
    const a=pts[i-1],b=pts[i];
    if(a.x===b.x&&a.y===b.y)continue;
@@ -403,15 +408,15 @@ function auditRouteGeometry(){
  }
  for(const seg of segments){
   const horizontal=seg.a.y===seg.b.y;
-  for(const n of nodes){
-   if(n.id===wires.find(w=>w.id===seg.wireId)?.from||n.id===wires.find(w=>w.id===seg.wireId)?.to)continue;
+  for(const n of auditNodes){
+   if(n.id===auditWires.find(w=>w.id===seg.wireId)?.from||n.id===auditWires.find(w=>w.id===seg.wireId)?.to)continue;
    const box=spec(n),l=n.x-8,r=n.x+box.w+8,t=n.y-8,b=n.y+box.h+8;
    const hit=horizontal?(seg.a.y>t&&seg.a.y<b&&Math.max(Math.min(seg.a.x,seg.b.x),l)<Math.min(Math.max(seg.a.x,seg.b.x),r)):
     (seg.a.x>l&&seg.a.x<r&&Math.max(Math.min(seg.a.y,seg.b.y),t)<Math.min(Math.max(seg.a.y,seg.b.y),b));
    if(hit)add('block-penetration',[seg.wireId],horizontal?{x1:Math.max(Math.min(seg.a.x,seg.b.x),l),x2:Math.min(Math.max(seg.a.x,seg.b.x),r),y:seg.a.y}:{x:seg.a.x,y1:Math.max(Math.min(seg.a.y,seg.b.y),t),y2:Math.min(Math.max(seg.a.y,seg.b.y),b)},{blockId:n.id,blockName:n.name});
   }
  }
- return {wireCount:wires.length,segmentCount:segments.length,conflictCount:conflicts.length,conflicts};
+ return {wireCount:auditWires.length,segmentCount:segments.length,conflictCount:conflicts.length,conflicts};
 }
 window.fpgaAuditRouteGeometry=auditRouteGeometry;
 function render(){const renderStartedAt=performance.now();routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;const mode=document.getElementById('routingMode')?.value||'legacy';mtRenderMetrics=mode==='mikami'?{wireCount:wires.length,searches:[]}:null;const stats=document.getElementById('routingStats');if(stats)stats.textContent='Router: '+(mode==='mikami'?'Mikami–Tabuchi (profiling…)':'current');evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
