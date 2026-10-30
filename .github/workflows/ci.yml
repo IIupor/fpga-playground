@@ -2,6 +2,8 @@ name: FPGA Playground tests
 
 on:
   push:
+    branches-ignore:
+      - 'diagnostics/geometry-conflict-audit'
   pull_request:
   workflow_dispatch:
 
