@@ -235,7 +235,7 @@ function routePointsMikami(w,a,b,p,q){
   });
  }
  const firstMetrics={};
- const path=window.routeMikamiTabuchi(p,q,obstacles,{clearance:0,maxStates:50000,metrics:firstMetrics});
+ const path=window.routeMikamiTabuchi(p,q,obstacles,{clearance:0,maxStates:50000,spatialCellSize:window.fpgaMikamiSpatialCellSize||128,metrics:firstMetrics});
  if(mtRenderMetrics)mtRenderMetrics.searches.push({...firstMetrics,wireId:w.id,attempt:1,searchScope:'previous-wires'});
  if(path)return path;
  // A previously routed wire can form a temporary barrier even when the
@@ -244,20 +244,21 @@ function routePointsMikami(w,a,b,p,q){
  const blockObstacles=routeRects.filter(r=>r.id!==a.id&&r.id!==b.id)
   .map(r=>({left:r.l,right:r.r,top:r.t,bottom:r.b}));
  const retryMetrics={};
- const retryPath=window.routeMikamiTabuchi(p,q,blockObstacles,{clearance:0,maxStates:50000,metrics:retryMetrics});
+ const retryPath=window.routeMikamiTabuchi(p,q,blockObstacles,{clearance:0,maxStates:50000,spatialCellSize:window.fpgaMikamiSpatialCellSize||128,metrics:retryMetrics});
  if(mtRenderMetrics)mtRenderMetrics.searches.push({...retryMetrics,wireId:w.id,attempt:2,searchScope:'blocks-only'});
  return retryPath||[];
 }
 // Run a bounded MT diagnostic without triggering a synchronous full-editor render.
 // Yield after each net so the browser can publish partial progress and remain responsive.
-window.fpgaStartMikamiDiagnostic=function(limit=20){
+window.fpgaStartMikamiDiagnostic=function(limit=20,spatialCellSize=128){
  const oldCache=routeCache,oldSegments=routedSegments,oldBins=routedSegmentBins;
- const oldNextSegmentId=nextRoutedSegmentId,oldMetrics=mtRenderMetrics;
+ const oldNextSegmentId=nextRoutedSegmentId,oldMetrics=mtRenderMetrics,oldCellSize=window.fpgaMikamiSpatialCellSize;
+ window.fpgaMikamiSpatialCellSize=Number.isFinite(Number(spatialCellSize))&&Number(spatialCellSize)>0?Number(spatialCellSize):128;
  const selectedWires=wires.slice(0,Math.max(0,Math.min(wires.length,Number(limit)||20)));
- const startedAt=performance.now(),searches=[];
+ const startedAt=performance.now(),searches=[],routePaths=[];
  const publish=(completed,lastWire)=>{
   const sum=key=>searches.reduce((n,item)=>n+(Number(item[key])||0),0);
-  window.fpgaLastMikamiDiagnostic={status:completed===selectedWires.length?'completed':'running',completed,total:selectedWires.length,wireCount:wires.length,elapsedMs:performance.now()-startedAt,searchCount:searches.length,retryCount:searches.filter(x=>x.attempt===2).length,routedSearches:searches.filter(x=>x.status==='routed').length,failedSearches:searches.filter(x=>x.status!=='routed').length,totalStatesProcessed:sum('statesProcessed'),totalRaySteps:sum('raySteps'),totalObstacleChecks:sum('obstacleChecks'),slowestSearchMs:Math.max(0,...searches.map(x=>x.searchTimeMs||0)),lastWire:lastWire||null,searches:searches.slice()};
+  window.fpgaLastMikamiDiagnostic={status:completed===selectedWires.length?'completed':'running',completed,total:selectedWires.length,wireCount:wires.length,elapsedMs:performance.now()-startedAt,searchCount:searches.length,retryCount:searches.filter(x=>x.attempt===2).length,routedSearches:searches.filter(x=>x.status==='routed').length,failedSearches:searches.filter(x=>x.status!=='routed').length,totalStatesProcessed:sum('statesProcessed'),totalRaySteps:sum('raySteps'),totalObstacleChecks:sum('obstacleChecks'),totalSpatialCandidateChecks:sum('spatialCandidateChecks'),totalExhaustiveEquivalentChecks:sum('exhaustiveEquivalentChecks'),totalPointQueries:sum('pointQueries'),totalSegmentQueries:sum('segmentQueries'),totalSpatialIndexBuildMs:sum('spatialIndexBuildMs'),routePaths:routePaths.slice(),spatialCellSize:window.fpgaMikamiSpatialCellSize,slowestSearchMs:Math.max(0,...searches.map(x=>x.searchTimeMs||0)),lastWire:lastWire||null,searches:searches.slice()};
  };
  window.fpgaLastMikamiDiagnostic={status:'running',completed:0,total:selectedWires.length,wireCount:wires.length,elapsedMs:0,searches:[]};
  window.fpgaMikamiDiagnosticPromise=(async()=>{
@@ -266,14 +267,14 @@ window.fpgaStartMikamiDiagnostic=function(limit=20){
    mtRenderMetrics={wireCount:wires.length,searches};
    for(let i=0;i<selectedWires.length;i++){
     const w=selectedWires[i],a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
-    if(a&&b){const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);const points=routePointsMikami(w,a,b,p,q);rememberRoutedWire(w,points);}
+    if(a&&b){const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);const points=routePointsMikami(w,a,b,p,q);routePaths.push({wireId:w.id,points:points.map(pt=>({x:pt.x,y:pt.y}))});rememberRoutedWire(w,points);}
     publish(i+1,{id:w.id,from:w.from,to:w.to});
     await new Promise(resolve=>setTimeout(resolve,0));
    }
    publish(selectedWires.length,null);
    return window.fpgaLastMikamiDiagnostic;
   }catch(error){window.fpgaLastMikamiDiagnostic={...window.fpgaLastMikamiDiagnostic,status:'error',error:String(error),elapsedMs:performance.now()-startedAt};throw error;}
-  finally{routeCache=oldCache;routedSegments=oldSegments;routedSegmentBins=oldBins;nextRoutedSegmentId=oldNextSegmentId;mtRenderMetrics=oldMetrics;}
+  finally{routeCache=oldCache;routedSegments=oldSegments;routedSegmentBins=oldBins;nextRoutedSegmentId=oldNextSegmentId;mtRenderMetrics=oldMetrics;window.fpgaMikamiSpatialCellSize=oldCellSize;}
  })();
  return true;
 };
