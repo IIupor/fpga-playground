@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 async function loadBenchmark(page, name) {
-  await page.route(\`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/\${name}.v\`, async route => {
-    const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', \`\${name}.v\`), 'utf8');
+  await page.route(`https://raw.githubusercontent.com/IIupor/fpga-playground/main/benchmarks/iscas85/${name}.v`, async route => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', `${name}.v`), 'utf8');
     await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
   });
   await page.goto('/');
