@@ -21,8 +21,8 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
     status: 'running', elapsedMs: 0, searchTimeMs: 0, coordinateBuildMs: 0,
     xLines: 0, yLines: 0, coordinateLines: 0, gridPointCount: 0,
     obstacleCount: obstacles.length, statesProcessed: 0, raySteps: 0,
-    obstaclePointChecks: 0, obstacleSegmentChecks: 0, spatialIndexBuildMs: 0,
-    spatialCandidateChecks: 0, maxQueueLength: 1
+    obstaclePointChecks: 0, obstacleSegmentChecks: 0, pointQueries: 0, segmentQueries: 0,
+    spatialIndexBuildMs: 0, spatialCandidateChecks: 0, maxQueueLength: 1
   });
   const finish = (result, status) => {
     if (metrics) {
@@ -30,6 +30,7 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
       metrics.elapsedMs = clock() - startedAt;
       metrics.searchTimeMs = metrics.elapsedMs;
       metrics.obstacleChecks = metrics.obstaclePointChecks + metrics.obstacleSegmentChecks;
+      metrics.exhaustiveEquivalentChecks = (metrics.pointQueries + metrics.segmentQueries) * rects.length;
     }
     return result;
   };
@@ -122,6 +123,7 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
   const key = (i, j) => i + ',' + j;
   const point = (i, j) => ({ x: X[i], y: Y[j] });
   const blockedPoint = (p) => {
+    if (metrics) metrics.pointQueries++;
     for (const r of pointCandidates(p)) {
       if (metrics) { metrics.obstaclePointChecks++; metrics.spatialCandidateChecks++; }
       if (inside(p, r)) return true;
@@ -130,6 +132,7 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
   };
   const clear = (a, b) => {
     if (a.x !== b.x && a.y !== b.y) return false;
+    if (metrics) metrics.segmentQueries++;
     for (const r of segmentCandidates(a, b)) {
       if (metrics) { metrics.obstacleSegmentChecks++; metrics.spatialCandidateChecks++; }
       if (a.y === b.y) {
