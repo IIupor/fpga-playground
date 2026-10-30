@@ -12,6 +12,8 @@
 function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
   const clearance = Number.isFinite(options.clearance) ? options.clearance : 8;
   const maxStates = Number.isFinite(options.maxStates) ? options.maxStates : 100000;
+  const useSpatialIndex = options.useSpatialIndex !== false;
+  const cellSize = Number.isFinite(options.spatialCellSize) && options.spatialCellSize > 0 ? options.spatialCellSize : 128;
   const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
   const startedAt = clock();
   const metrics = options.metrics && typeof options.metrics === 'object' ? options.metrics : null;
@@ -19,7 +21,8 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
     status: 'running', elapsedMs: 0, searchTimeMs: 0, coordinateBuildMs: 0,
     xLines: 0, yLines: 0, coordinateLines: 0, gridPointCount: 0,
     obstacleCount: obstacles.length, statesProcessed: 0, raySteps: 0,
-    obstaclePointChecks: 0, obstacleSegmentChecks: 0, maxQueueLength: 1
+    obstaclePointChecks: 0, obstacleSegmentChecks: 0, spatialIndexBuildMs: 0,
+    spatialCandidateChecks: 0, maxQueueLength: 1
   });
   const finish = (result, status) => {
     if (metrics) {
@@ -44,6 +47,54 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
     bottom: r.bottom + clearance
   }));
   const inside = (p, r) => p.x > r.left && p.x < r.right && p.y > r.top && p.y < r.bottom;
+
+  // Uniform spatial hash: each rectangle is stored in every cell touched by
+  // its inclusive AABB. Queries may return extra candidates at cell boundaries,
+  // but exact predicates below remain authoritative (no false negatives).
+  const indexStartedAt = clock();
+  const obstacleIndex = new Map();
+  const oversized = [];
+  const cell = value => Math.floor(value / cellSize);
+  const cellKey = (x, y) => x + ',' + y;
+  if (useSpatialIndex) {
+    for (const r of rects) {
+      const minX = cell(r.left), maxX = cell(r.right);
+      const minY = cell(r.top), maxY = cell(r.bottom);
+      const cellCount = (maxX - minX + 1) * (maxY - minY + 1);
+      if (cellCount > 1024) { oversized.push(r); continue; }
+      for (let x = minX; x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) {
+          const k = cellKey(x, y);
+          let bucket = obstacleIndex.get(k);
+          if (!bucket) obstacleIndex.set(k, bucket = []);
+          bucket.push(r);
+        }
+      }
+    }
+  }
+  if (metrics) metrics.spatialIndexBuildMs = clock() - indexStartedAt;
+  const pointCandidates = p => {
+    if (!useSpatialIndex) return rects;
+    return [...new Set([...(obstacleIndex.get(cellKey(cell(p.x), cell(p.y))) || []), ...oversized])];
+  };
+  const segmentCandidates = (a, b) => {
+    if (!useSpatialIndex) return rects;
+    const found = new Set(oversized);
+    if (a.y === b.y) {
+      const y = cell(a.y);
+      for (let x = cell(Math.min(a.x, b.x)); x <= cell(Math.max(a.x, b.x)); x++) {
+        const bucket = obstacleIndex.get(cellKey(x, y));
+        if (bucket) for (const r of bucket) found.add(r);
+      }
+    } else {
+      const x = cell(a.x);
+      for (let y = cell(Math.min(a.y, b.y)); y <= cell(Math.max(a.y, b.y)); y++) {
+        const bucket = obstacleIndex.get(cellKey(x, y));
+        if (bucket) for (const r of bucket) found.add(r);
+      }
+    }
+    return found;
+  };
   let endpointBlocked = false;
   for (const r of rects) {
     if (metrics) metrics.obstaclePointChecks++;
@@ -71,16 +122,16 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
   const key = (i, j) => i + ',' + j;
   const point = (i, j) => ({ x: X[i], y: Y[j] });
   const blockedPoint = (p) => {
-    for (const r of rects) {
-      if (metrics) metrics.obstaclePointChecks++;
+    for (const r of pointCandidates(p)) {
+      if (metrics) { metrics.obstaclePointChecks++; metrics.spatialCandidateChecks++; }
       if (inside(p, r)) return true;
     }
     return false;
   };
   const clear = (a, b) => {
     if (a.x !== b.x && a.y !== b.y) return false;
-    for (const r of rects) {
-      if (metrics) metrics.obstacleSegmentChecks++;
+    for (const r of segmentCandidates(a, b)) {
+      if (metrics) { metrics.obstacleSegmentChecks++; metrics.spatialCandidateChecks++; }
       if (a.y === b.y) {
         if (a.y > r.top && a.y < r.bottom &&
             Math.max(Math.min(a.x, b.x), r.left) < Math.min(Math.max(a.x, b.x), r.right)) return false;
