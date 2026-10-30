@@ -79,7 +79,7 @@ test('c17: Mikami–Tabuchi isolated editor diagnostics', async ({ page }) => {
     el.value = 'mikami';
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }, { timeout: 5000 }).catch(error => { throw new Error('MT mode switch did not return promptly: ' + error.message); });
-  await expect(page.locator('#routingStats')).toContainText('Mikami', { timeout: 5000 });
+  await expect(page.locator('#routingStats')).toContainText('MT:', { timeout: 5000 });
   const result = await diagnostics(page);
   console.log(`ROUTER-BASELINE mikami c17: ${JSON.stringify({ ...result, elapsedMs: Date.now()-started })}`);
   expect(result.wireCount).toBeGreaterThan(0);
