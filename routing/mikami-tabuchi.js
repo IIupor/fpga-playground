@@ -12,12 +12,30 @@
 function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
   const clearance = Number.isFinite(options.clearance) ? options.clearance : 8;
   const maxStates = Number.isFinite(options.maxStates) ? options.maxStates : 100000;
+  const clock = () => (typeof performance !== 'undefined' && typeof performance.now === 'function') ? performance.now() : Date.now();
+  const startedAt = clock();
+  const metrics = options.metrics && typeof options.metrics === 'object' ? options.metrics : null;
+  if (metrics) Object.assign(metrics, {
+    status: 'running', elapsedMs: 0, searchTimeMs: 0, coordinateBuildMs: 0,
+    xLines: 0, yLines: 0, coordinateLines: 0, gridPointCount: 0,
+    obstacleCount: obstacles.length, statesProcessed: 0, raySteps: 0,
+    obstaclePointChecks: 0, obstacleSegmentChecks: 0, maxQueueLength: 1
+  });
+  const finish = (result, status) => {
+    if (metrics) {
+      metrics.status = status;
+      metrics.elapsedMs = clock() - startedAt;
+      metrics.searchTimeMs = metrics.elapsedMs;
+      metrics.obstacleChecks = metrics.obstaclePointChecks + metrics.obstacleSegmentChecks;
+    }
+    return result;
+  };
   const same = (a, b) => a.x === b.x && a.y === b.y;
   if (!start || !end || !Number.isFinite(start.x) || !Number.isFinite(start.y) ||
       !Number.isFinite(end.x) || !Number.isFinite(end.y)) {
     throw new TypeError('start and end must have finite x/y coordinates');
   }
-  if (same(start, end)) return [{ x: start.x, y: start.y }];
+  if (same(start, end)) return finish([{ x: start.x, y: start.y }], 'same-point');
 
   const rects = obstacles.map((r) => ({
     left: r.left - clearance,
@@ -26,7 +44,14 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
     bottom: r.bottom + clearance
   }));
   const inside = (p, r) => p.x > r.left && p.x < r.right && p.y > r.top && p.y < r.bottom;
-  if (rects.some((r) => inside(start, r) || inside(end, r))) return null;
+  let endpointBlocked = false;
+  for (const r of rects) {
+    if (metrics) metrics.obstaclePointChecks++;
+    if (inside(start, r) || inside(end, r)) { endpointBlocked = true; break; }
+  }
+  if (endpointBlocked) return finish(null, 'blocked-endpoint');
+
+  const coordinateBuildStartedAt = clock();
 
   const xs = new Set([start.x, end.x]);
   const ys = new Set([start.y, end.y]);
@@ -36,12 +61,26 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
   }
   const X = [...xs].sort((a, b) => a - b);
   const Y = [...ys].sort((a, b) => a - b);
+  if (metrics) {
+    metrics.coordinateBuildMs = clock() - coordinateBuildStartedAt;
+    metrics.xLines = X.length;
+    metrics.yLines = Y.length;
+    metrics.coordinateLines = X.length + Y.length;
+    metrics.gridPointCount = X.length * Y.length;
+  }
   const key = (i, j) => i + ',' + j;
   const point = (i, j) => ({ x: X[i], y: Y[j] });
-  const blockedPoint = (p) => rects.some((r) => inside(p, r));
+  const blockedPoint = (p) => {
+    for (const r of rects) {
+      if (metrics) metrics.obstaclePointChecks++;
+      if (inside(p, r)) return true;
+    }
+    return false;
+  };
   const clear = (a, b) => {
     if (a.x !== b.x && a.y !== b.y) return false;
     for (const r of rects) {
+      if (metrics) metrics.obstacleSegmentChecks++;
       if (a.y === b.y) {
         if (a.y > r.top && a.y < r.bottom &&
             Math.max(Math.min(a.x, b.x), r.left) < Math.min(Math.max(a.x, b.x), r.right)) return false;
@@ -64,22 +103,25 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
     const [i, j] = queue[head++];
     const here = point(i, j);
     expansions++;
+    if (metrics) metrics.statesProcessed = expansions;
     if (key(i, j) === targetKey) break;
     for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       let ni = i + di, nj = j + dj;
       while (ni >= 0 && ni < X.length && nj >= 0 && nj < Y.length) {
         const next = point(ni, nj);
+        if (metrics) metrics.raySteps++;
         if (blockedPoint(next) || !clear(here, next)) break;
         const nk = key(ni, nj);
         if (!parent.has(nk)) {
           parent.set(nk, key(i, j));
           queue.push([ni, nj]);
+          if (metrics && queue.length > metrics.maxQueueLength) metrics.maxQueueLength = queue.length;
         }
         ni += di; nj += dj;
       }
     }
   }
-  if (!parent.has(targetKey)) return null;
+  if (!parent.has(targetKey)) return finish(null, expansions >= maxStates && head < queue.length ? 'state-limit' : 'unroutable');
   const path = [];
   for (let k = targetKey; k !== null; k = parent.get(k)) {
     const [i, j] = k.split(',').map(Number);
@@ -95,7 +137,7 @@ function routeMikamiTabuchi(start, end, obstacles = [], options = {}) {
     }
     if (!simplified.length || !same(simplified[simplified.length - 1], p)) simplified.push(p);
   }
-  return simplified;
+  return finish(simplified, 'routed');
 }
 
 module.exports = { routeMikamiTabuchi };
