@@ -1,4 +1,6 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('node:fs');
+const path = require('node:path');
 
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
@@ -15,14 +17,24 @@ test('imports a multi-module Verilog project and navigates down and up the hiera
   await page.locator('#hierarchyUp').click(); await expect(page.locator('#hierarchyStatus')).toContainText('top');
 });
 
-test('loads multiple Liberty files and resolves standard-cell instances by cell and pin names', async ({ page }) => {
+test('loads multiple Liberty and Verilog libraries and resolves cell/module instances', async ({ page }) => {
   const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : input; } pin(B) { direction : input; } pin(Y) { direction : output; function : "A & B"; } } }';
   const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : input; } pin(Y) { direction : output; function : "!A"; } } }';
-  await page.locator('#importLibraries').click(); await page.locator('#libraryFiles').setInputFiles([{ name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) }, { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) }]);
-  await expect(page.locator('#libraryStatus')).toContainText('2 library file(s)'); await expect(page.locator('#libraryStatus')).toContainText('2 Liberty cells');
-  const netlist = ['module mapped_top(input wire a, input wire b, output wire y);','  SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));','endmodule'].join('\n');
-  await page.locator('#verilogText').fill(netlist); await page.locator('#importVerilog').click(); await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
-  const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' }); await expect(cell).toHaveCount(1); await expect(cell).toContainText('MODULE'); await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+  const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
+  await page.locator('#importLibraries').click();
+  await page.locator('#libraryFiles').setInputFiles([
+    { name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) },
+    { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },
+    { name: 'custom_cells.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib) }
+  ]);
+  await expect(page.locator('#libraryStatus')).toContainText('3 library file(s)');
+  await expect(page.locator('#libraryStatus')).toContainText('2 Liberty cells');
+  const netlist = ['module mapped_top(input wire a, input wire b, output wire y, output wire z);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' CUSTOM_BUF u_buf (.A(y), .Y(z));','endmodule'].join('\n');
+  await page.locator('#verilogText').fill(netlist); await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('MODULE');
+  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' }); await expect(custom).toHaveCount(1); await custom.click(); await page.keyboard.press('Shift+E');
+  await expect(page.locator('#hierarchyStatus')).toContainText('CUSTOM_BUF');
 });
 
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
@@ -30,4 +42,32 @@ test('rejects duplicate Liberty cell definitions without discarding already load
   await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) }); await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
   await page.locator('#importLibraries').click(); await page.locator('#libraryFiles').setInputFiles({ name: 'duplicate.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1'); await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+});
+
+test('imports ten independently synthesized SKY130 gate-level designs against the real Liberty library', async ({ page }) => {
+  const fixtureDir = path.join(__dirname, 'fixtures', 'sky130');
+  const library = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
+  await page.locator('#importLibraries').click();
+  await page.locator('#libraryFiles').setInputFiles({ name: 'sky130_fd_sc_hd__tt_025C_1v80.lib', mimeType: 'text/plain', buffer: library });
+  await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+
+  const designs = ['uart_rx','apb_spi','apb_i2c','clk_rst_ctrl','boot_rom','sys_ctrl','icache','dma_axi_master','dcache','pll_ctrl'];
+  for (const name of designs) {
+    const source = fs.readFileSync(path.join(fixtureDir, name + '.v'), 'utf8');
+    await page.locator('#verilogText').fill(source);
+    await page.locator('#importVerilog').click();
+    await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+    const stats = await page.evaluate(() => {
+      const p = window.fpgaVerilogProject.state.project;
+      const top = p.tops[0];
+      const instances = top.instances;
+      return { modules: p.modules.size, libertyCells: p.cells.size, instances: instances.length,
+        resolved: instances.filter(x => !!x.cell).length, unresolved: instances.filter(x => x.unresolved).length };
+    });
+    expect(stats.modules, name + ' module definitions').toBeGreaterThan(0);
+    expect(stats.libertyCells, name + ' Liberty cell definitions').toBeGreaterThan(100);
+    expect(stats.instances, name + ' standard-cell instances').toBeGreaterThan(0);
+    expect(stats.resolved, name + ' resolved standard-cell instances').toBe(stats.instances);
+    expect(stats.unresolved, name + ' unresolved standard-cell instances').toBe(0);
+  }
 });
