@@ -209,8 +209,8 @@ test('GEOMETRY-SYNTHETIC-05: unrelated wires touching at a shared endpoint remai
     ];
     const wires = [{ id: 351, from: 341, to: 342 }, { id: 352, from: 343, to: 344 }];
     const routes = new Map([
-      [351, [{ x: -10, y: -10 }, { x: 0, y: 0 }]],
-      [352, [{ x: 0, y: 0 }, { x: 10, y: -10 }]]
+      [351, [{ x: -10, y: 0 }, { x: 0, y: 0 }]],
+      [352, [{ x: 0, y: 0 }, { x: 0, y: 10 }]]
     ]);
     return window.fpgaAuditRouteGeometry({ nodes, wires, routes });
   });
