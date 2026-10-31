@@ -123,3 +123,27 @@ for (const [name, gateCount] of circuits) {
     expect(fit.renderedWires, 'Fit to view must not drop wires').toBe(report.logicalWires);
   });
 }
+
+test('imported routing mode survives undo and redo', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#benchmarkSelect').selectOption('c17');
+  await expect(page.locator('#editorMessage')).toContainText('Loaded c17.v');
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(13);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(14);
+
+  await page.locator('#editorUndo').click();
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+
+  await page.locator('#editorRedo').click();
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(13);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(14);
+  const routes=await page.locator('#editorStage path.editor-wire').evaluateAll(paths =>
+    paths.every(path => {
+      const points=[...path.getAttribute('d').matchAll(/[ML]\\s*(-?[\\d.eE+]+)[,\\s]+(-?[\\d.eE+]+)/g)]
+        .map(m=>({x:Number(m[1]),y:Number(m[2])}));
+      return points.length>=2 && points.slice(1).every((p,i)=>p.x===points[i].x||p.y===points[i].y);
+    })
+  );
+  expect(routes, 'redo must restore complete orthogonal routing').toBe(true);
+});
