@@ -71,37 +71,59 @@ test('rejects duplicate Liberty cell definitions without discarding already load
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
 });
 
-test('parses ten independently synthesized SKY130 gate-level designs against the real Liberty library', async ({ page }) => {
+test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level blocks', async ({ page }) => {
   const fixtureDir = path.join(__dirname, 'fixtures', 'sky130');
   test.skip(!fs.existsSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib')), 'SKY130 PDK fixtures are provisioned by the PDK-enabled CI workflows');
-  const library = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
+  const liberty = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
+  const libraryFiles = fs.readdirSync(fixtureDir).filter(name => name.endsWith('.v') && name !== 'soc_top.v');
+  const libraryInputs = [
+    { name: 'sky130_fd_sc_hd__tt_025C_1v80.lib', mimeType: 'text/plain', buffer: liberty },
+    ...libraryFiles.map(name => ({ name, mimeType: 'text/plain', buffer: fs.readFileSync(path.join(fixtureDir, name)) }))
+  ];
   await page.locator('#importLibraries').click();
-  await page.locator('#libraryFiles').setInputFiles({ name: 'sky130_fd_sc_hd__tt_025C_1v80.lib', mimeType: 'text/plain', buffer: library });
-  await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+  await page.locator('#libraryFiles').setInputFiles(libraryInputs);
+  await expect(page.locator('#libraryStatus')).toContainText('Liberty cells');
+  await expect(page.locator('#libraryStatus')).toContainText('Verilog modules');
 
-  const designs = ['uart_rx','apb_spi','apb_i2c','clk_rst_ctrl','boot_rom','sys_ctrl','icache','dma_axi_master','dcache','pll_ctrl'];
-  const sources = designs.map(name => ({ name: name + '.v', text: fs.readFileSync(path.join(fixtureDir, name + '.v'), 'utf8') }));
-  const results = await page.evaluate(files => {
-    const project = window.fpgaVerilogProject.projectFrom([
-      ...window.fpgaVerilogProject.state.libraries,
-      { name: 'ten_sky130_designs.v', text: files.map(f => f.text).join('\n') }
-    ]);
-    return project.tops.map(top => ({
-      name: top.name,
-      instances: top.instances.length,
-      resolved: top.instances.filter(x => !!x.cell).length,
-      unresolved: top.instances.filter(x => x.unresolved).length
-    }));
-  }, sources);
-  expect(results).toHaveLength(10);
-  for (const result of results) {
-    expect(result.instances, result.name + ' standard-cell instances').toBeGreaterThan(0);
-    expect(result.resolved, result.name + ' resolved standard-cell instances').toBe(result.instances);
-    expect(result.unresolved, result.name + ' unresolved standard-cell instances').toBe(0);
+  const topSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
+  await page.locator('#verilogFile').setInputFiles({ name: 'soc_top.v', mimeType: 'text/plain', buffer: Buffer.from(topSource) });
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+
+  const report = await page.evaluate(() => {
+    const project = window.fpgaVerilogProject.state.project;
+    const top = project.modules.get('soc_top');
+    const selectedNames = ['uart_rx','apb_spi','apb_i2c','clk_rst_ctrl','boot_rom','sys_ctrl','icache','dma_axi_master','dcache','pll_ctrl'];
+    const designs = selectedNames.map(fileName => {
+      const mod = [...project.modules.values()].find(m => m.source === fileName + '.v');
+      return mod && { name: fileName, instances: mod.instances.length,
+        cellInstances: mod.instances.filter(x => !!x.cell).length,
+        resolved: mod.instances.filter(x => !!x.cell || !!x.definition).length,
+        unresolved: mod.instances.filter(x => x.unresolved).length };
+    });
+    const children = top?.instances.filter(inst => project.modules.has(inst.type)) || [];
+    children.sort((a,b) => project.modules.get(a.type).instances.length - project.modules.get(b.type).instances.length);
+    const child = children[0];
+    const node = child && window.fpgaNodes.find(n => n.name === child.name);
+    if (node) window.fpgaSelected = { kind: 'node', id: node.id };
+    return { moduleCount: project.modules.size, topInstances: top?.instances.length || 0,
+      topUnresolved: top?.instances.filter(x => x.unresolved).length ?? -1,
+      childName: child?.name || null, childType: child?.type || null, hasSelectedNode: !!node, designs };
+  });
+  expect(report.moduleCount).toBeGreaterThan(20);
+  expect(report.topInstances).toBeGreaterThan(0);
+  expect(report.topUnresolved).toBe(0);
+  expect(report.hasSelectedNode).toBe(true);
+  expect(report.childType).toBeTruthy();
+  for (const design of report.designs) {
+    expect(design, 'all ten named SKY130 designs must be present').toBeTruthy();
+    expect(design.instances, design.name + ' standard-cell instances').toBeGreaterThan(0);
+    expect(design.cellInstances, design.name + ' Liberty-mapped instances').toBeGreaterThan(0);
+    expect(design.resolved, design.name + ' resolved instances').toBe(design.instances);
+    expect(design.unresolved, design.name + ' unresolved instances').toBe(0);
   }
 
-  const uart = sources.find(x => x.name === 'uart_rx.v').text;
-  await page.locator('#verilogFile').setInputFiles({ name: 'uart_rx.v', mimeType: 'text/plain', buffer: Buffer.from(uart) });
-  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
-  await expect(page.locator('#editorMessage')).toContainText('0 unresolved instances');
+  await page.keyboard.press('Shift+E');
+  await expect(page.locator('#hierarchyStatus')).toContainText('soc_top / ' + report.childName + ' / ' + report.childType);
+  await page.keyboard.press('Control+E');
+  await expect(page.locator('#hierarchyStatus')).toContainText('soc_top');
 });
