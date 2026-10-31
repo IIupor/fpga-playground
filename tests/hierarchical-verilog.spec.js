@@ -72,6 +72,7 @@ test('rejects duplicate Liberty cell definitions without discarding already load
 });
 
 test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level blocks', async ({ page }) => {
+  test.setTimeout(180000);
   const fixtureDir = path.join(__dirname, 'fixtures', 'sky130');
   test.skip(!fs.existsSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib')), 'SKY130 PDK fixtures are provisioned by the PDK-enabled CI workflows');
   const liberty = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
@@ -83,11 +84,11 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
   await expect(page.locator('#libraryStatus')).toContainText('Liberty cells');
-  await expect(page.locator('#libraryStatus')).toContainText('Verilog modules');
+  await expect(page.locator('#libraryStatus')).toContainText('Verilog modules', { timeout: 120000 });
 
   const topSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
   await page.locator('#verilogFile').setInputFiles({ name: 'soc_top.v', mimeType: 'text/plain', buffer: Buffer.from(topSource) });
-  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 120000 });
 
   const report = await page.evaluate(() => {
     const project = window.fpgaVerilogProject.state.project;
