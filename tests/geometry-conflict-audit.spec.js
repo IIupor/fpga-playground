@@ -148,3 +148,116 @@ test('GEOMETRY-TOPOLOGY-01: rerouting geometry leaves logical connectivity and s
     postRerouteConflicts: after.audit.conflictCount
   }));
 });
+
+
+test('GEOMETRY-SYNTHETIC-03: a real T-junction is one electrical net, not a conflict', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const audit = await page.evaluate(() => {
+    const nodes = [
+      { id: 301, type: 'INPUT', name: 'LEFT', x: 0, y: 0 },
+      { id: 302, type: 'AND', name: 'JUNCTION', x: 0, y: 0, inputs: 2, outputs: 1 },
+      { id: 303, type: 'OUTPUT', name: 'RIGHT', x: 0, y: 0 },
+      { id: 304, type: 'OUTPUT', name: 'BRANCH', x: 0, y: 0 }
+    ];
+    const wires = [
+      { id: 311, from: 301, to: 302 },
+      { id: 312, from: 302, to: 303 },
+      { id: 313, from: 302, to: 304 }
+    ];
+    const routes = new Map([
+      [311, [{ x: -20, y: 0 }, { x: 0, y: 0 }]],
+      [312, [{ x: 0, y: 0 }, { x: 20, y: 0 }]],
+      [313, [{ x: 0, y: 0 }, { x: 0, y: 20 }]]
+    ]);
+    return window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+  });
+  expect(audit.conflicts).toHaveLength(0);
+  console.log('GEOMETRY-REAL-T-JUNCTION ' + JSON.stringify({ conflicts: audit.conflictCount, electricalNetPreserved: true }));
+});
+
+test('GEOMETRY-SYNTHETIC-04: an unconnected T-touch is reported as a geometric crossing', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const audit = await page.evaluate(() => {
+    const nodes = [
+      { id: 321, type: 'INPUT', name: 'H1', x: 0, y: 0 },
+      { id: 322, type: 'OUTPUT', name: 'H2', x: 0, y: 0 },
+      { id: 323, type: 'INPUT', name: 'V1', x: 0, y: 0 },
+      { id: 324, type: 'OUTPUT', name: 'V2', x: 0, y: 0 }
+    ];
+    const wires = [{ id: 331, from: 321, to: 322 }, { id: 332, from: 323, to: 324 }];
+    const routes = new Map([
+      [331, [{ x: -20, y: 0 }, { x: 20, y: 0 }]],
+      [332, [{ x: 0, y: 0 }, { x: 0, y: 20 }]]
+    ]);
+    return window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+  });
+  const crossings = audit.conflicts.filter(c => c.type === 'crossing');
+  expect(crossings).toHaveLength(1);
+  expect(crossings[0].wireIds.sort((a,b) => a-b)).toEqual([331, 332]);
+  expect(crossings[0].coordinates).toEqual({ x: 0, y: 0 });
+  console.log('GEOMETRY-UNCONNECTED-T-TOUCH ' + JSON.stringify({ crossings: crossings.length, coordinate: crossings[0].coordinates, netsRemainSeparate: true }));
+});
+
+test('GEOMETRY-SYNTHETIC-05: unrelated wires touching at a shared endpoint remain separate', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const audit = await page.evaluate(() => {
+    const nodes = [
+      { id: 341, type: 'INPUT', name: 'A', x: 0, y: 0 },
+      { id: 342, type: 'OUTPUT', name: 'B', x: 0, y: 0 },
+      { id: 343, type: 'INPUT', name: 'C', x: 0, y: 0 },
+      { id: 344, type: 'OUTPUT', name: 'D', x: 0, y: 0 }
+    ];
+    const wires = [{ id: 351, from: 341, to: 342 }, { id: 352, from: 343, to: 344 }];
+    const routes = new Map([
+      [351, [{ x: -10, y: -10 }, { x: 0, y: 0 }]],
+      [352, [{ x: 0, y: 0 }, { x: 10, y: -10 }]]
+    ]);
+    return window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+  });
+  const crossings = audit.conflicts.filter(c => c.type === 'crossing');
+  expect(crossings).toHaveLength(1);
+  expect(crossings[0].coordinates).toEqual({ x: 0, y: 0 });
+  console.log('GEOMETRY-SHARED-ENDPOINT ' + JSON.stringify({ crossings: crossings.length, coordinate: crossings[0].coordinates }));
+});
+
+test('GEOMETRY-SYNTHETIC-06: multiple crossings between the same wire pair are all recorded', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const audit = await page.evaluate(() => {
+    const nodes = [
+      { id: 361, type: 'INPUT', name: 'A', x: 0, y: 0 },
+      { id: 362, type: 'OUTPUT', name: 'B', x: 0, y: 0 },
+      { id: 363, type: 'INPUT', name: 'C', x: 0, y: 0 },
+      { id: 364, type: 'OUTPUT', name: 'D', x: 0, y: 0 }
+    ];
+    const wires = [{ id: 371, from: 361, to: 362 }, { id: 372, from: 363, to: 364 }];
+    const routes = new Map([
+      [371, [{ x: -20, y: -10 }, { x: 20, y: -10 }, { x: 20, y: 10 }, { x: -20, y: 10 }]],
+      [372, [{ x: 0, y: -20 }, { x: 0, y: 20 }]]
+    ]);
+    return window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+  });
+  const crossings = audit.conflicts.filter(c => c.type === 'crossing' && c.wireIds.includes(371) && c.wireIds.includes(372));
+  expect(crossings).toHaveLength(2);
+  expect(crossings.map(c => c.coordinates).sort((a,b) => a.y-b.y)).toEqual([{ x: 0, y: -10 }, { x: 0, y: 10 }]);
+  console.log('GEOMETRY-MULTIPLE-CROSSINGS ' + JSON.stringify({ crossings: crossings.length, coordinates: crossings.map(c => c.coordinates) }));
+});
+
+test('GEOMETRY-SYNTHETIC-07: a routed wire through a block body is reported with block identity', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const audit = await page.evaluate(() => {
+    const nodes = [
+      { id: 381, type: 'INPUT', name: 'SOURCE', x: -200, y: -200, inputs: 0, outputs: 1 },
+      { id: 382, type: 'AND', name: 'OBSTACLE', x: 0, y: 0, inputs: 2, outputs: 1 },
+      { id: 383, type: 'OUTPUT', name: 'SINK', x: 200, y: 200, inputs: 1, outputs: 0 }
+    ];
+    const wires = [{ id: 391, from: 381, to: 383 }];
+    const routes = new Map([[391, [{ x: -20, y: 40 }, { x: 180, y: 40 }]]]);
+    return window.fpgaAuditRouteGeometry({ nodes, wires, routes });
+  });
+  const hits = audit.conflicts.filter(c => c.type === 'block-penetration');
+  expect(hits).toHaveLength(1);
+  expect(hits[0].wireIds).toEqual([391]);
+  expect(hits[0].blockId).toBe(382);
+  expect(hits[0].blockName).toBe('OBSTACLE');
+  console.log('GEOMETRY-BLOCK-PENETRATION ' + JSON.stringify({ penetrations: hits.length, wireId: 391, blockId: 382 }));
+});
