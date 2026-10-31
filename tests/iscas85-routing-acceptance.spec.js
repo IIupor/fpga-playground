@@ -1,11 +1,13 @@
 const { test, expect } = require('@playwright/test');
 const circuits = [
-  ['c17', 6], ['c432', 171], ['c499', 174], ['c880', 323],
-  ['c1355', 518], ['c1908', 479], ['c2670', 699], ['c3540', 1043],
-  ['c5315', 1586], ['c6288', 2353], ['c7552', 2331]
+  ['c17', 6, 704000], ['c432', 171, 37797480], ['c499', 174, 39140640],
+  ['c880', 323, 99062568], ['c1355', 518, 168396600], ['c1908', 479, 140940960],
+  ['c2670', 699, 539320320], ['c3540', 1043, 569985828],
+  ['c5315', 1586, 1630980256], ['c6288', 2353, 3162046200],
+  ['c7552', 2331, 2202209856]
 ];
 
-for (const [name, gateCount] of circuits) {
+for (const [name, gateCount, baselineArea] of circuits) {
   test(name + ': import, placement and complete orthogonal routing', async ({ page }) => {
     test.setTimeout(180000);
     const pageErrors = [];
@@ -122,6 +124,8 @@ for (const [name, gateCount] of circuits) {
     expect(report.routingTracks, 'fanout-aware routing must allocate a compact track set').toBeLessThan(report.logicalWires);
     expect(report.canvasHeight, 'canvas height must use allocated tracks, not one track per wire')
       .toBeLessThanOrEqual(report.maxNodeBottom + 72 + report.routingTracks * 4);
+    expect(report.canvasArea, 'layout must remain materially more compact than the frozen baseline')
+      .toBeLessThan(baselineArea * (gateCount <= 10 ? 0.9 : 0.7));
 
     await page.locator('#editorFitView').click();
     const fit = await page.evaluate(() => {
