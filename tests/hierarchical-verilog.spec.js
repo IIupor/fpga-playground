@@ -104,7 +104,6 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     children.sort((a,b) => project.modules.get(a.type).instances.length - project.modules.get(b.type).instances.length);
     const child = children[0];
     const node = child && window.fpgaNodes.find(n => n.name === child.name);
-    if (node) window.fpgaSelected = { kind: 'node', id: node.id };
     return { moduleCount: project.modules.size, topInstances: top?.instances.length || 0,
       topUnresolved: top?.instances.filter(x => x.unresolved).length ?? -1,
       childName: child?.name || null, childType: child?.type || null, hasSelectedNode: !!node, designs };
@@ -122,6 +121,9 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     expect(design.unresolved, design.name + ' unresolved instances').toBe(0);
   }
 
+  const childNode = page.locator('#editorStage g[data-node]').filter({ hasText: report.childName });
+  await expect(childNode).toHaveCount(1);
+  await childNode.click();
   await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('soc_top / ' + report.childName + ' / ' + report.childType);
   await page.keyboard.press('Control+E');
