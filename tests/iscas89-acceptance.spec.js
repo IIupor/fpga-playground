@@ -96,7 +96,7 @@ for (const name of circuits) {
       const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
       const groups = [...document.querySelectorAll('#editorStage g[data-node]')];
       const boxes = groups.map(group => {
-        const rect = group.getBBox();
+        const rect = group.querySelector('rect.nodebox').getBBox();
         const match = /translate\(\s*([-+\d.eE]+)[,\s]+([-+\d.eE]+)\s*\)/.exec(group.getAttribute('transform') || '');
         const dx = match ? Number(match[1]) : 0, dy = match ? Number(match[2]) : 0;
         return { id: Number(group.getAttribute('data-node')), l: rect.x + dx, t: rect.y + dy,
