@@ -262,8 +262,14 @@ function graphFor(mod,path) {
   }
   for(const inst of mod.instances){
     const definition=inst.definition,cell=inst.cell,ports=definition?.ports||cell?.pins||[];
-    const inputPorts=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT');
+    let inputPorts=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT');
     const outputPorts=ports.filter(p=>p.direction==='OUTPUT');
+    if(cell?.sequential){
+      const seq=cell.sequential,dataExpr=seq.kind==='ff'?seq.nextState:seq.dataIn,clockExpr=seq.kind==='ff'?seq.clockedOn:seq.enable;
+      const pick=expr=>{const names=String(expr||'').match(/[A-Za-z_$][\\w$]*/g)||[];return inputPorts.find(p=>names.includes(p.name));};
+      const dataPin=pick(dataExpr),clockPin=pick(clockExpr);
+      inputPorts=[...new Set([dataPin,clockPin,...inputPorts].filter(Boolean))];
+    }
     const nodeType=cell?.sequential?.kind==='ff'?'DFF':cell?.sequential?.kind==='latch'?'LATCH':'MODULE';
     const node=add(nodeType,inst.name,inputPorts.length||Object.keys(inst.connections).filter(k=>k[0]==='
       moduleType:definition?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),
