@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const circuits = ['c17', 'c432', 'c499', 'c880'];
+const circuits = ['c17', 'c432', 'c499', 'c880', 'c1355', 'c1908', 'c2670', 'c3540', 'c5315', 'c6288', 'c7552'];
 
 for (const name of circuits) {
   test(name + ': complete orthogonal geometry audit', async ({ page }) => {
