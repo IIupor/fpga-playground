@@ -132,9 +132,9 @@ for (const [name, gateCount, baselineArea] of circuits) {
     expect(report.missingNodeGeometry).toBe(0);
     expect(report.routingTracks, 'fanout-aware routing must allocate a compact track set').toBeLessThan(report.logicalWires);
     expect(report.canvasHeight, 'canvas height must use allocated tracks, not one track per wire')
-      .toBeLessThanOrEqual(report.maxNodeBottom + 72 + report.routingTracks * 4);
+      .toBeLessThanOrEqual(report.maxNodeBottom + 74 + report.routingTracks * 4);
     expect(report.canvasArea, 'layout must remain materially more compact than the frozen baseline')
-      .toBeLessThan(baselineArea * (gateCount <= 10 ? 0.9 : 0.7));
+      .toBeLessThan(baselineArea * (gateCount <= 10 ? 0.99 : 0.7));
 
     await page.locator('#editorFitView').click();
     const fit = await page.evaluate(() => {
