@@ -78,8 +78,7 @@ test('parses ten independently synthesized SKY130 gate-level designs against the
   }
 
   const uart = sources.find(x => x.name === 'uart_rx.v').text;
-  await page.locator('#verilogText').fill(uart);
-  await page.locator('#importVerilog').click();
+  await page.locator('#verilogFile').setInputFiles({ name: 'uart_rx.v', mimeType: 'text/plain', buffer: Buffer.from(uart) });
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   await expect(page.locator('#editorMessage')).toContainText('0 unresolved instances');
 });
