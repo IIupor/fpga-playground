@@ -577,7 +577,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
       const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap;
      }
     }
-    window.fpgaLoadCircuit(next,wires,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
+    window.fpgaLoadCircuit(next,wires,id);if(window.fpgaFitView)window.fpgaFitView();area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
  },true);
 })();
@@ -609,7 +609,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   reset.textContent=Math.round(zoom*100)+'%';
   out.disabled=zoom<=0.001;inc.disabled=zoom>=2.5;
  }
- function fitToView(){
+ function fitToView(quiet=false){
   const availableWidth=Math.max(1,viewport.clientWidth-32),availableHeight=Math.max(1,viewport.clientHeight-32);
   const width=Number(svg.dataset.canvasWidth||900),height=Number(svg.dataset.canvasHeight||390);
   window.fpgaZoom=Math.max(0.001,Math.min(2.5,availableWidth/width,availableHeight/height));
@@ -628,8 +628,9 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   label.textContent=Math.round(window.fpgaZoom*100)+'%';
   reset.textContent=Math.round(window.fpgaZoom*100)+'%';
   out.disabled=window.fpgaZoom<=0.001;inc.disabled=window.fpgaZoom>=2.5;
-  msg.textContent='Fitted the complete circuit into the workspace.';
+  if(!quiet)msg.textContent='Fitted the complete circuit into the workspace.';
  }
+ window.fpgaFitView=()=>fitToView(true);
  fit.addEventListener('click',fitToView);
  let spaceHeld=false,pan=null;
  window.addEventListener('keydown',e=>{if(e.code==='Space'&&!/INPUT|TEXTAREA|SELECT/.test(e.target?.tagName||'')){spaceHeld=true;viewport.style.cursor='grab'}});
