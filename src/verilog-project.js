@@ -3,7 +3,7 @@
 const $=id=>document.getElementById(id);
 const state={project:null,libraries:[],stack:[],current:null,nextId:1};
 const ident='[A-Za-z_$][\\w$]*';
-function stripComments(s){return s.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');}
+function stripComments(s){return s.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'').replace(/\(\*[\s\S]*?\*\)/g,'');}
 function splitComma(s){const out=[];let start=0,depth=0;for(let i=0;i<s.length;i++){if('([{'.includes(s[i]))depth++;else if(')]}'.includes(s[i]))depth--;else if(s[i]===','&&depth===0){out.push(s.slice(start,i).trim());start=i+1;}}if(s.slice(start).trim())out.push(s.slice(start).trim());return out;}
 function parsePorts(header,body){
  const ports=[];const ansi=/\b(input|output|inout)\b/.test(header);
