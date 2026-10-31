@@ -535,7 +535,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  const fit=document.getElementById('editorFitView');
  if(!viewport||!svg||!out||!inc||!reset||!label||!fit)return;
  window.fpgaZoom=1;
- const clamp=z=>Math.max(0.25,Math.min(2.5,Math.round(z*100)/100));
+ const clamp=z=>Math.max(0.001,Math.min(2.5,z<0.1?Math.round(z*1000)/1000:Math.round(z*100)/100));
  function setZoom(next,anchorX,anchorY){
   const old=window.fpgaZoom||1,zoom=clamp(next);
   if(zoom===old)return;
@@ -548,12 +548,12 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   viewport.scrollTop=Math.max(0,contentY*zoom-y);
   label.textContent=Math.round(zoom*100)+'%';
   reset.textContent=Math.round(zoom*100)+'%';
-  out.disabled=zoom<=0.25;inc.disabled=zoom>=2.5;
+  out.disabled=zoom<=0.001;inc.disabled=zoom>=2.5;
  }
  function fitToView(){
   const availableWidth=Math.max(1,viewport.clientWidth-32),availableHeight=Math.max(1,viewport.clientHeight-32);
   const width=Number(svg.dataset.canvasWidth||900),height=Number(svg.dataset.canvasHeight||390);
-  window.fpgaZoom=Math.max(0.01,Math.min(2.5,availableWidth/width,availableHeight/height));
+  window.fpgaZoom=Math.max(0.001,Math.min(2.5,availableWidth/width,availableHeight/height));
   if(typeof window.fpgaRender==='function')window.fpgaRender();
   else {svg.style.width=(width*window.fpgaZoom)+'px';svg.style.height=(height*window.fpgaZoom)+'px'}
   // Re-check the rendered dimensions: imported circuits can change their canvas bounds
@@ -561,14 +561,14 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
   const renderedWidth=svg.getBoundingClientRect().width,renderedHeight=svg.getBoundingClientRect().height;
   const correction=Math.min(1,availableWidth/Math.max(1,renderedWidth),availableHeight/Math.max(1,renderedHeight));
   if(correction<0.999){
-   window.fpgaZoom=Math.max(0.01,window.fpgaZoom*correction);
+   window.fpgaZoom=Math.max(0.001,window.fpgaZoom*correction);
    if(typeof window.fpgaRender==='function')window.fpgaRender();
    else {svg.style.width=(Number(svg.dataset.canvasWidth||width)*window.fpgaZoom)+'px';svg.style.height=(Number(svg.dataset.canvasHeight||height)*window.fpgaZoom)+'px'}
   }
   viewport.scrollLeft=0;viewport.scrollTop=0;
   label.textContent=Math.round(window.fpgaZoom*100)+'%';
   reset.textContent=Math.round(window.fpgaZoom*100)+'%';
-  out.disabled=window.fpgaZoom<=0.25;inc.disabled=window.fpgaZoom>=2.5;
+  out.disabled=window.fpgaZoom<=0.001;inc.disabled=window.fpgaZoom>=2.5;
   msg.textContent='Fitted the complete circuit into the workspace.';
  }
  fit.addEventListener('click',fitToView);
@@ -590,8 +590,8 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  const finishPan=()=>{if(!pan)return;pan=null;viewport.style.cursor=spaceHeld?'grab':''};
  viewport.addEventListener('pointerup',finishPan,true);
  viewport.addEventListener('pointercancel',finishPan,true);
- out.addEventListener('click',()=>setZoom((window.fpgaZoom||1)-0.1));
- inc.addEventListener('click',()=>setZoom((window.fpgaZoom||1)+0.1));
+ out.addEventListener('click',()=>{const z=window.fpgaZoom||1;setZoom(z<0.25?z/1.2:z-0.1)});
+ inc.addEventListener('click',()=>{const z=window.fpgaZoom||1;setZoom(z<0.25?z*1.2:z+0.1)});
  reset.addEventListener('click',()=>setZoom(1));
  viewport.addEventListener('wheel',e=>{
   if(!e.ctrlKey)return;
