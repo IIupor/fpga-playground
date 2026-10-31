@@ -201,6 +201,19 @@ for (const name of circuits) {
     expect(report.fitWidth, name + ': imported design must fit the workspace width').toBe(true);
     expect(report.fitHeight, name + ': imported design must fit the workspace height').toBe(true);
 
+    if (name === 's27') {
+      for (const input of ['G0', 'G1', 'G2', 'G3']) {
+        await page.locator('#editorControls .control').filter({ hasText: 'Input ' + input }).locator('button').click();
+      }
+      await page.locator('#editorControls .control').filter({ hasText: 'Input CK' }).locator('button').click();
+      const liveState = await page.evaluate(() => ({
+        dffs: window.fpgaNodes.filter(node => node.type === 'DFF').map(node => node.value),
+        output: window.fpgaNodes.find(node => node.type === 'OUTPUT')?.value
+      }));
+      expect(liveState.dffs, 's27 browser simulator must capture DFF data on CK rising edge').toEqual([1, 1, 0]);
+      expect(liveState.output, 's27 browser simulator must propagate the updated register state').toBe(0);
+    }
+
     await page.locator('#exportVerilog').click();
     const exported = await page.locator('#verilogText').inputValue();
     expect(exported).toContain('module fpga_playground');
