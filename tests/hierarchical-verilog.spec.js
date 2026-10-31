@@ -37,7 +37,7 @@ test('loads multiple Liberty and Verilog libraries and resolves cell/module inst
   await page.locator('#editorControls button').nth(0).click(); await page.locator('#editorControls button').nth(1).click();
   await expect(cell).toContainText('VALUE: 1');
   const inverter = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' }); await expect(inverter).toContainText('VALUE: 0');
-  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' }); await expect(custom).toHaveCount(1); await custom.click(); await page.keyboard.press('Shift+E');
+  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' }); await expect(custom).toContainText('VALUE: 1'); await custom.click(); await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('CUSTOM_BUF');
 });
 
