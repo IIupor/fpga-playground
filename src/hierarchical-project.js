@@ -387,7 +387,7 @@ function setupUI() {
     selectedFile.text().then(source=>{
       const count=[...source.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;
       if(count>=2||state.libraries.length)importProject(source);
-      else window.fpgaLegacyImport(source);
+      else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);
   window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,get state(){return state;},importProject};
