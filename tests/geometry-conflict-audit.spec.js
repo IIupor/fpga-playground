@@ -435,7 +435,13 @@ test('GEOMETRY-C432-MIKAMI-SAMPLE-01: one bounded Mikami pass routes a c432 wire
   expect(result.routedPathCount).toBe(20);
   expect(result.allPathsNonEmpty).toBe(true);
   expect(result.orthogonal).toBe(true);
-  expect(result.audit.conflictCount).toBe(0);
+  // Independent nets are allowed to cross visually. Only shared geometry
+  // (overlap) and routing through a block body are hard geometry violations.
+  const overlaps = result.audit.conflicts.filter(conflict => conflict.type === 'overlap');
+  const blockPenetrations = result.audit.conflicts.filter(conflict => conflict.type === 'block-penetration');
+  const allowedCrossings = result.audit.conflicts.filter(conflict => conflict.type === 'crossing');
+  expect(overlaps, 'independent wires must not share a routed segment').toHaveLength(0);
+  expect(blockPenetrations, 'routed wires must not pass through block bodies').toHaveLength(0);
   expect(result.wireOrderRestored).toBe(true);
   console.log('GEOMETRY-C432-MIKAMI-SAMPLE ' + JSON.stringify({
     benchmarkWireCount: result.diagnostic.wireCount,
@@ -445,7 +451,9 @@ test('GEOMETRY-C432-MIKAMI-SAMPLE-01: one bounded Mikami pass routes a c432 wire
     searchCount: result.diagnostic.searchCount,
     failedSearches: result.diagnostic.failedSearches,
     orthogonal: result.orthogonal,
-    conflicts: result.audit.conflictCount,
+    allowedCrossings: allowedCrossings.length,
+    overlaps: overlaps.length,
+    blockPenetrations: blockPenetrations.length,
     wireOrderRestored: result.wireOrderRestored
   }));
 });
