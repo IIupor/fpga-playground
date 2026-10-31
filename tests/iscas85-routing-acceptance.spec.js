@@ -17,6 +17,15 @@ for (const [name, gateCount, baselineArea] of circuits) {
     await expect(page.locator('#editorMessage')).toContainText(
       new RegExp('Loaded ' + name + '\\.v|Imported '), { timeout: 120000 }
     );
+    const autoFit=await page.evaluate(()=>{
+      const viewport=document.querySelector('#editorViewport'),stage=document.querySelector('#editorStage');
+      return {viewportWidth:viewport.clientWidth,viewportHeight:viewport.clientHeight,
+        stageWidth:stage.getBoundingClientRect().width,stageHeight:stage.getBoundingClientRect().height,
+        zoom:window.fpgaZoom};
+    });
+    console.log('ISCAS85_AUTO_FIT',name,JSON.stringify(autoFit));
+    expect(autoFit.stageWidth,'imported circuit should be fitted horizontally automatically').toBeLessThanOrEqual(autoFit.viewportWidth+2);
+    expect(autoFit.stageHeight,'imported circuit should be fitted vertically automatically').toBeLessThanOrEqual(autoFit.viewportHeight+2);
 
     const report = await page.evaluate(() => {
       const nodes = [...window.fpgaNodes || []];
