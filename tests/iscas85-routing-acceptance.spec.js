@@ -91,7 +91,9 @@ for (const [name, gateCount] of circuits) {
       }
       return {
         nodeObjects:nodes.length, renderedNodes:groups.length, logicalWires:wires.length,
-        renderedWires:paths.length, renderedJunctions:junctions.length, expectedJunctions, emptyRoutes, diagonalSegments, blockPenetrations,
+        renderedWires:paths.length, renderedJunctions:junctions.length, expectedJunctions,
+        wireVectorEffect:paths.length?getComputedStyle(paths[0]).vectorEffect:'',
+        emptyRoutes, diagonalSegments, blockPenetrations,
         collinearOverlaps, wrongEndpoints, nodeOverlaps,
         missingNodeGeometry:boxes.filter(b=>![b.l,b.t,b.r,b.b].every(Number.isFinite)).length,
         canvasWidth:Number(document.querySelector('#editorStage').dataset.canvasWidth),
@@ -109,6 +111,7 @@ for (const [name, gateCount] of circuits) {
     expect(report.nodeObjects, 'all gates plus IO must be present').toBeGreaterThan(gateCount);
     expect(report.renderedWires, 'every logical connection must have an SVG route').toBe(report.logicalWires);
     expect(report.renderedJunctions, 'same-net fanout branches must be visibly marked').toBe(report.expectedJunctions);
+    expect(report.wireVectorEffect, 'wire strokes must remain visible at overview zoom').toBe('non-scaling-stroke');
     expect(report.emptyRoutes, 'no wire may be silently omitted').toBe(0);
     expect(report.diagonalSegments, 'all routes must be orthogonal').toBe(0);
     expect(report.blockPenetrations, 'wires must not pass through unrelated blocks').toBe(0);
