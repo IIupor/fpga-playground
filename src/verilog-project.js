@@ -43,6 +43,29 @@ function evalLibertyFunction(expression,env){
  try{const value=or();return i===tokens.length?value:0;}catch(_){return 0;}
 }
 window.fpgaEvalLibertyFunction=evalLibertyFunction;
+function evalModuleOutputs(mod,inputEnv,stack=[]){
+ if(!mod||stack.includes(mod.name))return {};
+ const values=new Map(Object.entries(inputEnv||{}).map(([k,v])=>[k,v?1:0]));
+ const read=sig=>{if(values.has(sig))return values.get(sig);if(/^(1'b1|1|1'h1)$/i.test(sig))return 1;if(/^(1'b0|0|1'h0)$/i.test(sig))return 0;return undefined;};
+ const gate=(kind,a)=>{if(kind==='and')return a.every(Boolean)?1:0;if(kind==='nand')return a.every(Boolean)?0:1;if(kind==='or')return a.some(Boolean)?1:0;if(kind==='nor')return a.some(Boolean)?0:1;if(kind==='xor')return a.filter(Boolean).length%2;if(kind==='xnor')return a.filter(Boolean).length%2?0:1;if(kind==='not')return a[0]?0:1;if(kind==='buf')return a[0]||0;return 0;};
+ for(let pass=0;pass<mod.gates.length+mod.instances.length+mod.assigns.length+2;pass++){
+  let changed=false;
+  for(const g of mod.gates){const ins=g.pins.slice(1).map(read);if(ins.some(v=>v===undefined))continue;const v=gate(g.kind,ins);if(values.get(g.pins[0])!==v){values.set(g.pins[0],v);changed=true;}}
+  for(const a of mod.assigns){const v=read(a.from);if(v!==undefined&&values.get(a.to)!==v){values.set(a.to,v);changed=true;}}
+  for(const inst of mod.instances){
+   const ports=inst.definition?.ports||inst.cell?.pins||[],ip=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT'),op=ports.filter(p=>p.direction==='OUTPUT'),env={};
+   ip.forEach(p=>{const sig=portSignal(p,inst),v=sig===null?undefined:read(sig);if(v!==undefined)env[p.name]=v;});
+   let result={};
+   if(inst.cell){for(const p of op)if(p.function)result[p.name]=evalLibertyFunction(p.function,env);}
+   else if(inst.definition)result=evalModuleOutputs(inst.definition,env,stack.concat(mod.name));
+   op.forEach(p=>{const sig=portSignal(p,inst),v=result[p.name];if(sig&&v!==undefined&&values.get(sig)!==v){values.set(sig,v);changed=true;}});
+  }
+  if(!changed)break;
+ }
+ const result={};for(const p of mod.ports)if(p.direction==='OUTPUT')result[p.name]=read(p.name)??0;
+ return result;
+}
+window.fpgaEvalHierarchicalModule=(name,env)=>evalModuleOutputs(state.project?.modules.get(name),env);
 function parseLiberty(source,label){
  const cells=new Map();let i=0;
  while((i=source.indexOf('cell',i))>=0){const m=source.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!m){i+=4;continue;}const name=m[1].trim().replace(/^['\"]|['\"]$/g,''),start=i+m[0].length;let depth=1,j=start;for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}const body=source.slice(start,j-1),pins=[];let p=0;while((p=body.indexOf('pin',p))>=0){const pm=body.slice(p).match(/^pin\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!pm){p+=3;continue;}const ps=p+pm[0].length;let d=1,k=ps;for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}const pb=body.slice(ps,k-1),dir=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1],fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];pins.push({name:pm[1].trim().replace(/^['\"]|['\"]$/g,''),direction:(dir||'').toUpperCase(),function:fn?fn.trim().replace(/^['\"]|['\"]$/g,''):null});p=k;}cells.set(name,{name,pins,source:label});i=j;}
