@@ -117,9 +117,26 @@ function evalCircuit(updateSequential=true){
   for(const n of nodes){
    if(n.type!=='DFF'&&n.type!=='LATCH')continue;
    const vals=(inputsByNode.get(n.id)||[]).map(src=>src?.node?((src.node.outputValues&&src.node.outputValues[src.fromPin]!==undefined)?src.node.outputValues[src.fromPin]:src.node.value):0);
-   if(n.type==='LATCH'){if(vals[1])n.state=vals[0]||0}
-   else if(vals[1]&&!n.prevClock)n.state=vals[0]||0;
-   n.prevClock=vals[1]||0;n.value=n.state;
+   if(n.cellSequential){
+    const env=Object.fromEntries((n.inputNames||[]).map((name,i)=>[name,vals[i]||0])),seq=n.cellSequential;
+    if(seq.clear&&window.fpgaEvalLibertyFunction?.(seq.clear,env))n.state=0;
+    else if(seq.preset&&window.fpgaEvalLibertyFunction?.(seq.preset,env))n.state=1;
+    else if(seq.kind==='ff'){
+     const clock=window.fpgaEvalLibertyFunction?.(seq.clockedOn,env)||0;
+     if(clock&&!n.prevClock)n.state=window.fpgaEvalLibertyFunction?.(seq.nextState,{...env,[seq.stateVar]:n.state||0,[seq.stateVarN]:1-(n.state||0)})||0;
+     n.prevClock=clock;
+    }else if(seq.kind==='latch'){
+     const enable=window.fpgaEvalLibertyFunction?.(seq.enable,env)||0;
+     if(enable)n.state=window.fpgaEvalLibertyFunction?.(seq.dataIn,{...env,[seq.stateVar]:n.state||0,[seq.stateVarN]:1-(n.state||0)})||0;
+    }
+    const outputEnv={...env,[seq.stateVar]:n.state||0,[seq.stateVarN]:1-(n.state||0)};
+    n.outputValues=(n.outputNames||[]).map(name=>window.fpgaEvalLibertyFunction?.(n.cellFunctions?.[name],outputEnv)??0);
+    n.value=n.outputValues[0]||0;
+   }else{
+    if(n.type==='LATCH'){if(vals[1])n.state=vals[0]||0}
+    else if(vals[1]&&!n.prevClock)n.state=vals[0]||0;
+    n.prevClock=vals[1]||0;n.value=n.state;
+   }
   }
   evaluateCombinational();
  }
