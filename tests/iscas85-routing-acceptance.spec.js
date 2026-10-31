@@ -107,5 +107,19 @@ for (const [name, gateCount] of circuits) {
     expect(report.wrongEndpoints, 'each route must preserve its logical source and target pins').toBe(0);
     expect(report.nodeOverlaps, 'placed blocks must not overlap').toBe(0);
     expect(report.missingNodeGeometry).toBe(0);
+
+    await page.locator('#editorFitView').click();
+    const fit = await page.evaluate(() => {
+      const viewport=document.querySelector('#editorViewport'),stage=document.querySelector('#editorStage');
+      return {
+        viewportWidth:viewport.clientWidth, viewportHeight:viewport.clientHeight,
+        stageWidth:stage.getBoundingClientRect().width, stageHeight:stage.getBoundingClientRect().height,
+        zoom:window.fpgaZoom, renderedWires:document.querySelectorAll('#editorStage path.editor-wire').length
+      };
+    });
+    console.log('ISCAS85_FIT', name, JSON.stringify(fit));
+    expect(fit.stageWidth, 'Fit to view must fit the complete circuit width').toBeLessThanOrEqual(fit.viewportWidth+2);
+    expect(fit.stageHeight, 'Fit to view must fit the complete circuit height').toBeLessThanOrEqual(fit.viewportHeight+2);
+    expect(fit.renderedWires, 'Fit to view must not drop wires').toBe(report.logicalWires);
   });
 }
