@@ -151,8 +151,8 @@ function prepareRouteObstacleIndex(){
   for(const [x,list] of targets){list.sort((a,b)=>a.id-b.id);list.forEach((w,i)=>targetIndex.set(w.id,i))}
   const trackBase=maxBottom+32,trackGap=3.2,intervals=[];
   for(const [key,source] of sourceGroups){
-   const sx=source.a.x+150+20+(sourceIndex.get(source.wires[0].id)||0)*trackGap;
-   const tx=Math.max(...source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-20-(targetIndex.get(w.id)||0)*trackGap}));
+   const sx=source.a.x+150+30+(sourceIndex.get(source.wires[0].id)||0)*trackGap;
+   const tx=Math.max(...source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-30-(targetIndex.get(w.id)||0)*trackGap}));
    intervals.push({key,sx,tx,start:Math.min(sx,tx),end:Math.max(sx,tx)});
   }
   intervals.sort((a,b)=>a.start-b.start||a.end-b.end||a.key.localeCompare(b.key));
@@ -170,8 +170,8 @@ function prepareRouteObstacleIndex(){
    for(const w of source.wires){
     const b=routeNodeById.get(w.to);
     routePlanByWire.set(w.id,{
-     sourceLaneX:source.a.x+150+20+(sourceIndex.get(w.id)||0)*trackGap,
-     targetLaneX:b.x-20-(targetIndex.get(w.id)||0)*trackGap,
+     sourceLaneX:source.a.x+150+30+(sourceIndex.get(w.id)||0)*trackGap,
+     targetLaneX:b.x-30-(targetIndex.get(w.id)||0)*trackGap,
      laneY
     });
    }
@@ -547,7 +547,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     for(const w of wires){if(neighbors.has(w.from)&&neighbors.has(w.to)){neighbors.get(w.from).push(w.to);neighbors.get(w.to).push(w.from)}}
     // Barycentric sweeps order connected nodes similarly across adjacent levels to reduce crossings.
     for(let pass=0;pass<4;pass++){const keys=pass%2===0?layerKeys:layerKeys.slice().reverse();for(const l of keys){const ids=layers.get(l);if(ids.length<2)continue;const score=nid=>{const ns=neighbors.get(nid).filter(other=>level.get(other)!==l);return ns.length?ns.reduce((sum,other)=>sum+(order.get(other)??0),0)/ns.length:order.get(nid)};ids.sort((a,b)=>{const d=score(a)-score(b);return Math.abs(d)>1e-6?d:a-b});ids.forEach((nid,i)=>order.set(nid,i))}}
-    const yGap=20,topPad=36,leftPad=40,maxNodesPerColumn=100;
+    const yGap=28,topPad=36,leftPad=40,maxNodesPerColumn=100;
     // Split very wide logic levels into compact subcolumns. This preserves the
     // topological order while preventing thousands of gates from forming one
     // extremely tall column.
@@ -568,7 +568,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     let nextX=leftPad;
     for(let i=0;i<columns.length;i++){
      const column=columns[i];column.x=nextX;
-     if(i<columns.length-1)nextX+=150+40+(column.sourceKeys.size+columns[i+1].targetWires)*3.2;
+     if(i<columns.length-1)nextX+=150+60+(column.sourceKeys.size+columns[i+1].targetWires)*3.2;
     }
     for(const column of columns){
      let y=topPad;
