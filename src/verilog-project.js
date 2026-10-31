@@ -32,8 +32,8 @@ function parseVerilog(source,label){
 }
 function evalLibertyFunction(expression,env){
  if(!expression)return 0;
- const tokens=String(expression).match(/[A-Za-z_$][\\w$]*|[01]|[!~&*|+^()]/g)||[];
- const compact=String(expression).replace(/\\s+/g,'');
+ const tokens=String(expression).match(/[A-Za-z_$][\w$]*|[01]|[!~&*|+^()]/g)||[];
+ const compact=String(expression).replace(/\s+/g,'');
  if(tokens.join('')!==compact)return 0;
  let i=0;
  const atom=()=>{const t=tokens[i++];if(t==='!'||t==='~')return atom()?0:1;if(t==='('){const v=or();if(tokens[i]!==')')throw Error('Unbalanced Liberty function');i++;return v;}if(t==='0'||t==='1')return Number(t);return env[t]?1:0;};
