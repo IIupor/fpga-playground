@@ -214,10 +214,9 @@ for (const name of circuits) {
             if (previous.y === point.y && next.x === point.x &&
                 previous.x !== point.x && next.y !== point.y) targetBends.push(point);
           }
-          if (targetBends.length !== 1 ||
-              !circles.some(circle => targetBends.some(point => circle.x === point.x && circle.y === point.y))) {
-            missingJunctionMarkers++;
-          }
+          const markedBends = targetBends.filter(point =>
+            circles.some(circle => circle.x === point.x && circle.y === point.y));
+          if (markedBends.length !== 1) missingJunctionMarkers++;
         }
       }
 
