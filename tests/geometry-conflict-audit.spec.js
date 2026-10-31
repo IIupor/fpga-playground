@@ -415,6 +415,18 @@ test('GEOMETRY-C432-MIKAMI-SAMPLE-01: one bounded Mikami pass routes a c432 wire
       wireOrderRestored: window.fpgaWires.map(w => w.id).join(',') === originalOrder.join(',')
     };
   });
+  console.log('GEOMETRY-C432-MIKAMI-SAMPLE-DETAIL ' + JSON.stringify({
+    benchmarkWireCount: result.diagnostic.wireCount,
+    sampledWires: result.sampleWireCount,
+    routedPaths: result.routedPathCount,
+    elapsedMs: Math.round(result.diagnostic.elapsedMs),
+    searchCount: result.diagnostic.searchCount,
+    failedSearches: result.diagnostic.failedSearches,
+    orthogonal: result.orthogonal,
+    conflicts: result.audit.conflicts,
+    wireOrderRestored: result.wireOrderRestored,
+    routePaths: result.diagnostic.routePaths
+  }));
   expect(result.diagnostic.status).toBe('completed');
   expect(result.diagnostic.completed).toBe(20);
   expect(result.diagnostic.total).toBe(20);
