@@ -422,6 +422,16 @@ test('GEOMETRY-C432-MIKAMI-SAMPLE-01: one bounded Mikami pass routes a c432 wire
     elapsedMs: Math.round(result.diagnostic.elapsedMs),
     searchCount: result.diagnostic.searchCount,
     failedSearches: result.diagnostic.failedSearches,
+    fallbackAttempts: result.diagnostic.searches
+      .filter(item => item.attempt === 2)
+      .map(({ wireId, status, searchTimeMs, statesProcessed, raySteps }) => ({
+        wireId, status, searchTimeMs, statesProcessed, raySteps
+      })),
+    primaryFailures: result.diagnostic.searches
+      .filter(item => item.attempt === 1 && item.status !== 'routed')
+      .map(({ wireId, status, searchTimeMs, statesProcessed, raySteps }) => ({
+        wireId, status, searchTimeMs, statesProcessed, raySteps
+      })),
     orthogonal: result.orthogonal,
     conflicts: result.audit.conflicts,
     wireOrderRestored: result.wireOrderRestored,
