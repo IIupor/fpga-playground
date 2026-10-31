@@ -50,6 +50,7 @@ test('rejects duplicate Liberty cell definitions without discarding already load
 
 test('parses ten independently synthesized SKY130 gate-level designs against the real Liberty library', async ({ page }) => {
   const fixtureDir = path.join(__dirname, 'fixtures', 'sky130');
+  test.skip(!fs.existsSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib')), 'SKY130 PDK fixtures are provisioned by the PDK-enabled CI workflows');
   const library = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'sky130_fd_sc_hd__tt_025C_1v80.lib', mimeType: 'text/plain', buffer: library });
