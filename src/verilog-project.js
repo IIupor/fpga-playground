@@ -168,7 +168,7 @@ setupUI();
  const signal=String(expr).trim();if(!port.width||port.width===1)return signal;
  if(signal.startsWith('{')&&signal.endsWith('}'))return splitComma(signal.slice(1,-1))[port.bitOffset]||null;
  const range=signal.match(/^([A-Za-z_$][\w$]*)\s*\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\]$/);
- if(range){const bit=port.bitIndex,lo=Math.min(+range[2],+range[3]),hi=Math.max(+range[2],+range[3]);return bit>=lo&&bit<=hi?range[1]+'['+bit+']':null;}
+ if(range){const width=Math.abs(+range[2]-+range[3])+1;if(port.bitOffset>=width)return null;const step=+range[3]>=+range[2]?1:-1,bit=+range[2]+step*port.bitOffset;return range[1]+'['+bit+']';}
  if(/^([A-Za-z_$][\w$]*)\s*\[\s*-?\d+\s*\]$/.test(signal))return signal;
  if(/^[A-Za-z_$][\w$]*$/.test(signal))return signal+'['+port.bitIndex+']';
  return null;
