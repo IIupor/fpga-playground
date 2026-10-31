@@ -6,46 +6,69 @@ test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
 test('imports a multi-module Verilog project and navigates down and up the hierarchy', async ({ page }) => {
   const source = ['module leaf(input wire a, input wire b, output wire y);','  and g1 (y, a, b);','endmodule','module middle(input wire a, input wire b, output wire y);','  leaf u_leaf (.a(a), .b(b), .y(y));','endmodule','module top(input wire a, input wire b, output wire y);','  middle u_middle (.a(a), .b(b), .y(y));','endmodule'].join('\n');
-  await page.locator('#verilogText').fill(source); await page.locator('#importVerilog').click();
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#hierarchyStatus')).toContainText('top');
-  const instance = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_middle' }); await expect(instance).toHaveCount(1); await instance.click(); await page.keyboard.press('Shift+E');
+  const instance = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_middle' });
+  await expect(instance).toHaveCount(1);
+  await instance.click();
+  await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / middle');
-  const child = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_leaf' }); await expect(child).toHaveCount(1); await child.click(); await page.keyboard.press('Shift+E');
+  const child = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_leaf' });
+  await expect(child).toHaveCount(1);
+  await child.click();
+  await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / u_leaf / leaf');
-  await page.keyboard.press('Control+E'); await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / middle');
-  await page.locator('#hierarchyUp').click(); await expect(page.locator('#hierarchyStatus')).toContainText('top');
+  await page.keyboard.press('Control+E');
+  await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / middle');
+  await page.locator('#hierarchyUp').click();
+  await expect(page.locator('#hierarchyStatus')).toContainText('top');
 });
 
 test('loads multiple Liberty and Verilog libraries and resolves cell/module instances', async ({ page }) => {
   const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : input; } pin(B) { direction : input; } pin(Y) { direction : output; function : "A & B"; } } }';
   const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : input; } pin(Y) { direction : output; function : "!A"; } } }';
-  const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');\n  const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
+  const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
+  const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles([
     { name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) },
     { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },
-    { name: 'custom_cells.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib) },\n    { name: 'custom_cells_2.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib2) }
+    { name: 'custom_cells.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib) },
+    { name: 'custom_cells_2.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib2) }
   ]);
   await expect(page.locator('#libraryStatus')).toContainText('4 library file(s)');
-  await expect(page.locator('#libraryStatus')).toContainText('2 Liberty cells');\n  await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
+  await expect(page.locator('#libraryStatus')).toContainText('2 Liberty cells');
+  await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
   const netlist = ['module mapped_top(input wire a, input wire b, output wire y, output wire z, output wire w, output wire v);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));','endmodule'].join('\n');
-  await page.locator('#verilogText').fill(netlist); await page.locator('#importVerilog').click();
+  await page.locator('#verilogText').fill(netlist);
+  await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('SKY_AND2_X1');
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' });
-  await page.locator('#editorControls button').nth(0).click(); await page.locator('#editorControls button').nth(1).click();
+  await page.locator('#editorControls button').nth(0).click();
+  await page.locator('#editorControls button').nth(1).click();
   await expect(cell).toContainText('VALUE: 1');
-  const inverter = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' }); await expect(inverter).toContainText('VALUE: 0');\n  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' })).toContainText('VALUE: 1');\n  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_custom_inv' })).toContainText('VALUE: 1');
-  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' }); await expect(custom).toContainText('VALUE: 1'); await custom.click(); await page.keyboard.press('Shift+E');
+  const inverter = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' });
+  await expect(inverter).toContainText('VALUE: 0');
+  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' });
+  await expect(custom).toContainText('VALUE: 1');
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_custom_inv' })).toContainText('VALUE: 1');
+  await custom.click();
+  await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('CUSTOM_BUF');
 });
 
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
-  const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : input; } } }'; await page.locator('#importLibraries').click();
-  await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) }); await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
-  await page.locator('#importLibraries').click(); await page.locator('#libraryFiles').setInputFiles({ name: 'duplicate.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
-  await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1'); await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+  const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : input; } } }';
+  await page.locator('#importLibraries').click();
+  await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
+  await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+  await page.locator('#importLibraries').click();
+  await page.locator('#libraryFiles').setInputFiles({ name: 'duplicate.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
+  await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1');
+  await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
 });
 
 test('parses ten independently synthesized SKY130 gate-level designs against the real Liberty library', async ({ page }) => {
