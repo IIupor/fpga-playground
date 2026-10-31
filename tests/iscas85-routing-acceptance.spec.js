@@ -94,6 +94,7 @@ for (const [name, gateCount] of circuits) {
         canvasHeight:Number(document.querySelector('#editorStage').dataset.canvasHeight),
         canvasArea:Number(document.querySelector('#editorStage').dataset.canvasWidth)*Number(document.querySelector('#editorStage').dataset.canvasHeight),
         routingTracks:window.fpgaRoutingTrackCount,
+        maxNodeBottom:Math.max(...boxes.map(b=>b.b)),
         totalRoutePoints:routes.reduce((n,r)=>n+r.points.length,0),
         totalRouteLength:routes.reduce((sum,r)=>sum+r.points.slice(1).reduce((n,p,i)=>n+Math.abs(p.x-r.points[i].x)+Math.abs(p.y-r.points[i].y),0),0)
       };
@@ -110,6 +111,9 @@ for (const [name, gateCount] of circuits) {
     expect(report.wrongEndpoints, 'each route must preserve its logical source and target pins').toBe(0);
     expect(report.nodeOverlaps, 'placed blocks must not overlap').toBe(0);
     expect(report.missingNodeGeometry).toBe(0);
+    expect(report.routingTracks, 'fanout-aware routing must allocate a compact track set').toBeLessThan(report.logicalWires);
+    expect(report.canvasHeight, 'canvas height must use allocated tracks, not one track per wire')
+      .toBeLessThanOrEqual(report.maxNodeBottom + 72 + report.routingTracks * 4);
 
     await page.locator('#editorFitView').click();
     const fit = await page.evaluate(() => {
