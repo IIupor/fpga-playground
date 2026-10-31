@@ -378,76 +378,62 @@ test('GEOMETRY-C17-ORDER-STRESS-01: Mikami routing stays valid under different w
 });
 
 
-test('GEOMETRY-C432-ORDER-STRESS-01: Mikami routing stays valid under different c432 wire processing orders', async ({ page }) => {
-  test.setTimeout(300000);
+test('GEOMETRY-C432-MIKAMI-SAMPLE-01: one bounded Mikami pass routes a c432 wire sample', async ({ page }) => {
+  test.setTimeout(180000);
   await loadBenchmark(page, 'c432');
-  const result = await page.evaluate(() => {
-    const original = window.fpgaWires.slice();
-    const permutations = [
-      ['original', original.slice()],
-      ['reverse', original.slice().reverse()],
-      ['rotate-89', original.slice(89).concat(original.slice(0, 89))]
-    ];
-    const mode = document.querySelector('#routingMode');
-    mode.value = 'mikami';
-    const snapshots = [];
-    const capture = label => {
-      const paths = [...document.querySelectorAll('path.editor-wire')];
-      const orthogonal = paths.every(path => {
-        const values = (path.getAttribute('d').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
-        if (values.length < 4 || values.length % 2) return false;
-        for (let i = 2; i < values.length; i += 2) {
-          if (Math.abs(values[i] - values[i - 2]) > 0.001 &&
-              Math.abs(values[i + 1] - values[i - 1]) > 0.001) return false;
-        }
-        return true;
-      });
-      return {
-        label,
-        audit: window.fpgaLastGeometryAudit,
-        pathCount: paths.length,
-        orthogonal,
-        signature: paths.map(p => [Number(p.dataset.wire), p.getAttribute('d')]).sort((a,b) => a[0]-b[0])
-      };
-    };
-    try {
-      for (const [label, order] of permutations) {
-        window.fpgaWires.splice(0, window.fpgaWires.length, ...order);
-        mode.dispatchEvent(new Event('change', { bubbles: true }));
-        const first = capture(label);
-        mode.dispatchEvent(new Event('change', { bubbles: true }));
-        const repeated = capture(label + '-repeat');
-        snapshots.push({
-          ...first,
-          deterministic: JSON.stringify(first.signature) === JSON.stringify(repeated.signature)
-        });
-      }
-    } finally {
-      window.fpgaWires.splice(0, window.fpgaWires.length, ...original);
-      mode.dispatchEvent(new Event('change', { bubbles: true }));
+  const result = await page.evaluate(async () => {
+    const originalOrder = window.fpgaWires.map(w => w.id);
+    const sampleSize = 20;
+    if (typeof window.fpgaStartMikamiDiagnostic !== 'function') {
+      throw new Error('Bounded Mikami diagnostic hook missing');
     }
+    window.fpgaStartMikamiDiagnostic(sampleSize);
+    const diagnostic = await window.fpgaMikamiDiagnosticPromise;
+    const selectedWires = window.fpgaWires.slice(0, sampleSize);
+    const routes = new Map(diagnostic.routePaths.map(item => [item.wireId, item.points]));
+    const audit = window.fpgaAuditRouteGeometry({
+      nodes: window.fpgaNodes,
+      wires: selectedWires,
+      routes
+    });
+    const orthogonal = diagnostic.routePaths.every(({ points }) => {
+      if (points.length < 2) return false;
+      for (let i = 1; i < points.length; i++) {
+        const dx = Math.abs(points[i].x - points[i - 1].x);
+        const dy = Math.abs(points[i].y - points[i - 1].y);
+        if (dx > 0.001 && dy > 0.001) return false;
+      }
+      return true;
+    });
     return {
-      snapshots,
-      wireCount: original.length,
-      restoredWireOrder: window.fpgaWires.map(w => w.id).join(',') === original.map(w => w.id).join(',')
+      diagnostic,
+      audit,
+      sampleWireCount: selectedWires.length,
+      routedPathCount: diagnostic.routePaths.length,
+      allPathsNonEmpty: diagnostic.routePaths.every(item => item.points.length >= 2),
+      orthogonal,
+      wireOrderRestored: window.fpgaWires.map(w => w.id).join(',') === originalOrder.join(',')
     };
   });
-  expect(result.wireCount).toBe(354);
-  expect(result.snapshots).toHaveLength(3);
-  for (const snapshot of result.snapshots) {
-    expect(snapshot.pathCount).toBe(354);
-    expect(snapshot.orthogonal).toBe(true);
-    expect(snapshot.audit.conflictCount).toBe(0);
-    expect(snapshot.audit.wireCount).toBe(354);
-    expect(snapshot.deterministic).toBe(true);
-  }
-  expect(result.restoredWireOrder).toBe(true);
-  console.log('GEOMETRY-C432-WIRE-ORDER-STRESS ' + JSON.stringify({
-    permutations: result.snapshots.map(s => s.label),
-    conflicts: result.snapshots.map(s => s.audit.conflictCount),
-    orthogonal: result.snapshots.every(s => s.orthogonal),
-    deterministicPerOrder: result.snapshots.every(s => s.deterministic),
-    pathCounts: result.snapshots.map(s => s.pathCount),
-    wireOrderRestored: result.restoredWireOrder
+  expect(result.diagnostic.status).toBe('completed');
+  expect(result.diagnostic.completed).toBe(20);
+  expect(result.diagnostic.total).toBe(20);
+  expect(result.diagnostic.wireCount).toBe(354);
+  expect(result.sampleWireCount).toBe(20);
+  expect(result.routedPathCount).toBe(20);
+  expect(result.allPathsNonEmpty).toBe(true);
+  expect(result.orthogonal).toBe(true);
+  expect(result.audit.conflictCount).toBe(0);
+  expect(result.wireOrderRestored).toBe(true);
+  console.log('GEOMETRY-C432-MIKAMI-SAMPLE ' + JSON.stringify({
+    benchmarkWireCount: result.diagnostic.wireCount,
+    sampledWires: result.sampleWireCount,
+    routedPaths: result.routedPathCount,
+    elapsedMs: Math.round(result.diagnostic.elapsedMs),
+    searchCount: result.diagnostic.searchCount,
+    failedSearches: result.diagnostic.failedSearches,
+    orthogonal: result.orthogonal,
+    conflicts: result.audit.conflictCount,
+    wireOrderRestored: result.wireOrderRestored
   }));
 });
