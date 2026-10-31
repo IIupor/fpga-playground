@@ -140,7 +140,7 @@ test('imported routing mode survives undo and redo', async ({ page }) => {
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(14);
   const routes=await page.locator('#editorStage path.editor-wire').evaluateAll(paths =>
     paths.every(path => {
-      const points=[...path.getAttribute('d').matchAll(/[ML]\\s*(-?[\\d.eE+]+)[,\\s]+(-?[\\d.eE+]+)/g)]
+      const points=[...path.getAttribute('d').matchAll(/[ML]\s*(-?[\d.eE+]+)[,\s]+(-?[\d.eE+]+)/g)]
         .map(m=>({x:Number(m[1]),y:Number(m[2])}));
       return points.length>=2 && points.slice(1).every((p,i)=>p.x===points[i].x||p.y===points[i].y);
     })
