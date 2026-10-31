@@ -34,10 +34,27 @@ for (const [name, gateCount] of circuits) {
           .map(m => ({x:Number(m[1]), y:Number(m[2])}));
         return { id:Number(path.dataset.wire), from:Number(path.dataset.from), to:Number(path.dataset.to), d, points };
       });
-      let emptyRoutes = 0, diagonalSegments = 0, blockPenetrations = 0, collinearOverlaps = 0;
+      let emptyRoutes = 0, diagonalSegments = 0, blockPenetrations = 0, collinearOverlaps = 0, wrongEndpoints = 0, nodeOverlaps = 0;
       const segments = [];
+      const sortedBoxes=boxes.slice().sort((a,b)=>a.l-b.l),activeBoxes=[];
+      for(const box of sortedBoxes){
+        for(let i=activeBoxes.length-1;i>=0;i--)if(activeBoxes[i].r<=box.l+1)activeBoxes.splice(i,1);
+        for(const other of activeBoxes)if(Math.min(box.b,other.b)-Math.max(box.t,other.t)>1)nodeOverlaps++;
+        activeBoxes.push(box);
+      }
+      const nodeById=new Map(nodes.map(n=>[n.id,n]));
       for (const route of routes) {
         if (route.points.length < 2) { emptyRoutes++; continue; }
+        const source=nodeById.get(route.from),target=nodeById.get(route.to);
+        if(!source||!target)wrongEndpoints++;
+        else{
+          const sourceWidth=['INPUT','OUTPUT','VDD','GND'].includes(source.type)?112:150;
+          const sourcePin=source.outputs?Number(wires.find(w=>w.id===route.id)?.fromPin||0):0;
+          const targetPin=Number(wires.find(w=>w.id===route.id)?.toPin||0);
+          const first=route.points[0],last=route.points[route.points.length-1];
+          if(first.x!==source.x+sourceWidth||first.y!==source.y+30+sourcePin*22||
+             last.x!==target.x||last.y!==target.y+30+targetPin*22)wrongEndpoints++;
+        }
         for (let i=1;i<route.points.length;i++) {
           const a=route.points[i-1], b=route.points[i];
           if (a.x!==b.x && a.y!==b.y) diagonalSegments++;
@@ -71,7 +88,7 @@ for (const [name, gateCount] of circuits) {
       return {
         nodeObjects:nodes.length, renderedNodes:groups.length, logicalWires:wires.length,
         renderedWires:paths.length, emptyRoutes, diagonalSegments, blockPenetrations,
-        collinearOverlaps,
+        collinearOverlaps, wrongEndpoints, nodeOverlaps,
         missingNodeGeometry:boxes.filter(b=>![b.l,b.t,b.r,b.b].every(Number.isFinite)).length,
         canvasWidth:Number(document.querySelector('#editorStage').dataset.canvasWidth),
         canvasHeight:Number(document.querySelector('#editorStage').dataset.canvasHeight),
@@ -87,6 +104,8 @@ for (const [name, gateCount] of circuits) {
     expect(report.diagonalSegments, 'all routes must be orthogonal').toBe(0);
     expect(report.blockPenetrations, 'wires must not pass through unrelated blocks').toBe(0);
     expect(report.collinearOverlaps, 'independent wires must not overlap collinearly').toBe(0);
+    expect(report.wrongEndpoints, 'each route must preserve its logical source and target pins').toBe(0);
+    expect(report.nodeOverlaps, 'placed blocks must not overlap').toBe(0);
     expect(report.missingNodeGeometry).toBe(0);
   });
 }
