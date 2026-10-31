@@ -40,7 +40,7 @@ test('LIBAVOID-01: libavoid routes every c17 net orthogonally without overlaps o
     const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
     const audit = window.fpgaAuditRouteGeometry();
     const routes = paths.map(path => {
-      const nums = (path.getAttribute('d').match(/-?\\d+(?:\\.\\d+)?/g) || []).map(Number);
+      const nums = (path.getAttribute('d').match(/-?\d+(?:\\.\d+)?/g) || []).map(Number);
       let orthogonal = nums.length >= 4 && nums.length % 2 === 0;
       for (let i = 2; i < nums.length; i += 2) {
         if (Math.abs(nums[i] - nums[i-2]) > 0.001 && Math.abs(nums[i+1] - nums[i-1]) > 0.001) orthogonal = false;
