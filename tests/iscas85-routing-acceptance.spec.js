@@ -50,11 +50,11 @@ for (const [name, gateCount, baselineArea] of circuits) {
         return { id:Number(path.dataset.wire), from:Number(path.dataset.from), to:Number(path.dataset.to), d, points };
       });
       let emptyRoutes = 0, diagonalSegments = 0, blockPenetrations = 0, collinearOverlaps = 0, wrongEndpoints = 0, nodeOverlaps = 0;
-      const segments = [];
-      const sortedBoxes=boxes.slice().sort((a,b)=>a.l-b.l),activeBoxes=[];
+      const segments = [],blockPenetrationSamples=[];
+      const sortedBoxes=boxes.slice().sort((a,b)=>a.l-b.l),activeBoxes=[],nodeOverlapSamples=[];
       for(const box of sortedBoxes){
         for(let i=activeBoxes.length-1;i>=0;i--)if(activeBoxes[i].r<=box.l+1)activeBoxes.splice(i,1);
-        for(const other of activeBoxes)if(Math.min(box.b,other.b)-Math.max(box.t,other.t)>1)nodeOverlaps++;
+        for(const other of activeBoxes)if(Math.min(box.b,other.b)-Math.max(box.t,other.t)>1){nodeOverlaps++;if(nodeOverlapSamples.length<12)nodeOverlapSamples.push({a:other.id,b:box.id,ar:[other.l,other.t,other.r,other.b],br:[box.l,box.t,box.r,box.b]})}
         activeBoxes.push(box);
       }
       const nodeById=new Map(nodes.map(n=>[n.id,n]));
@@ -79,7 +79,7 @@ for (const [name, gateCount, baselineArea] of circuits) {
             const hit = a.y===b.y
               ? a.y>box.t && a.y<box.b && Math.max(Math.min(a.x,b.x),box.l)<Math.min(Math.max(a.x,b.x),box.r)
               : a.x===b.x && a.x>box.l && a.x<box.r && Math.max(Math.min(a.y,b.y),box.t)<Math.min(Math.max(a.y,b.y),box.b);
-            if (hit) blockPenetrations++;
+            if (hit){blockPenetrations++;if(blockPenetrationSamples.length<12)blockPenetrationSamples.push({wire:route.id,from:route.from,to:route.to,segment:[a.x,a.y,b.x,b.y],block:box.id,rect:[box.l,box.t,box.r,box.b]})}
           }
         }
       }
@@ -105,7 +105,7 @@ for (const [name, gateCount, baselineArea] of circuits) {
         renderedWires:paths.length, renderedJunctions:junctions.length, expectedJunctions,
         wireVectorEffect:paths.length?getComputedStyle(paths[0]).vectorEffect:'',
         emptyRoutes, diagonalSegments, blockPenetrations,
-        collinearOverlaps, wrongEndpoints, nodeOverlaps,
+        collinearOverlaps, wrongEndpoints, nodeOverlaps, nodeOverlapSamples, blockPenetrationSamples,
         missingNodeGeometry:boxes.filter(b=>![b.l,b.t,b.r,b.b].every(Number.isFinite)).length,
         canvasWidth:Number(document.querySelector('#editorStage').dataset.canvasWidth),
         canvasHeight:Number(document.querySelector('#editorStage').dataset.canvasHeight),
