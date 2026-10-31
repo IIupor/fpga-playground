@@ -32,7 +32,7 @@ test('loads multiple Liberty and Verilog libraries and resolves cell/module inst
   const netlist = ['module mapped_top(input wire a, input wire b, output wire y, output wire z, output wire w);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(netlist); await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
-  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('MODULE');
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('SKY_AND2_X1');
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' });
   await page.locator('#editorControls button').nth(0).click(); await page.locator('#editorControls button').nth(1).click();
   await expect(cell).toContainText('VALUE: 1');
