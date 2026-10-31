@@ -115,7 +115,7 @@ function evalCircuit(updateSequential=true){
  if(updateSequential){
   for(const n of nodes){
    if(n.type!=='DFF'&&n.type!=='LATCH')continue;
-   const vals=(inputsByNode.get(n.id)||[]).map(src=>src?src.value:0);
+   const vals=(inputsByNode.get(n.id)||[]).map(src=>src?.node?((src.node.outputValues&&src.node.outputValues[src.fromPin]!==undefined)?src.node.outputValues[src.fromPin]:src.node.value):0);
    if(n.type==='LATCH'){if(vals[1])n.state=vals[0]||0}
    else if(vals[1]&&!n.prevClock)n.state=vals[0]||0;
    n.prevClock=vals[1]||0;n.value=n.state;
