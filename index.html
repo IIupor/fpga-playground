@@ -212,8 +212,8 @@ function prepareRouteObstacleIndex(){
   const trackBase=maxBottom+32,trackGap=3.2,intervals=[];
   for(const [key,source] of sourceGroups){
    const sx=source.a.x+150+30+(sourceIndex.get(source.wires[0].id)||0)*trackGap;
-   const tx=Math.max(...source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-30-(targetIndex.get(w.id)||0)*trackGap}));
-   intervals.push({key,sx,tx,start:Math.min(sx,tx),end:Math.max(sx,tx)});
+   const targetXs=source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-30-(targetIndex.get(w.id)||0)*trackGap});
+   intervals.push({key,sx,start:Math.min(sx,...targetXs),end:Math.max(sx,...targetXs)});
   }
   intervals.sort((a,b)=>a.start-b.start||a.end-b.end||a.key.localeCompare(b.key));
   const active=[],free=[];let nextTrack=0;
