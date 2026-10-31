@@ -19,5 +19,5 @@ jobs:
         run: npm install
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Audit small and medium ISCAS'85 geometry
+      - name: Audit all ISCAS'85 geometry
         run: npx playwright test tests/geometry-audit.spec.js --workers=1 --retries=0
