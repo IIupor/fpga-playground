@@ -94,7 +94,7 @@ function setupUI(){
  function importProject(source){const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);installProject(project,project.tops[0].name);return true;}
  // Run before the legacy gate-only capture handler. A single flat module stays on the established path.
  document.addEventListener('click',e=>{if(e.target!==importButton||!area.value.trim())return;const count=[...area.value.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;if(count<2)return;try{e.preventDefault();e.stopImmediatePropagation();importProject(area.value);}catch(err){e.preventDefault();e.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+err.message;}},true);
- document.addEventListener('change',async e=>{if(e.target!==file||!file.files?.[0])return;const source=await file.files[0].text();const count=[...source.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;if(count<2)return;try{e.stopImmediatePropagation();importProject(source);}catch(err){e.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+err.message;}finally{file.value='';}},true);
+ document.addEventListener('change',e=>{if(e.target!==file||!file.files?.[0])return;const selectedFile=file.files[0];e.stopImmediatePropagation();selectedFile.text().then(source=>{const count=[...source.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;if(count>=2||state.libraries.length)importProject(source);else window.fpgaLegacyImport(source);}).catch(err=>{$('editorMessage').textContent='Import failed: '+err.message;}).finally(()=>{file.value='';});},true);
  window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,get state(){return state;},importProject};
 }
 setupUI();
