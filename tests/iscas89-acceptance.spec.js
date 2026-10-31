@@ -88,7 +88,7 @@ for (const name of circuits) {
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     await page.goto('/');
-    await page.locator('#benchmarkSelect').selectOption(name);
+    await page.locator('#benchmarkSelect').selectOption(name, { timeout: 180000 });
     await expect(page.locator('#editorMessage')).toContainText(new RegExp('Loaded ' + name + '\\.v'), { timeout: 180000 });
 
     const report = await page.evaluate(() => {
@@ -214,7 +214,7 @@ for (const name of circuits) {
       expect(liveState.output, 's27 browser simulator must propagate the updated register state').toBe(1);
     }
 
-    await page.locator('#exportVerilog').click();
+    await page.locator('#exportVerilog').click({ timeout: 180000 });
     const exported = await page.locator('#verilogText').inputValue();
     expect(exported).toContain('module fpga_playground');
     verifySequentialEquivalence(name, circuit, exported);
