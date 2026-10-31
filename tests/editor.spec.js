@@ -426,13 +426,17 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
 
-test('large benchmark uses a scrollable canvas and remains editable after scrolling', async ({ page }) => {
+test('large benchmark auto-fits and remains scrollable and editable at 100 percent', async ({ page }) => {
   const fs = require('node:fs');
   const path = require('node:path');
   const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
   await page.locator('#verilogText').fill(source);
   await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported');
+  // Imported benchmarks are fitted automatically; reset to 100% to verify
+  // that the full-resolution workspace remains scrollable and editable.
+  await expect(page.locator('#editorZoomLevel')).not.toHaveText('100%');
+  await page.locator('#editorZoomReset').click();
 
   const viewport = page.locator('#editorViewport');
   const svg = page.locator('#editorStage');
