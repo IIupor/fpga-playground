@@ -21,6 +21,10 @@ for (const [name, gateCount] of circuits) {
       const wires = [...window.fpgaWires || []];
       const groups = [...document.querySelectorAll('#editorStage g[data-node]')];
       const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
+      const junctions = [...document.querySelectorAll('#editorStage circle.wire-junction')];
+      const fanoutCounts=new Map();
+      for(const w of wires){const key=w.from+':'+(w.fromPin||0);fanoutCounts.set(key,(fanoutCounts.get(key)||0)+1)}
+      const expectedJunctions=[...fanoutCounts.values()].filter(count=>count>1).reduce((sum,count)=>sum+count,0);
       const boxes = groups.map(g => {
         const b = g.getBBox();
         const m = /translate\(\s*([-+\d.eE]+)[,\s]+([-+\d.eE]+)\s*\)/.exec(g.getAttribute('transform') || '');
@@ -87,7 +91,7 @@ for (const [name, gateCount] of circuits) {
       }
       return {
         nodeObjects:nodes.length, renderedNodes:groups.length, logicalWires:wires.length,
-        renderedWires:paths.length, emptyRoutes, diagonalSegments, blockPenetrations,
+        renderedWires:paths.length, renderedJunctions:junctions.length, expectedJunctions, emptyRoutes, diagonalSegments, blockPenetrations,
         collinearOverlaps, wrongEndpoints, nodeOverlaps,
         missingNodeGeometry:boxes.filter(b=>![b.l,b.t,b.r,b.b].every(Number.isFinite)).length,
         canvasWidth:Number(document.querySelector('#editorStage').dataset.canvasWidth),
@@ -104,6 +108,7 @@ for (const [name, gateCount] of circuits) {
     expect(report.renderedNodes, 'all imported blocks must render').toBe(report.nodeObjects);
     expect(report.nodeObjects, 'all gates plus IO must be present').toBeGreaterThan(gateCount);
     expect(report.renderedWires, 'every logical connection must have an SVG route').toBe(report.logicalWires);
+    expect(report.renderedJunctions, 'same-net fanout branches must be visibly marked').toBe(report.expectedJunctions);
     expect(report.emptyRoutes, 'no wire may be silently omitted').toBe(0);
     expect(report.diagonalSegments, 'all routes must be orthogonal').toBe(0);
     expect(report.blockPenetrations, 'wires must not pass through unrelated blocks').toBe(0);
