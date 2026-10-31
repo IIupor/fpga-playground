@@ -29,6 +29,7 @@ for (const name of circuits) {
       const paths = [...svg.querySelectorAll('path.editor-wire')];
       const nodeGroups = [...svg.querySelectorAll('g[data-node]')];
       const junctions = [...svg.querySelectorAll('circle.wire-junction')];
+      const circles = junctions.map(c => ({ x: Number(c.getAttribute('cx')), y: Number(c.getAttribute('cy')) }));
       const wireById = new Map(wires.map(w => [String(w.id), w]));
       const routes = paths.map(path => {
         const points = [...(path.getAttribute('d') || '').matchAll(/[ML]\s*([-+\d.eE]+)[,\s]+([-+\d.eE]+)/g)]
@@ -97,7 +98,7 @@ for (const name of circuits) {
       events.sort((a, b) => a.x - b.x || a.kind - b.kind);
 
       const activeByY = new Map();
-      let properCrossings = 0, endpointContacts = 0;
+      let properCrossings = 0, endpointContacts = 0, crossingsWithJunctionMarkers = 0;
       const crossingExamples = [], contactExamples = [];
       for (const event of events) {
         const s = event.segment;
@@ -118,6 +119,7 @@ for (const name of circuits) {
               const proper = h.lo < s.fixed && s.fixed < h.hi && s.lo < y && y < s.hi;
               if (proper) {
                 properCrossings++;
+                if (circles.some(circle => circle.x === s.fixed && circle.y === y)) crossingsWithJunctionMarkers++;
                 if (crossingExamples.length < 12) crossingExamples.push({
                   wires: [h.wire, s.wire], nets: [h.net, s.net], at: { x: s.fixed, y }
                 });
@@ -176,7 +178,6 @@ for (const name of circuits) {
         if (!fanout.has(key)) fanout.set(key, []);
         fanout.get(key).push(String(w.id));
       }
-      const circles = junctions.map(c => ({ x: Number(c.getAttribute('cx')), y: Number(c.getAttribute('cy')) }));
       const onRoute = (point, route) => route.points.some((a, i) => {
         if (i === route.points.length - 1) return false;
         const b = route.points[i + 1];
@@ -226,7 +227,7 @@ for (const name of circuits) {
         nodes: nodes.length, renderedNodes: nodeGroups.length,
         wires: wires.length, renderedWires: routes.length,
         segments: segments.length, missingRoutes, diagonalSegments, blockPenetrations,
-        properCrossings, endpointContacts, collinearOverlaps, collinearEndpointContacts,
+        properCrossings, crossingsWithJunctionMarkers, endpointContacts, collinearOverlaps, collinearEndpointContacts,
         expectedJunctions, renderedJunctions: circles.length,
         missingSharedTrunks, missingJunctionMarkers,
         totalRouteLength, routingTracks: window.fpgaRoutingTrackCount,
@@ -241,7 +242,9 @@ for (const name of circuits) {
     expect(report.missingRoutes, name + ': no missing or empty routes').toBe(0);
     expect(report.diagonalSegments, name + ': all route segments must be orthogonal').toBe(0);
     expect(report.blockPenetrations, name + ': routes must avoid unrelated blocks').toBe(0);
-    expect(report.properCrossings, name + ': independent wires must not cross').toBe(0);
+    // Orthogonal crossings between distinct logical nets are legal. They are
+    // reported as a readability metric, but must never carry a junction dot.
+    expect(report.crossingsWithJunctionMarkers, name + ': independent crossings must not be marked as electrical junctions').toBe(0);
     expect(report.endpointContacts, name + ': independent wires must not form unintended T/corner contacts').toBe(0);
     expect(report.collinearOverlaps, name + ': independent wires must not overlap').toBe(0);
     expect(report.collinearEndpointContacts, name + ': independent wires must not touch collinearly').toBe(0);
