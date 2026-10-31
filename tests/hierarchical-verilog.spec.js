@@ -29,11 +29,11 @@ test('loads multiple Liberty and Verilog libraries and resolves cell/module inst
   ]);
   await expect(page.locator('#libraryStatus')).toContainText('3 library file(s)');
   await expect(page.locator('#libraryStatus')).toContainText('2 Liberty cells');
-  const netlist = ['module mapped_top(input wire a, input wire b, output wire y, output wire z);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' CUSTOM_BUF u_buf (.A(y), .Y(z));','endmodule'].join('\n');
+  const netlist = ['module mapped_top(input wire a, input wire b, output wire y, output wire z, output wire w);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(netlist); await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('MODULE');
-  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' }); await expect(custom).toHaveCount(1); await custom.click(); await page.keyboard.press('Shift+E');
+  const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' });\n  await page.locator('#editorControls button').nth(0).click(); await page.locator('#editorControls button').nth(1).click();\n  await expect(cell).toContainText('VALUE: 1');\n  const inverter = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' }); await expect(inverter).toContainText('VALUE: 0');\n  const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' }); await expect(custom).toHaveCount(1); await custom.click(); await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('CUSTOM_BUF');
 });
 
