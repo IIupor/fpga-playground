@@ -92,7 +92,10 @@ for (const [name, gateCount] of circuits) {
         missingNodeGeometry:boxes.filter(b=>![b.l,b.t,b.r,b.b].every(Number.isFinite)).length,
         canvasWidth:Number(document.querySelector('#editorStage').dataset.canvasWidth),
         canvasHeight:Number(document.querySelector('#editorStage').dataset.canvasHeight),
-        totalRoutePoints:routes.reduce((n,r)=>n+r.points.length,0)
+        canvasArea:Number(document.querySelector('#editorStage').dataset.canvasWidth)*Number(document.querySelector('#editorStage').dataset.canvasHeight),
+        routingTracks:window.fpgaRoutingTrackCount,
+        totalRoutePoints:routes.reduce((n,r)=>n+r.points.length,0),
+        totalRouteLength:routes.reduce((sum,r)=>sum+r.points.slice(1).reduce((n,p,i)=>n+Math.abs(p.x-r.points[i].x)+Math.abs(p.y-r.points[i].y),0),0)
       };
     });
     console.log('ISCAS85_ACCEPTANCE', name, JSON.stringify({...report, pageErrors}));
