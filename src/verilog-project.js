@@ -2,29 +2,29 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const state={project:null,libraries:[],stack:[],current:null,nextId:1};
-const ident='[A-Za-z_$][\\\\w$]*';
-function stripComments(s){return s.replace(/\\/\\*[\\s\\S]*?\\*\\//g,'').replace(/\\/\\/[^\\n]*/g,'');}
+const ident='[A-Za-z_$][\\w$]*';
+function stripComments(s){return s.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');}
 function splitComma(s){const out=[];let start=0,depth=0;for(let i=0;i<s.length;i++){if('([{'.includes(s[i]))depth++;else if(')]}'.includes(s[i]))depth--;else if(s[i]===','&&depth===0){out.push(s.slice(start,i).trim());start=i+1;}}if(s.slice(start).trim())out.push(s.slice(start).trim());return out;}
 function parsePorts(header,body){
- const ports=[];const ansi=/\\b(input|output|inout)\\b/.test(header);
- if(ansi){let direction=null,width=1;for(const part of splitComma(header)){const d=part.match(/\\b(input|output|inout)\\b/);if(d)direction=d[1].toUpperCase();const r=part.match(/\\[\\s*(-?\\d+)\\s*:\\s*(-?\\d+)\\s*\\]/);if(r)width=Math.abs(+r[1]-+r[2])+1;const name=part.match(/([A-Za-z_$][\\w$]*)\\s*$/);if(name&&direction){for(let i=0;i<width;i++)ports.push({name:width===1?name[1]:name[1]+'['+i+']',base:name[1],direction,index:i});}}}
+ const ports=[];const ansi=/\b(input|output|inout)\b/.test(header);
+ if(ansi){let direction=null,width=1;for(const part of splitComma(header)){const d=part.match(/\b(input|output|inout)\b/);if(d)direction=d[1].toUpperCase();const r=part.match(/\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\]/);if(r)width=Math.abs(+r[1]-+r[2])+1;const name=part.match(/([A-Za-z_$][\w$]*)\s*$/);if(name&&direction){for(let i=0;i<width;i++)ports.push({name:width===1?name[1]:name[1]+'['+i+']',base:name[1],direction,index:i});}}}
  else{
-  const dirs=new Map();for(const m of body.matchAll(/\\b(input|output|inout)\\s+(?:(?:wire|reg|logic)\\s+)?(?:\\[\\s*(-?\\d+)\\s*:\\s*(-?\\d+)\\s*\\]\\s*)?([^;]+);/gi)){const dir=m[1].toUpperCase(),width=m[2]?Math.abs(+m[2]-+m[3])+1:1;for(const raw of m[4].split(',')){const n=raw.trim().match(/^([A-Za-z_$][\\w$]*)/);if(n)dirs.set(n[1],{direction:dir,width});}}
-  for(const raw of splitComma(header)){const n=raw.match(/([A-Za-z_$][\\w$]*)/);if(n&&dirs.has(n[1])){const d=dirs.get(n[1]);for(let i=0;i<d.width;i++)ports.push({name:d.width===1?n[1]:n[1]+'['+i+']',base:n[1],direction:d.direction,index:i});}}
+  const dirs=new Map();for(const m of body.matchAll(/\b(input|output|inout)\s+(?:(?:wire|reg|logic)\s+)?(?:\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\]\s*)?([^;]+);/gi)){const dir=m[1].toUpperCase(),width=m[2]?Math.abs(+m[2]-+m[3])+1:1;for(const raw of m[4].split(',')){const n=raw.trim().match(/^([A-Za-z_$][\w$]*)/);if(n)dirs.set(n[1],{direction:dir,width});}}
+  for(const raw of splitComma(header)){const n=raw.match(/([A-Za-z_$][\w$]*)/);if(n&&dirs.has(n[1])){const d=dirs.get(n[1]);for(let i=0;i<d.width;i++)ports.push({name:d.width===1?n[1]:n[1]+'['+i+']',base:n[1],direction:d.direction,index:i});}}
  }
  return ports;
 }
 function parseVerilog(source,label){
  const clean=stripComments(source),mods=new Map();
- const re=new RegExp('\\\\bmodule\\\\s+('+ident+')\\\\s*(?:#\\\\s*\\\\([\\\\s\\\\S]*?\\\\)\\\\s*)?\\\\(([^;]*?)\\\\)\\\\s*;([\\\\s\\\\S]*?)\\\\bendmodule\\\\b','gi');
+ const re=new RegExp('\\bmodule\\s+('+ident+')\\s*(?:#\\s*\\([\\s\\S]*?\\)\\s*)?\\(([^;]*?)\\)\\s*;([\\s\\S]*?)\\bendmodule\\b','gi');
  for(const m of clean.matchAll(re)){const name=m[1];if(mods.has(name))throw Error('Duplicate Verilog module '+name+' in '+label);const body=m[3];mods.set(name,{name,header:m[2],body,ports:parsePorts(m[2],body),instances:[],gates:[],assigns:[],source:label});}
  for(const mod of mods.values()){
   const body=mod.body;
   for(const st of body.split(';')){const s=st.trim();if(!s)continue;
-   let a=s.match(/^assign\\s+([A-Za-z_$][\\w$]*(?:\\s*\\[[^\\]]+\\])?)\\s*=\\s*([^;]+)$/i);if(a){mod.assigns.push({to:a[1].trim(),from:a[2].trim()});continue;}
-   const g=s.match(/^(and|or|xor|nand|nor|xnor|not|buf)\\s+(?:\\w+\\s*)?\\(([^()]*)\\)$/i);if(g){mod.gates.push({kind:g[1].toLowerCase(),pins:splitComma(g[2])});continue;}
-   const inst=s.match(/^([A-Za-z_$][\\w$]*)\\s*(?:#\\s*\\([\\s\\S]*?\\)\\s*)?([A-Za-z_$][\\w$]*)\\s*\\(([\\s\\S]*)\\)$/);
-   if(inst){const type=inst[1],name=inst[2],raw=splitComma(inst[3]),connections={};let positional=0;for(const p of raw){const nm=p.match(/^\\.([A-Za-z_$][\\w$]*)\\s*\\((.*)\\)$/);if(nm)connections[nm[1]]=nm[2].trim();else connections['$'+(positional++)]=p.trim();}mod.instances.push({type,name,connections});}
+   let a=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);if(a){mod.assigns.push({to:a[1].trim(),from:a[2].trim()});continue;}
+   const g=s.match(/^(and|or|xor|nand|nor|xnor|not|buf)\s+(?:\w+\s*)?\(([^()]*)\)$/i);if(g){mod.gates.push({kind:g[1].toLowerCase(),pins:splitComma(g[2])});continue;}
+   const inst=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
+   if(inst){const type=inst[1],name=inst[2],raw=splitComma(inst[3]),connections={};let positional=0;for(const p of raw){const nm=p.match(/^\.([A-Za-z_$][\w$]*)\s*\((.*)\)$/);if(nm)connections[nm[1]]=nm[2].trim();else connections['$'+(positional++)]=p.trim();}mod.instances.push({type,name,connections});}
   }
  }
  if(!mods.size)throw Error('No Verilog module declarations found in '+label);
@@ -32,14 +32,14 @@ function parseVerilog(source,label){
 }
 function parseLiberty(source,label){
  const cells=new Map();let i=0;
- while((i=source.indexOf('cell',i))>=0){const m=source.slice(i).match(/^cell\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/);if(!m){i+=4;continue;}const name=m[1].trim(),start=i+m[0].length;let depth=1,j=start;for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}const body=source.slice(start,j-1),pins=[];let p=0;while((p=body.indexOf('pin',p))>=0){const pm=body.slice(p).match(/^pin\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/);if(!pm){p+=3;continue;}const ps=p+pm[0].length;let d=1,k=ps;for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}const pb=body.slice(ps,k-1),dir=(pb.match(/\\bdirection\\s*:\\s*(input|output|inout)\\s*;/i)||[])[1],fn=(pb.match(/\\bfunction\\s*:\\s*([^;]+);/i)||[])[1];pins.push({name:pm[1].trim(),direction:(dir||'').toUpperCase(),function:fn||null});p=k;}cells.set(name,{name,pins,source:label});i=j;}
+ while((i=source.indexOf('cell',i))>=0){const m=source.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!m){i+=4;continue;}const name=m[1].trim(),start=i+m[0].length;let depth=1,j=start;for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}const body=source.slice(start,j-1),pins=[];let p=0;while((p=body.indexOf('pin',p))>=0){const pm=body.slice(p).match(/^pin\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!pm){p+=3;continue;}const ps=p+pm[0].length;let d=1,k=ps;for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}const pb=body.slice(ps,k-1),dir=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1],fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];pins.push({name:pm[1].trim(),direction:(dir||'').toUpperCase(),function:fn||null});p=k;}cells.set(name,{name,pins,source:label});i=j;}
  if(!cells.size)throw Error('No Liberty cell() definitions found in '+label);
  return cells;
 }
 function mergeModules(target,source,label){for(const [name,m] of source){if(target.has(name))throw Error('Duplicate module definition '+name+' while loading '+label);target.set(name,m);}}
 function projectFrom(files){
  const modules=new Map(),cells=new Map(),sourceNames=[];
- for(const f of files){sourceNames.push(f.name);if(/\\.lib$/i.test(f.name)){for(const [n,c] of parseLiberty(f.text,f.name)){if(cells.has(n))throw Error('Duplicate Liberty cell '+n);cells.set(n,c);}}else mergeModules(modules,parseVerilog(f.text,f.name),f.name);}
+ for(const f of files){sourceNames.push(f.name);if(/\.lib$/i.test(f.name)){for(const [n,c] of parseLiberty(f.text,f.name)){if(cells.has(n))throw Error('Duplicate Liberty cell '+n);cells.set(n,c);}}else mergeModules(modules,parseVerilog(f.text,f.name),f.name);}
  for(const m of modules.values())for(const inst of m.instances)if(modules.has(inst.type))inst.definition=modules.get(inst.type);else if(cells.has(inst.type))inst.cell=cells.get(inst.type);else inst.unresolved=true;
  const used=new Set();for(const m of modules.values())for(const inst of m.instances)if(modules.has(inst.type))used.add(inst.type);
  const tops=[...modules.values()].filter(m=>!used.has(m.name));
@@ -81,8 +81,8 @@ function setupUI(){
  const importButton=$('importVerilog'),area=$('verilogText'),file=$('verilogFile');
  function importProject(source){const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);installProject(project,project.tops[0].name);return true;}
  // Run before the legacy gate-only capture handler. A single flat module stays on the established path.
- document.addEventListener('click',e=>{if(e.target!==importButton||!area.value.trim())return;const count=[...area.value.matchAll(/\\bmodule\\s+[A-Za-z_$][\\w$]*/g)].length;if(count<2)return;try{e.preventDefault();e.stopImmediatePropagation();importProject(area.value);}catch(err){e.preventDefault();e.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+err.message;}},true);
- document.addEventListener('change',async e=>{if(e.target!==file||!file.files?.[0])return;const source=await file.files[0].text();const count=[...source.matchAll(/\\bmodule\\s+[A-Za-z_$][\\w$]*/g)].length;if(count<2)return;try{e.stopImmediatePropagation();importProject(source);}catch(err){e.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+err.message;}finally{file.value='';}},true);
+ document.addEventListener('click',e=>{if(e.target!==importButton||!area.value.trim())return;const count=[...area.value.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;if(count<2)return;try{e.preventDefault();e.stopImmediatePropagation();importProject(area.value);}catch(err){e.preventDefault();e.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+err.message;}},true);
+ document.addEventListener('change',async e=>{if(e.target!==file||!file.files?.[0])return;const source=await file.files[0].text();const count=[...source.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;if(count<2)return;try{e.stopImmediatePropagation();importProject(source);}catch(err){e.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+err.message;}finally{file.value='';}},true);
  window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,get state(){return state;},importProject};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupUI);else setupUI();
