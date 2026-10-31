@@ -60,7 +60,7 @@ test('parses ten independently synthesized SKY130 gate-level designs against the
   const results = await page.evaluate(files => {
     const project = window.fpgaVerilogProject.projectFrom([
       ...window.fpgaVerilogProject.state.libraries,
-      { name: 'ten_sky130_designs.v', text: files.map(f => f.text).join('\\n') }
+      { name: 'ten_sky130_designs.v', text: files.map(f => f.text).join('\n') }
     ]);
     return project.tops.map(top => ({
       name: top.name,
