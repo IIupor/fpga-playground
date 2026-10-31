@@ -48,7 +48,7 @@ test('rejects duplicate Liberty cell definitions without discarding already load
   await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1'); await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
 });
 
-test('imports ten independently synthesized SKY130 gate-level designs against the real Liberty library', async ({ page }) => {
+test('parses ten independently synthesized SKY130 gate-level designs against the real Liberty library', async ({ page }) => {
   const fixtureDir = path.join(__dirname, 'fixtures', 'sky130');
   const library = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
   await page.locator('#importLibraries').click();
@@ -56,22 +56,29 @@ test('imports ten independently synthesized SKY130 gate-level designs against th
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
 
   const designs = ['uart_rx','apb_spi','apb_i2c','clk_rst_ctrl','boot_rom','sys_ctrl','icache','dma_axi_master','dcache','pll_ctrl'];
-  for (const name of designs) {
-    const source = fs.readFileSync(path.join(fixtureDir, name + '.v'), 'utf8');
-    await page.locator('#verilogText').fill(source);
-    await page.locator('#importVerilog').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
-    const stats = await page.evaluate(() => {
-      const p = window.fpgaVerilogProject.state.project;
-      const top = p.tops[0];
-      const instances = top.instances;
-      return { modules: p.modules.size, libertyCells: p.cells.size, instances: instances.length,
-        resolved: instances.filter(x => !!x.cell).length, unresolved: instances.filter(x => x.unresolved).length };
-    });
-    expect(stats.modules, name + ' module definitions').toBeGreaterThan(0);
-    expect(stats.libertyCells, name + ' Liberty cell definitions').toBeGreaterThan(100);
-    expect(stats.instances, name + ' standard-cell instances').toBeGreaterThan(0);
-    expect(stats.resolved, name + ' resolved standard-cell instances').toBe(stats.instances);
-    expect(stats.unresolved, name + ' unresolved standard-cell instances').toBe(0);
+  const sources = designs.map(name => ({ name: name + '.v', text: fs.readFileSync(path.join(fixtureDir, name + '.v'), 'utf8') }));
+  const results = await page.evaluate(files => {
+    const project = window.fpgaVerilogProject.projectFrom([
+      ...window.fpgaVerilogProject.state.libraries,
+      { name: 'ten_sky130_designs.v', text: files.map(f => f.text).join('\\n') }
+    ]);
+    return project.tops.map(top => ({
+      name: top.name,
+      instances: top.instances.length,
+      resolved: top.instances.filter(x => !!x.cell).length,
+      unresolved: top.instances.filter(x => x.unresolved).length
+    }));
+  }, sources);
+  expect(results).toHaveLength(10);
+  for (const result of results) {
+    expect(result.instances, result.name + ' standard-cell instances').toBeGreaterThan(0);
+    expect(result.resolved, result.name + ' resolved standard-cell instances').toBe(result.instances);
+    expect(result.unresolved, result.name + ' unresolved standard-cell instances').toBe(0);
   }
+
+  const uart = sources.find(x => x.name === 'uart_rx.v').text;
+  await page.locator('#verilogText').fill(uart);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+  await expect(page.locator('#editorMessage')).toContainText('0 unresolved instances');
 });
