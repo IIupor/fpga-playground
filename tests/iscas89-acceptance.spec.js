@@ -49,8 +49,8 @@ function verifySequentialEquivalence(name, circuit, exported) {
   const exportedBus = circuit.outputs.map(output => 'exp_' + output).join(', ');
   const cycles = vectors.map((vector, index) => {
     const assignments = dataInputs.map((input, bit) => '    ' + input + " = 1'b" + vector[bit] + ';').join('\n');
-    return "    CK = 1'b0;\n" + assignments + '\n    #1;\n    CK = 1'b1;\n    #1;\n    $display("EQ:' +
-      index + ':%b:%b", {' + originalBus + '}, {' + exportedBus + '});\n    CK = 1'b0;\n    #1;';
+    return "    CK = 1'b0;\n" + assignments + "\n    #1;\n    CK = 1'b1;\n    #1;\n    $display(\"EQ:" +
+      index + ":%b:%b\", {" + originalBus + "}, {" + exportedBus + "});\n    CK = 1'b0;\n    #1;";
   }).join('\n');
   const testbench = 'module tb;\n' + inputDecls + '\n' + outputDecls + '\n' +
     '  ' + name + ' original_dut (' + originalPorts + ');\n' +
