@@ -208,7 +208,16 @@ for (const name of circuits) {
           }
         }
         for (const route of netRoutes) {
-          if (!circles.some(circle => onRoute(circle, route))) missingJunctionMarkers++;
+          const targetBends = [];
+          for (let i = 1; i < route.points.length - 1; i++) {
+            const previous = route.points[i - 1], point = route.points[i], next = route.points[i + 1];
+            if (previous.y === point.y && next.x === point.x &&
+                previous.x !== point.x && next.y !== point.y) targetBends.push(point);
+          }
+          if (targetBends.length !== 1 ||
+              !circles.some(circle => targetBends.some(point => circle.x === point.x && circle.y === point.y))) {
+            missingJunctionMarkers++;
+          }
         }
       }
 
