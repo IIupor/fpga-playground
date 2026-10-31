@@ -306,3 +306,73 @@ test('GEOMETRY-C17-STRESS-01: c17 remains conflict-free across both routers and 
     wireCount: result.wires.length
   }));
 });
+
+
+test('GEOMETRY-C17-ORDER-STRESS-01: Mikami routing stays valid under different wire processing orders', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const result = await page.evaluate(() => {
+    const original = window.fpgaWires.slice();
+    const permutations = [
+      ['original', original.slice()],
+      ['reverse', original.slice().reverse()],
+      ['rotate-5', original.slice(5).concat(original.slice(0, 5))],
+      ['even-odd', original.filter((_, i) => i % 2 === 0).concat(original.filter((_, i) => i % 2 === 1))],
+      ['odd-even-reverse', original.filter((_, i) => i % 2 === 1).reverse().concat(original.filter((_, i) => i % 2 === 0).reverse())]
+    ];
+    const capture = label => {
+      const paths = [...document.querySelectorAll('path.editor-wire')];
+      const signature = paths.map(p => [Number(p.dataset.wire), p.getAttribute('d')]).sort((a,b) => a[0]-b[0]);
+      const orthogonal = paths.every(path => {
+        const values = (path.getAttribute('d').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+        if (values.length < 4 || values.length % 2) return false;
+        for (let i=2;i<values.length;i+=2) {
+          if (Math.abs(values[i]-values[i-2]) > 0.001 && Math.abs(values[i+1]-values[i-1]) > 0.001) return false;
+        }
+        return true;
+      });
+      return {
+        label,
+        audit: window.fpgaLastGeometryAudit,
+        pathCount: paths.length,
+        orthogonal,
+        signature
+      };
+    };
+    const mode = document.querySelector('#routingMode');
+    mode.value = 'mikami';
+    const snapshots = [];
+    try {
+      for (const [label, order] of permutations) {
+        window.fpgaWires.splice(0, window.fpgaWires.length, ...order);
+        mode.dispatchEvent(new Event('change', { bubbles: true }));
+        const first = capture(label);
+        mode.dispatchEvent(new Event('change', { bubbles: true }));
+        const repeated = capture(label + '-repeat');
+        snapshots.push({ ...first, deterministic: JSON.stringify(first.signature) === JSON.stringify(repeated.signature) });
+      }
+    } finally {
+      window.fpgaWires.splice(0, window.fpgaWires.length, ...original);
+      mode.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    return {
+      snapshots,
+      restoredWireOrder: window.fpgaWires.map(w => w.id).join(',') === original.map(w => w.id).join(',')
+    };
+  });
+  expect(result.snapshots).toHaveLength(5);
+  for (const snapshot of result.snapshots) {
+    expect(snapshot.pathCount).toBe(14);
+    expect(snapshot.orthogonal).toBe(true);
+    expect(snapshot.audit.conflictCount).toBe(0);
+    expect(snapshot.audit.wireCount).toBe(14);
+    expect(snapshot.deterministic).toBe(true);
+  }
+  expect(result.restoredWireOrder).toBe(true);
+  console.log('GEOMETRY-C17-WIRE-ORDER-STRESS ' + JSON.stringify({
+    permutations: result.snapshots.map(s => s.label),
+    conflicts: result.snapshots.map(s => s.audit.conflictCount),
+    orthogonal: result.snapshots.every(s => s.orthogonal),
+    deterministicPerOrder: result.snapshots.every(s => s.deterministic),
+    wireOrderRestored: result.restoredWireOrder
+  }));
+});
