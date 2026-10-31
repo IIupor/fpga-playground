@@ -60,7 +60,7 @@ const make=(tag,attrs={},text='')=>{const e=document.createElementNS(NS,tag);Obj
 function node(type,x,y,name){const n={id:nextId++,type,x,y,name:name||type,value:0,inputs:type==='INPUT'||type==='VDD'||type==='GND'?0:type==='NOT'||type==='OUTPUT'?1:2,outputs:type==='OUTPUT'?0:1,prevClock:0,state:0};nodes.push(n);return n}
 function reset(){nodes=[];wires=[];selected=null;pending=null;nextId=1;globalChannelRouting=false;const a=node('INPUT',55,85,'A'),b=node('INPUT',55,235,'B'),g=node('AND',330,155,'AND1'),o=node('OUTPUT',650,155,'Y');wires.push({id:nextId++,from:a.id,to:g.id,toPin:0},{id:nextId++,from:b.id,to:g.id,toPin:1},{id:nextId++,from:g.id,to:o.id,toPin:0});render();msg.textContent='Example restored: Y = A AND B.'}
 function spec(n){return {w:['INPUT','OUTPUT','VDD','GND'].includes(n.type)?112:150,h:Math.max(76,50+Math.max(n.inputs,n.outputs)*22),ins:n.inputs,outs:n.outputs}}
-function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:n.y+30+(kind==='in'?index*22:0)}}
+function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:n.y+30+index*22}}
 function evalCircuit(updateSequential=true){
  const nodeById=new Map(nodes.map(n=>[n.id,n]));
  const inputsByNode=new Map(nodes.map(n=>[n.id,Array(n.inputs).fill(null)]));
@@ -582,6 +582,7 @@ function importVerilog(source){const clean=source.replace(/\/\*[\s\S]*?\*\//g,''
  select.addEventListener('change',()=>{if(select.value)loadBenchmark()});
 })();
 </script>>
+<script src="src/verilog-project.js"></script>
 <script>
 // Import supported wide gates directly as single blocks (up to eight inputs).
 (()=>{
@@ -749,5 +750,4 @@ function importVerilog(source){const clean=source.replace(/\/\*[\s\S]*?\*\//g,''
  setZoom(1);
 })();
 </script>
-<script src="src/verilog-project.js"></script>
 </body></html>
