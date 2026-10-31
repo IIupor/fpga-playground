@@ -94,6 +94,10 @@ for (const name of circuits) {
     const report = await page.evaluate(() => {
       const nodes = [...window.fpgaNodes], wires = [...window.fpgaWires];
       const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
+      const junctions = [...document.querySelectorAll('#editorStage circle.wire-junction')];
+      const fanoutCounts = new Map();
+      for (const wire of wires) { const key = wire.from + ':' + (wire.fromPin || 0); fanoutCounts.set(key, (fanoutCounts.get(key) || 0) + 1); }
+      const expectedJunctions = [...fanoutCounts.values()].filter(count => count > 1).reduce((sum, count) => sum + count, 0);
       const groups = [...document.querySelectorAll('#editorStage g[data-node]')];
       const boxes = groups.map(group => {
         const rect = group.querySelector('rect.nodebox').getBBox();
@@ -166,9 +170,13 @@ for (const name of circuits) {
       const viewport = document.querySelector('#editorViewport'), stage = document.querySelector('#editorStage');
       return {
         nodes: nodes.length, renderedNodes: groups.length, wires: wires.length, renderedWires: paths.length,
+        renderedJunctions: junctions.length, expectedJunctions,
+        wireVectorEffect: paths.length ? getComputedStyle(paths[0]).vectorEffect : '',
         dffs: nodes.filter(node => node.type === 'DFF').length, emptyRoutes, diagonalSegments,
         blockPenetrations, collinearOverlaps, wrongEndpoints, nodeOverlaps,
         missingGeometry: boxes.filter(box => ![box.l, box.t, box.r, box.b].every(Number.isFinite)).length,
+        canvasWidth: Number(stage.dataset.canvasWidth), canvasHeight: Number(stage.dataset.canvasHeight),
+        maxNodeBottom: Math.max(...boxes.map(box => box.b)), routingTracks: window.fpgaRoutingTrackCount,
         fitWidth: stage.getBoundingClientRect().width <= viewport.clientWidth + 2,
         fitHeight: stage.getBoundingClientRect().height <= viewport.clientHeight + 2
       };
@@ -178,6 +186,11 @@ for (const name of circuits) {
     expect(report.nodes, name + ': every placed block must render').toBe(report.renderedNodes);
     expect(report.dffs, name + ': every sequential element must be imported').toBe(circuit.dffs);
     expect(report.wires, name + ': every connection must have a route').toBe(report.renderedWires);
+    expect(report.renderedJunctions, name + ': all same-net fanout branches must be marked').toBe(report.expectedJunctions);
+    expect(report.wireVectorEffect, name + ': wire strokes must remain visible at overview zoom').toBe('non-scaling-stroke');
+    expect(report.routingTracks, name + ': routing tracks must be allocated').toBeGreaterThan(0);
+    expect(report.routingTracks, name + ': track allocation must remain fanout-aware').toBeLessThanOrEqual(report.wires);
+    expect(report.canvasHeight, name + ': canvas height must reflect allocated tracks').toBeLessThanOrEqual(report.maxNodeBottom + 74 + report.routingTracks * 4);
     expect(report.emptyRoutes, name + ': no missing routes').toBe(0);
     expect(report.diagonalSegments, name + ': all routes must be orthogonal').toBe(0);
     expect(report.blockPenetrations, name + ': no wire may pass through a non-terminal block').toBe(0);
