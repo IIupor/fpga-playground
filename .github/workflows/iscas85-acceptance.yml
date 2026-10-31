@@ -20,4 +20,4 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Run all ISCAS'85 acceptance tests
-        run: npx playwright test tests/iscas85-routing-acceptance.spec.js --workers=1
+        run: npx playwright test tests/iscas85-routing-acceptance.spec.js --workers=1 --retries=0
