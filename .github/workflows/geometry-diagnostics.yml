@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - diagnostics/geometry-conflict-audit
+      - experiment/libavoid-router
     paths:
       - 'index.html'
       - 'tests/geometry-conflict-audit.spec.js'
+      - 'tests/libavoid-router.spec.js'
+      - 'routing/libavoid-router.js'
       - '.github/workflows/geometry-diagnostics.yml'
   workflow_dispatch:
 
@@ -27,5 +30,5 @@ jobs:
         run: npm install
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
-      - name: Run only geometry diagnostics
-        run: npx playwright test tests/geometry-conflict-audit.spec.js --workers=1 --retries=0
+      - name: Run geometry and libavoid diagnostics
+        run: npx playwright test tests/geometry-conflict-audit.spec.js tests/libavoid-router.spec.js --workers=1 --retries=0
