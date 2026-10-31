@@ -5,7 +5,7 @@ const path = require('node:path');
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
 test('imports a multi-module Verilog project and navigates down and up the hierarchy', async ({ page }) => {
-  const source = ['module leaf(input wire a, input wire b, output wire y);','  and g1 (y, a, b);','endmodule','module middle(input wire a, input wire b, output wire y);','  leaf u_leaf (.a(a), .b(b), .y(y));','endmodule','module top(input wire a, input wire b, output wire y);','  middle u_middle (.a(a), .b(b), .y(y));','endmodule'].join('\n');
+  const source = ['module leaf(input wire [1:0] a, output wire y);','  and g1 (y, a[1], a[0]);','endmodule','module middle(input wire [1:0] a, output wire y);','  leaf u_leaf (.a(a), .y(y));','endmodule','module top(input wire [1:0] a, output wire y);','  middle u_middle (.a(a), .y(y));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(source);
   await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
