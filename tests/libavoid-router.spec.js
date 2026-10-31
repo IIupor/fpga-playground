@@ -67,3 +67,52 @@ test('LIBAVOID-01: libavoid routes every c17 net orthogonally without overlaps o
   }));
 });
 
+
+
+test('LIBAVOID-02: libavoid routes the complete c432 benchmark without overlaps or block penetration', async ({ page }) => {
+  test.setTimeout(240000);
+  await waitForLibavoid(page);
+  await loadBenchmark(page, 'c432');
+
+  const baseline = await page.evaluate(() => ({
+    nodes: window.fpgaNodes.length,
+    wires: window.fpgaWires.map(w => [w.id, w.from, w.fromPin || 0, w.to, w.toPin]).sort((a,b) => a[0]-b[0])
+  }));
+  expect(baseline.wires).toHaveLength(354);
+
+  await page.locator('#routingMode').selectOption('libavoid');
+  await expect.poll(() => page.locator('#editorStage path.editor-wire').count(), { timeout: 180000 }).toBe(354);
+
+  const result = await page.evaluate(() => {
+    const audit = window.fpgaAuditRouteGeometry();
+    const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
+    const orthogonal = paths.every(path => {
+      const nums = (path.getAttribute('d').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
+      if (nums.length < 4 || nums.length % 2) return false;
+      for (let i = 2; i < nums.length; i += 2) {
+        if (Math.abs(nums[i] - nums[i-2]) > 0.001 && Math.abs(nums[i+1] - nums[i-1]) > 0.001) return false;
+      }
+      return true;
+    });
+    return {
+      routeCount: paths.length,
+      orthogonal,
+      audit,
+      connectivity: window.fpgaWires.map(w => [w.id, w.from, w.fromPin || 0, w.to, w.toPin]).sort((a,b) => a[0]-b[0])
+    };
+  });
+
+  expect(result.routeCount).toBe(354);
+  expect(result.orthogonal).toBe(true);
+  expect(result.connectivity).toEqual(baseline.wires);
+  expect(result.audit.conflicts.filter(c => c.type === 'overlap' || c.type === 'block-penetration')).toEqual([]);
+  console.log('LIBAVOID-C432 ' + JSON.stringify({
+    blocks: baseline.nodes,
+    routed: result.routeCount,
+    orthogonal: result.orthogonal,
+    crossings: result.audit.conflicts.filter(c => c.type === 'crossing').length,
+    overlaps: result.audit.conflicts.filter(c => c.type === 'overlap').length,
+    blockPenetrations: result.audit.conflicts.filter(c => c.type === 'block-penetration').length,
+    logicalConnectivityPreserved: true
+  }));
+});
