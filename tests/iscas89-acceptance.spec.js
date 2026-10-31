@@ -149,13 +149,22 @@ for (const name of circuits) {
         }
       }
       let collinearOverlaps = 0;
-      for (const map of [horizontal, vertical]) for (const segments of map.values()) {
+      const collinearOverlapSamples = [];
+      for (const [orientation, map] of [['H', horizontal], ['V', vertical]]) for (const [coordinate, segments] of map) {
         segments.sort((a, b) => a.lo - b.lo || a.hi - b.hi);
         const active = [];
         for (const current of segments) {
           for (let i = active.length - 1; i >= 0; i--) if (active[i].hi <= current.lo) active.splice(i, 1);
-          for (const previous of active)
-            if (previous.wire !== current.wire && previous.from !== current.from) collinearOverlaps++;
+          for (const previous of active) {
+            if (previous.wire !== current.wire && previous.from !== current.from) {
+              collinearOverlaps++;
+              if (collinearOverlapSamples.length < 20) collinearOverlapSamples.push({
+                orientation, coordinate,
+                previous: { wire: previous.wire, from: previous.from, lo: previous.lo, hi: previous.hi },
+                current: { wire: current.wire, from: current.from, lo: current.lo, hi: current.hi }
+              });
+            }
+          }
           active.push(current);
         }
       }
@@ -173,7 +182,7 @@ for (const name of circuits) {
         renderedJunctions: junctions.length, expectedJunctions,
         wireVectorEffect: paths.length ? getComputedStyle(paths[0]).vectorEffect : '',
         dffs: nodes.filter(node => node.type === 'DFF').length, emptyRoutes, diagonalSegments,
-        blockPenetrations, collinearOverlaps, wrongEndpoints, nodeOverlaps,
+        blockPenetrations, collinearOverlaps, collinearOverlapSamples, wrongEndpoints, nodeOverlaps,
         missingGeometry: boxes.filter(box => ![box.l, box.t, box.r, box.b].every(Number.isFinite)).length,
         canvasWidth: Number(stage.dataset.canvasWidth), canvasHeight: Number(stage.dataset.canvasHeight),
         maxNodeBottom: Math.max(...boxes.map(box => box.b)), routingTracks: window.fpgaRoutingTrackCount,
