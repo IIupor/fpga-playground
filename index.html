@@ -149,7 +149,7 @@ function prepareRouteObstacleIndex(){
    unique.forEach((item,i)=>{for(const w of sourceGroups.get(item.key).wires)sourceIndex.set(w.id,i)});
   }
   for(const [x,list] of targets){list.sort((a,b)=>a.id-b.id);list.forEach((w,i)=>targetIndex.set(w.id,i))}
-  const trackBase=maxBottom+32,trackGap=4,intervals=[];
+  const trackBase=maxBottom+32,trackGap=3.2,intervals=[];
   for(const [key,source] of sourceGroups){
    const sx=source.a.x+150+8+(sourceIndex.get(source.wires[0].id)||0)*trackGap;
    const tx=Math.max(...source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-8-(targetIndex.get(w.id)||0)*trackGap}));
@@ -568,7 +568,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     let nextX=leftPad;
     for(let i=0;i<columns.length;i++){
      const column=columns[i];column.x=nextX;
-     if(i<columns.length-1)nextX+=150+16+(column.sourceKeys.size+columns[i+1].targetWires)*4;
+     if(i<columns.length-1)nextX+=150+16+(column.sourceKeys.size+columns[i+1].targetWires)*3.2;
     }
     for(const column of columns){
      let y=topPad;
