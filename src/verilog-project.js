@@ -30,9 +30,22 @@ function parseVerilog(source,label){
  if(!mods.size)throw Error('No Verilog module declarations found in '+label);
  return mods;
 }
+function evalLibertyFunction(expression,env){
+ if(!expression)return 0;
+ const tokens=String(expression).match(/[A-Za-z_$][\\w$]*|[01]|[!~&*|+^()]/g)||[];
+ const compact=String(expression).replace(/\\s+/g,'');
+ if(tokens.join('')!==compact)return 0;
+ let i=0;
+ const atom=()=>{const t=tokens[i++];if(t==='!'||t==='~')return atom()?0:1;if(t==='('){const v=or();if(tokens[i]!==')')throw Error('Unbalanced Liberty function');i++;return v;}if(t==='0'||t==='1')return Number(t);return env[t]?1:0;};
+ const and=()=>{let v=atom();while(tokens[i]==='&'||tokens[i]==='*'){i++;const r=atom();v=v&&r?1:0;}return v;};
+ const xor=()=>{let v=and();while(tokens[i]==='^'){i++;v=v!==and()?1:0;}return v;};
+ const or=()=>{let v=xor();while(tokens[i]==='|'||tokens[i]==='+'){i++;const r=xor();v=v||r?1:0;}return v;};
+ try{const value=or();return i===tokens.length?value:0;}catch(_){return 0;}
+}
+window.fpgaEvalLibertyFunction=evalLibertyFunction;
 function parseLiberty(source,label){
  const cells=new Map();let i=0;
- while((i=source.indexOf('cell',i))>=0){const m=source.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!m){i+=4;continue;}const name=m[1].trim().replace(/^['\"]|['\"]$/g,''),start=i+m[0].length;let depth=1,j=start;for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}const body=source.slice(start,j-1),pins=[];let p=0;while((p=body.indexOf('pin',p))>=0){const pm=body.slice(p).match(/^pin\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!pm){p+=3;continue;}const ps=p+pm[0].length;let d=1,k=ps;for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}const pb=body.slice(ps,k-1),dir=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1],fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];pins.push({name:pm[1].trim().replace(/^['\"]|['\"]$/g,''),direction:(dir||'').toUpperCase(),function:fn||null});p=k;}cells.set(name,{name,pins,source:label});i=j;}
+ while((i=source.indexOf('cell',i))>=0){const m=source.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!m){i+=4;continue;}const name=m[1].trim().replace(/^['\"]|['\"]$/g,''),start=i+m[0].length;let depth=1,j=start;for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}const body=source.slice(start,j-1),pins=[];let p=0;while((p=body.indexOf('pin',p))>=0){const pm=body.slice(p).match(/^pin\s*\(\s*([^\)]+)\s*\)\s*\{/);if(!pm){p+=3;continue;}const ps=p+pm[0].length;let d=1,k=ps;for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}const pb=body.slice(ps,k-1),dir=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1],fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];pins.push({name:pm[1].trim().replace(/^['\"]|['\"]$/g,''),direction:(dir||'').toUpperCase(),function:fn?fn.trim().replace(/^['\"]|['\"]$/g,''):null});p=k;}cells.set(name,{name,pins,source:label});i=j;}
  if(!cells.size)throw Error('No Liberty cell() definitions found in '+label);
  return cells;
 }
@@ -54,7 +67,7 @@ function graphFor(mod,path){
  for(const p of outputs)add('OUTPUT',p.name,1,0,{inputNames:[p.name]});
  const gateTypes={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',buf:'BUF'};
  for(const g of mod.gates){const out=g.pins[0],ins=g.pins.slice(1);const n=add(gateTypes[g.kind],g.kind.toUpperCase()+'_'+id,ins.length,1,{outputNames:[out],inputNames:ins.map((_,i)=>'IN'+(i+1))});drivers.set(out,{node:n,pin:0});}
- for(const inst of mod.instances){const def=inst.definition,cell=inst.cell,ports=def?.ports||cell?.pins||[];const ip=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT'),op=ports.filter(p=>p.direction==='OUTPUT');const n=add('MODULE',inst.name,ip.length||Object.keys(inst.connections).filter(k=>k[0]==='$').length,op.length||1,{moduleType:def?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),inputNames:ip.map(p=>p.name),outputNames:op.map(p=>p.name),isUnresolved:!!inst.unresolved});inst.graphDefinition=def||null;inst.graphNodeId=n.id;inst.resolvedPorts=ports;inst._inputPorts=ip;inst._outputPorts=op;}
+ for(const inst of mod.instances){const def=inst.definition,cell=inst.cell,ports=def?.ports||cell?.pins||[];const ip=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT'),op=ports.filter(p=>p.direction==='OUTPUT');const n=add('MODULE',inst.name,ip.length||Object.keys(inst.connections).filter(k=>k[0]==='$').length,op.length||1,{moduleType:def?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),inputNames:ip.map(p=>p.name),outputNames:op.map(p=>p.name),cellFunctions:cell?Object.fromEntries(op.filter(p=>p.function).map(p=>[p.name,p.function])):null,isUnresolved:!!inst.unresolved});inst.graphDefinition=def||null;inst.graphNodeId=n.id;inst.resolvedPorts=ports;inst._inputPorts=ip;inst._outputPorts=op;}
  for(const inst of mod.instances){const n=nodes.find(x=>x.id===inst.graphNodeId);let ips=inst._inputPorts;if(!ips.length)ips=Object.keys(inst.connections).filter(k=>k[0]==='$').map((k,i)=>({name:'IN'+i,index:i,direction:'INPUT'}));ips.forEach((p,i)=>{const sig=portSignal(p,inst),src=drivers.get(sig);if(src)wires.push({id:id++,from:src.node.id,fromPin:src.pin||0,to:n.id,toPin:i});});
   inst._outputPorts.forEach((p,i)=>{const sig=portSignal(p,inst);if(sig)drivers.set(sig,{node:n,pin:i});});
  }
