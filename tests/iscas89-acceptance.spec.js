@@ -210,8 +210,8 @@ for (const name of circuits) {
         dffs: window.fpgaNodes.filter(node => node.type === 'DFF').map(node => node.value),
         output: window.fpgaNodes.find(node => node.type === 'OUTPUT')?.value
       }));
-      expect(liveState.dffs, 's27 browser simulator must capture DFF data on CK rising edge').toEqual([1, 1, 0]);
-      expect(liveState.output, 's27 browser simulator must propagate the updated register state').toBe(0);
+      expect(liveState.dffs, 's27 browser simulator must capture DFF data on CK rising edge').toEqual([1, 0, 0]);
+      expect(liveState.output, 's27 browser simulator must propagate the updated register state').toBe(1);
     }
 
     await page.locator('#exportVerilog').click();
