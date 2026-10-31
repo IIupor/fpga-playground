@@ -91,6 +91,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   const topSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
   await page.locator('#verilogFile').setInputFiles({ name: 'soc_top.v', mimeType: 'text/plain', buffer: Buffer.from(topSource) });
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 120000 });
+  await expect(page.locator('#editorMessage')).toContainText('0 unresolved instances');
 
   const report = await page.evaluate(() => {
     const project = window.fpgaVerilogProject.state.project;
