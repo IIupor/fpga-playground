@@ -18,14 +18,17 @@ async function loadBenchmark(page, name) {
     const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', `${name}.v`), 'utf8');
     await route.fulfill({ status: 200, contentType: 'text/plain; charset=utf-8', body: source });
   });
+  // Selecting the benchmark auto-loads it; do not click Load a second time.
+  // The caller must choose the router before this selection, otherwise the
+  // default router can block the browser while importing a large circuit.
   await page.locator('#benchmarkSelect').selectOption(name);
-  await page.locator('#loadBenchmark').click();
-  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 60000 });
+  await expect(page.locator('#editorMessage')).toContainText(/Imported|Loaded/, { timeout: 60000 });
 }
 
 test('LIBAVOID-01: libavoid routes every c17 net orthogonally without overlaps or block penetration', async ({ page }) => {
   test.setTimeout(120000);
   await waitForLibavoid(page);
+  await page.locator('#routingMode').selectOption('libavoid');
   await loadBenchmark(page, 'c17');
 
   const baseline = await page.evaluate(() => ({
@@ -33,7 +36,6 @@ test('LIBAVOID-01: libavoid routes every c17 net orthogonally without overlaps o
     wires: window.fpgaWires.map(w => [w.id, w.from, w.fromPin || 0, w.to, w.toPin]).sort((a,b) => a[0]-b[0])
   }));
 
-  await page.locator('#routingMode').selectOption('libavoid');
   await expect.poll(() => page.locator('#editorStage path.editor-wire').count()).toBe(baseline.wires.length);
 
   const result = await page.evaluate(() => {
@@ -72,6 +74,8 @@ test('LIBAVOID-01: libavoid routes every c17 net orthogonally without overlaps o
 test('LIBAVOID-02: libavoid routes the complete c432 benchmark without overlaps or block penetration', async ({ page }) => {
   test.setTimeout(240000);
   await waitForLibavoid(page);
+  // Activate libavoid before import: c432 must never invoke the slow legacy router.
+  await page.locator('#routingMode').selectOption('libavoid');
   await loadBenchmark(page, 'c432');
 
   const baseline = await page.evaluate(() => ({
@@ -80,7 +84,6 @@ test('LIBAVOID-02: libavoid routes the complete c432 benchmark without overlaps 
   }));
   expect(baseline.wires).toHaveLength(354);
 
-  await page.locator('#routingMode').selectOption('libavoid');
   await expect.poll(() => page.locator('#editorStage path.editor-wire').count(), { timeout: 180000 }).toBe(354);
 
   const result = await page.evaluate(() => {
