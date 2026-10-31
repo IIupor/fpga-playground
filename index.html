@@ -558,9 +558,9 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
      if(tc!==undefined)columns[tc].targetWires++;
     }
     let nextX=leftPad;
-    for(const column of columns){
-     column.x=nextX;
-     nextX+=150+16+(column.sourceKeys.size+column.targetWires)*4;
+    for(let i=0;i<columns.length;i++){
+     const column=columns[i];column.x=nextX;
+     if(i<columns.length-1)nextX+=150+16+(column.sourceKeys.size+columns[i+1].targetWires)*4;
     }
     for(const column of columns){
      let y=topPad;
