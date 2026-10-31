@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/iscas85-full-routing
+      - work/iscas85-compact-routing
   workflow_dispatch:
 
 jobs:
