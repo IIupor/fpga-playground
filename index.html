@@ -91,6 +91,7 @@ function evalCircuit(updateSequential=true){
   else if(n.type==='XNOR')v=vals.filter(Boolean).length%2?0:1;
   else if(n.type==='NOT')v=vals[0]?0:1;
   else if(n.type==='OUTPUT')v=vals[0]||0;
+  else if(n.type==='MODULE'&&n.moduleType){const env=Object.fromEntries((n.inputNames||[]).map((name,i)=>[name,vals[i]||0]));const result=window.fpgaEvalHierarchicalModule?.(n.moduleType,env)||{};n.outputValues=(n.outputNames||[]).map(name=>result[name]??0);v=n.outputValues[0]||0;}
   else if(n.type==='MODULE'&&n.cellFunctions){const env=Object.fromEntries((n.inputNames||[]).map((name,i)=>[name,vals[i]||0]));n.outputValues=(n.outputNames||[]).map(name=>window.fpgaEvalLibertyFunction?.(n.cellFunctions[name],env)??0);v=n.outputValues[0]||0;}
   n.value=v;
  };
