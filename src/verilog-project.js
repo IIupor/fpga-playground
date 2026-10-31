@@ -56,7 +56,7 @@ function evalLibertyFunction(expression,env){
 }
 window.fpgaEvalLibertyFunction=evalLibertyFunction;
 function evalModuleOutputs(mod,inputEnv,stack=[]){
- if(!mod||stack.includes(mod.name))return {};
+ if(!mod||stack.includes(mod.name)||(mod.gates.length+mod.instances.length)>5000)return {};
  const values=new Map(Object.entries(inputEnv||{}).map(([k,v])=>[k,v?1:0]));
  const read=sig=>{if(values.has(sig))return values.get(sig);if(/^(1'b1|1|1'h1)$/i.test(sig))return 1;if(/^(1'b0|0|1'h0)$/i.test(sig))return 0;return undefined;};
  const gate=(kind,a)=>{if(kind==='and')return a.every(Boolean)?1:0;if(kind==='nand')return a.every(Boolean)?0:1;if(kind==='or')return a.some(Boolean)?1:0;if(kind==='nor')return a.some(Boolean)?0:1;if(kind==='xor')return a.filter(Boolean).length%2;if(kind==='xnor')return a.filter(Boolean).length%2?0:1;if(kind==='not')return a[0]?0:1;if(kind==='buf')return a[0]||0;return 0;};
