@@ -134,40 +134,47 @@ function prepareRouteObstacleIndex(){
   // router: vertical escapes stay outside their endpoint columns, and the
   // horizontal tracks stay below every obstacle. Perpendicular crossings are
   // intentional and remain electrically disconnected in the SVG model.
-  const sources=new Map(),targets=new Map(),sourceIndex=new Map(),targetIndex=new Map();
-  const group=(map,x)=>{if(!map.has(x))map.set(x,[]);return map.get(x)};
+  const sources=new Map(),targets=new Map(),sourceIndex=new Map(),targetIndex=new Map(),sourceGroups=new Map();
+  const group=(map,key)=>{if(!map.has(key))map.set(key,[]);return map.get(key)};
   for(const w of wires){
    const a=routeNodeById.get(w.from),b=routeNodeById.get(w.to);if(!a||!b)continue;
-   group(sources,a.x).push(w);group(targets,b.x).push(w);
+   const sourceKey=`${a.id}:${w.fromPin||0}`;
+   group(sources,a.x).push({w,key:sourceKey});
+   group(targets,b.x).push(w);
+   if(!sourceGroups.has(sourceKey))sourceGroups.set(sourceKey,{a,wires:[]});
+   sourceGroups.get(sourceKey).wires.push(w);
   }
-  for(const [x,list] of sources){list.sort((a,b)=>a.id-b.id);list.forEach((w,i)=>sourceIndex.set(w.id,i))}
+  for(const [x,list] of sources){
+   const unique=[...new Map(list.map(item=>[item.key,item])).values()].sort((a,b)=>a.w.id-b.w.id);
+   unique.forEach((item,i)=>{for(const w of sourceGroups.get(item.key).wires)sourceIndex.set(w.id,i)});
+  }
   for(const [x,list] of targets){list.sort((a,b)=>a.id-b.id);list.forEach((w,i)=>targetIndex.set(w.id,i))}
-  const ordered=wires.slice().sort((a,b)=>a.id-b.id),trackBase=maxBottom+32,trackGap=4;
-  // Horizontal tracks are intervals: connections whose X spans do not overlap
-  // can safely reuse the same Y track without introducing collinear overlap.
-  const intervals=[];
-  for(const w of ordered){
-   const a=routeNodeById.get(w.from),b=routeNodeById.get(w.to);if(!a||!b)continue;
-   const sx=a.x+150+8+(sourceIndex.get(w.id)||0)*trackGap;
-   const tx=b.x-8-(targetIndex.get(w.id)||0)*trackGap;
-   intervals.push({w,sx,tx,start:Math.min(sx,tx),end:Math.max(sx,tx)});
+  const trackBase=maxBottom+32,trackGap=4,intervals=[];
+  for(const [key,source] of sourceGroups){
+   const sx=source.a.x+150+8+(sourceIndex.get(source.wires[0].id)||0)*trackGap;
+   const tx=Math.max(...source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-8-(targetIndex.get(w.id)||0)*trackGap}));
+   intervals.push({key,sx,tx,start:Math.min(sx,tx),end:Math.max(sx,tx)});
   }
-  intervals.sort((a,b)=>a.start-b.start||a.end-b.end||a.w.id-b.w.id);
+  intervals.sort((a,b)=>a.start-b.start||a.end-b.end||a.key.localeCompare(b.key));
   const active=[],free=[];let nextTrack=0;
   const pushActive=item=>{let i=active.length;active.push(item);while(i){const p=(i-1)>>1;if(active[p].end<=item.end)break;active[i]=active[p];i=p}active[i]=item};
   const popActive=()=>{const root=active[0],last=active.pop();if(active.length){let i=0;while(true){let c=i*2+1;if(c>=active.length)break;if(c+1<active.length&&active[c+1].end<active[c].end)c++;if(active[c].end>=last.end)break;active[i]=active[c];i=c}active[i]=last}return root};
-  const trackByWire=new Map();
+  const trackBySource=new Map();
   for(const item of intervals){
    while(active.length&&active[0].end+trackGap<=item.start)free.push(popActive().track);
    const track=free.length?free.pop():nextTrack++;
-   trackByWire.set(item.w.id,track);pushActive({end:item.end,track});
+   trackBySource.set(item.key,track);pushActive({end:item.end,track});
   }
-  for(const item of intervals){
-   routePlanByWire.set(item.w.id,{
-    sourceLaneX:item.sx,
-    targetLaneX:item.tx,
-    laneY:trackBase+trackByWire.get(item.w.id)*trackGap
-   });
+  for(const [key,source] of sourceGroups){
+   const laneY=trackBase+trackBySource.get(key)*trackGap;
+   for(const w of source.wires){
+    const b=routeNodeById.get(w.to);
+    routePlanByWire.set(w.id,{
+     sourceLaneX:source.a.x+150+8+(sourceIndex.get(w.id)||0)*trackGap,
+     targetLaneX:b.x-8-(targetIndex.get(w.id)||0)*trackGap,
+     laneY
+    });
+   }
   }
   window.fpgaRoutingTrackCount=nextTrack;
  }
@@ -532,8 +539,14 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
     for(const w of wires){if(neighbors.has(w.from)&&neighbors.has(w.to)){neighbors.get(w.from).push(w.to);neighbors.get(w.to).push(w.from)}}
     // Barycentric sweeps order connected nodes similarly across adjacent levels to reduce crossings.
     for(let pass=0;pass<4;pass++){const keys=pass%2===0?layerKeys:layerKeys.slice().reverse();for(const l of keys){const ids=layers.get(l);if(ids.length<2)continue;const score=nid=>{const ns=neighbors.get(nid).filter(other=>level.get(other)!==l);return ns.length?ns.reduce((sum,other)=>sum+(order.get(other)??0),0)/ns.length:order.get(nid)};ids.sort((a,b)=>{const d=score(a)-score(b);return Math.abs(d)>1e-6?d:a-b});ids.forEach((nid,i)=>order.set(nid,i))}}
-    const yGap=40,topPad=36,leftPad=40,sourceLaneCounts=new Map(),targetLaneCounts=new Map();
-    for(const w of wires){const sl=level.get(w.from)||0,tl=level.get(w.to)||0;sourceLaneCounts.set(sl,(sourceLaneCounts.get(sl)||0)+1);targetLaneCounts.set(tl,(targetLaneCounts.get(tl)||0)+1)}
+    const yGap=40,topPad=36,leftPad=40,sourceLaneCounts=new Map(),targetLaneCounts=new Map(),sourceLaneSets=new Map();
+    for(const w of wires){
+     const sl=level.get(w.from)||0,tl=level.get(w.to)||0,key=`${w.from}:${w.fromPin||0}`;
+     if(!sourceLaneSets.has(sl))sourceLaneSets.set(sl,new Set());
+     sourceLaneSets.get(sl).add(key);
+     targetLaneCounts.set(tl,(targetLaneCounts.get(tl)||0)+1);
+    }
+    for(const [l,set] of sourceLaneSets)sourceLaneCounts.set(l,set.size)
     const layerX=new Map();let nextX=leftPad;
     for(let i=0;i<layerKeys.length;i++){const l=layerKeys[i];layerX.set(l,nextX);if(i<layerKeys.length-1){const nextLayer=layerKeys[i+1],outCount=sourceLaneCounts.get(l)||0,inCount=targetLaneCounts.get(nextLayer)||0;nextX+=150+24+(outCount+inCount)*4}}
     for(const l of layerKeys){let y=topPad;for(const nid of layers.get(l)){const n=nodeById.get(nid);n.x=layerX.get(l);n.y=y;const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap}}
