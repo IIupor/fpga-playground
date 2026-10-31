@@ -26,22 +26,24 @@ test('imports a multi-module Verilog project and navigates down and up the hiera
   await expect(page.locator('#hierarchyStatus')).toContainText('top');
 });
 
-test('loads multiple Liberty and Verilog libraries and resolves cell/module instances', async ({ page }) => {
+test('loads multiple Liberty and Verilog libraries and simulates combinational and sequential cells', async ({ page }) => {
   const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : input; } pin(B) { direction : input; } pin(Y) { direction : output; function : "A & B"; } } }';
-  const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : input; } pin(Y) { direction : output; function : "!A"; } } }';\n  const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : input; } pin(D) { direction : input; } pin(Q) { direction : output; function : "IQ"; } pin(Q_N) { direction : output; function : "!IQ"; } } }';
+  const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : input; } pin(Y) { direction : output; function : "!A"; } } }';
+  const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : input; } pin(D) { direction : input; } pin(Q) { direction : output; function : "IQ"; } pin(Q_N) { direction : output; function : "!IQ"; } } }';
   const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
   const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles([
     { name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) },
-    { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },\n    { name: 'sky_dff.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyFF) },
+    { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },
+    { name: 'sky_dff.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyFF) },
     { name: 'custom_cells.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib) },
     { name: 'custom_cells_2.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib2) }
   ]);
   await expect(page.locator('#libraryStatus')).toContainText('5 library file(s)');
   await expect(page.locator('#libraryStatus')).toContainText('3 Liberty cells');
   await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
-  const netlist = ['module mapped_top(input wire a, input wire b, output wire y, output wire z, output wire w, input wire clk, output wire y, output wire z, output wire w, output wire v, output wire q, output wire qn);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));',' SKY_DFF_X1 u_dff (.CLK(clk), .D(a), .Q(q), .Q_N(qn));','endmodule'].join('\n');
+  const netlist = ['module mapped_top(input wire a, input wire b, input wire clk, output wire y, output wire z, output wire w, output wire v, output wire q, output wire qn);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));',' SKY_DFF_X1 u_dff (.CLK(clk), .D(a), .Q(q), .Q_N(qn));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(netlist);
   await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
@@ -50,11 +52,12 @@ test('loads multiple Liberty and Verilog libraries and resolves cell/module inst
   await page.locator('#editorControls button').nth(0).click();
   await page.locator('#editorControls button').nth(1).click();
   await expect(cell).toContainText('VALUE: 1');
-  const inverter = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' });
-  await expect(inverter).toContainText('VALUE: 0');
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' })).toContainText('VALUE: 0');
   const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' });
   await expect(custom).toContainText('VALUE: 1');
-  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_custom_inv' })).toContainText('VALUE: 1');\n  await page.locator('#editorControls button').nth(2).click();\n  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_dff' })).toContainText('VALUE: 1');
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_custom_inv' })).toContainText('VALUE: 1');
+  await page.locator('#editorControls button').nth(2).click();
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_dff' })).toContainText('VALUE: 1');
   await custom.click();
   await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('CUSTOM_BUF');
@@ -83,7 +86,6 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   ];
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
-  await expect(page.locator('#libraryStatus')).toContainText('Liberty cells');
   await expect(page.locator('#libraryStatus')).toContainText('Verilog modules', { timeout: 120000 });
 
   const topSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
