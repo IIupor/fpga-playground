@@ -266,7 +266,7 @@ function graphFor(mod,path) {
     const outputPorts=ports.filter(p=>p.direction==='OUTPUT');
     if(cell?.sequential){
       const seq=cell.sequential,dataExpr=seq.kind==='ff'?seq.nextState:seq.dataIn,clockExpr=seq.kind==='ff'?seq.clockedOn:seq.enable;
-      const pick=expr=>{const names=String(expr||'').match(/[A-Za-z_$][\\w$]*/g)||[];return inputPorts.find(p=>names.includes(p.name));};
+      const pick=expr=>{const names=String(expr||'').match(/[A-Za-z_$][\w$]*/g)||[];return inputPorts.find(p=>names.includes(p.name));};
       const dataPin=pick(dataExpr),clockPin=pick(clockExpr);
       inputPorts=[...new Set([dataPin,clockPin,...inputPorts].filter(Boolean))];
     }
