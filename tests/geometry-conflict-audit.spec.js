@@ -271,7 +271,7 @@ test('GEOMETRY-C17-STRESS-01: c17 remains conflict-free across both routers and 
       const paths = [...document.querySelectorAll('path.editor-wire')];
       const routeSignature = paths.map(path => [Number(path.dataset.wire), path.getAttribute('d')]).sort((a,b) => a[0]-b[0]);
       const orthogonal = paths.every(path => {
-        const values = (path.getAttribute('d').match(/-?\\d+(?:\\.\\d+)?/g) || []).map(Number);
+        const values = (path.getAttribute('d').match(/-?\d+(?:\.\d+)?/g) || []).map(Number);
         if (values.length < 4 || values.length % 2) return false;
         for (let i=2;i<values.length;i+=2) {
           const dx=Math.abs(values[i]-values[i-2]),dy=Math.abs(values[i+1]-values[i-1]);
