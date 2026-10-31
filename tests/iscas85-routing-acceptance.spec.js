@@ -5,8 +5,6 @@ const circuits = [
   ['c5315', 1586], ['c6288', 2353], ['c7552', 2331]
 ];
 
-test.describe.configure({ mode: 'serial' });
-
 for (const [name, gateCount] of circuits) {
   test(name + ': import, placement and complete orthogonal routing', async ({ page }) => {
     test.setTimeout(180000);
