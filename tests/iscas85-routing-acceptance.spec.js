@@ -51,16 +51,22 @@ for (const [name, gateCount] of circuits) {
           }
         }
       }
-      for (let i=0;i<segments.length;i++) for (let j=i+1;j<segments.length;j++) {
-        const a=segments[i], b=segments[j];
-        if (a.wire===b.wire || a.from===b.from) continue;
-        const ah=a.a.y===a.b.y, bh=b.a.y===b.b.y;
-        if (ah && bh && a.a.y===b.a.y &&
-            Math.max(Math.min(a.a.x,a.b.x),Math.min(b.a.x,b.b.x)) <
-            Math.min(Math.max(a.a.x,a.b.x),Math.max(b.a.x,b.b.x))) collinearOverlaps++;
-        if (!ah && !bh && a.a.x===b.a.x &&
-            Math.max(Math.min(a.a.y,a.b.y),Math.min(b.a.y,b.b.y)) <
-            Math.min(Math.max(a.a.y,a.b.y),Math.max(b.a.y,b.b.y))) collinearOverlaps++;
+      const horizontal=new Map(),vertical=new Map();
+      for(const s of segments){
+        const isHorizontal=s.a.y===s.b.y, key=isHorizontal?s.a.y:s.a.x, map=isHorizontal?horizontal:vertical;
+        if(!map.has(key))map.set(key,[]);
+        const lo=isHorizontal?Math.min(s.a.x,s.b.x):Math.min(s.a.y,s.b.y);
+        const hi=isHorizontal?Math.max(s.a.x,s.b.x):Math.max(s.a.y,s.b.y);
+        map.get(key).push({...s,lo,hi});
+      }
+      for(const map of [horizontal,vertical]) for(const list of map.values()){
+        list.sort((a,b)=>a.lo-b.lo||a.hi-b.hi);
+        const active=[];
+        for(const current of list){
+          for(let i=active.length-1;i>=0;i--)if(active[i].hi<=current.lo)active.splice(i,1);
+          for(const previous of active)if(previous.wire!==current.wire&&previous.from!==current.from)collinearOverlaps++;
+          active.push(current);
+        }
       }
       return {
         nodeObjects:nodes.length, renderedNodes:groups.length, logicalWires:wires.length,
