@@ -261,3 +261,48 @@ test('GEOMETRY-SYNTHETIC-07: a routed wire through a block body is reported with
   expect(hits[0].blockName).toBe('OBSTACLE');
   console.log('GEOMETRY-BLOCK-PENETRATION ' + JSON.stringify({ penetrations: hits.length, wireId: 391, blockId: 382 }));
 });
+
+test('GEOMETRY-C17-STRESS-01: c17 remains conflict-free across both routers and repeated Mikami reroutes', async ({ page }) => {
+  await loadBenchmark(page, 'c17');
+  const result = await page.evaluate(() => {
+    const mode = document.querySelector('#routingMode');
+    const capture = label => {
+      const audit = window.fpgaLastGeometryAudit;
+      const paths = [...document.querySelectorAll('path.editor-wire')];
+      const routeSignature = paths.map(path => [Number(path.dataset.wire), path.getAttribute('d')]).sort((a,b) => a[0]-b[0]);
+      const orthogonal = paths.every(path => {
+        const values = (path.getAttribute('d').match(/-?\\d+(?:\\.\\d+)?/g) || []).map(Number);
+        if (values.length < 4 || values.length % 2) return false;
+        for (let i=2;i<values.length;i+=2) {
+          const dx=Math.abs(values[i]-values[i-2]),dy=Math.abs(values[i+1]-values[i-1]);
+          if (dx>0.001 && dy>0.001) return false;
+        }
+        return true;
+      });
+      return { label, audit, pathCount: paths.length, orthogonal, routeSignature };
+    };
+    const snapshots = [];
+    for (const selectedMode of ['legacy','mikami','mikami']) {
+      mode.value=selectedMode;
+      mode.dispatchEvent(new Event('change',{bubbles:true}));
+      snapshots.push(capture(selectedMode+'-'+snapshots.length));
+    }
+    const wires = window.fpgaWires.map(w=>[w.id,w.from,w.fromPin||0,w.to,w.toPin]).sort((a,b)=>a[0]-b[0]);
+    return { snapshots, wires };
+  });
+  for (const snapshot of result.snapshots) {
+    expect(snapshot.pathCount).toBe(14);
+    expect(snapshot.orthogonal).toBe(true);
+    expect(snapshot.audit.conflictCount).toBe(0);
+    expect(snapshot.audit.wireCount).toBe(14);
+  }
+  expect(result.snapshots[1].routeSignature).toEqual(result.snapshots[2].routeSignature);
+  expect(result.wires).toHaveLength(14);
+  console.log('GEOMETRY-C17-ROUTER-STRESS ' + JSON.stringify({
+    modes: result.snapshots.map(s=>s.label),
+    conflicts: result.snapshots.map(s=>s.audit.conflictCount),
+    orthogonalRoutes: result.snapshots.every(s=>s.orthogonal),
+    repeatedMikamiDeterministic: JSON.stringify(result.snapshots[1].routeSignature)===JSON.stringify(result.snapshots[2].routeSignature),
+    wireCount: result.wires.length
+  }));
+});
