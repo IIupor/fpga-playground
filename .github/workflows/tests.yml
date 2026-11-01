@@ -14,6 +14,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Fetch open SKY130 gate-level regression fixtures
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/wilson/risc-v-soc-full-synth.git /tmp/sky130-designs
+          git -C /tmp/sky130-designs sparse-checkout set src
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/siliconcompiler/lambdapdk.git /tmp/sky130-pdk
+          git -C /tmp/sky130-pdk sparse-checkout set lambdapdk/sky130/libs/sky130hd/nldm
+          mkdir -p tests/fixtures/sky130
+          cp /tmp/sky130-designs/src/*.v tests/fixtures/sky130/
+          liberty=$(find /tmp/sky130-pdk/lambdapdk/sky130/libs/sky130hd/nldm -maxdepth 1 -type f -name 'sky130_fd_sc_hd__tt_025C_1v80.lib*' | head -n 1)
+          test -n "$liberty"
+          if [[ "$liberty" == *.gz ]]; then gzip -dc "$liberty" > tests/fixtures/sky130/sky130_fd_sc_hd__tt_025C_1v80.lib; else cp "$liberty" tests/fixtures/sky130/sky130_fd_sc_hd__tt_025C_1v80.lib; fi
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
