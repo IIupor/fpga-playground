@@ -429,6 +429,20 @@ function setupUI() {
     }
     return false;
   }
+  function hasHierarchicalInstances(source){
+    const clean=stripComments(source);
+    const declared=new Set([...clean.matchAll(/\bmodule\s+([A-Za-z_$][\w$]*)/gi)].map(match=>match[1].toLowerCase()));
+    if(declared.size<2)return false;
+    const instances=/(?:^|;)\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
+    let match;
+    while((match=instances.exec(clean))){
+      const type=match[1].toLowerCase();
+      // ISCAS89 netlists often declare "module dff" only to describe a
+      // primitive DFF model; dff instances must remain on the legacy path.
+      if(declared.has(type)&&type!=='dff')return true;
+    }
+    return false;
+  }
   function importProject(source,topName){
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
     area.value=source;
@@ -559,11 +573,7 @@ function setupUI() {
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
     try{
-      const parsed=parseVerilog(area.value,'design.v');
-      const declared=new Set(parsed.keys());
-      const hasHierarchy=[...parsed.values()].some(mod=>mod.instances.some(inst=>declared.has(inst.type)));
-      // Some legacy ISCAS89 files declare a helper module named "dff".
-      // A second module declaration alone does not make the design hierarchical.
+      const hasHierarchy=hasHierarchicalInstances(area.value);
       if(!hasHierarchy&&!state.libraries.length)return;
       event.preventDefault();event.stopImmediatePropagation();importProject(area.value);
     } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
@@ -572,10 +582,7 @@ function setupUI() {
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     selectedFile.text().then(source=>{
-      const parsed=parseVerilog(source,selectedFile.name);
-      const declared=new Set(parsed.keys());
-      const hasHierarchy=[...parsed.values()].some(mod=>mod.instances.some(inst=>declared.has(inst.type)));
-      if(hasHierarchy||state.libraries.length)importProject(source);
+      if(hasHierarchicalInstances(source)||state.libraries.length)importProject(source);
       else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);
