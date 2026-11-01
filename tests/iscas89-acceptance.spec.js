@@ -22,9 +22,17 @@ function readCircuit(name) {
   const inputs = [...new Set(names('input'))];
   const outputs = [...new Set(names('output'))];
   const dffMatch = source.match(/#\s*(\d+)\s+D-type flipflops/i);
+  const gates = [...module[1].matchAll(/\b(and|or|xor|nand|nor|xnor|not|dff)\s+([A-Za-z_$][\w$]*)\s*\(([^;]+)\)\s*;/gi)]
+    .map(match => ({ type: match[1].toUpperCase(), name: match[2], pins: match[3].split(',').map(pin => pin.trim()) }));
   if (!inputs.includes('CK') || !inputs.length || !outputs.length || !dffMatch)
     throw new Error(name + ': missing CK, ports, or DFF metadata');
-  return { file, source, inputs, outputs, dffs: Number(dffMatch[1]) };
+  const dffs = Number(dffMatch[1]);
+  if (gates.filter(gate => gate.type === 'DFF').length !== dffs)
+    throw new Error(name + ': DFF metadata does not match the structural netlist');
+  if ([...module[1].matchAll(/\bassign\s+[^;]+;/gi)].length)
+    throw new Error(name + ': unexpected assign alias requires explicit structural coverage');
+  const expectedWires = gates.reduce((count, gate) => count + gate.pins.length - 1, 0) + outputs.length;
+  return { file, source, inputs, outputs, gates, dffs, expectedWires };
 }
 
 function verifySequentialEquivalence(name, circuit, exported) {
@@ -191,6 +199,54 @@ for (const name of circuits) {
       };
     });
     console.log('ISCAS89_ACCEPTANCE', name, JSON.stringify({ ...report, pageErrors }));
+    const imported = await page.evaluate(() => ({
+      nodes: window.fpgaNodes.map(node => ({
+        id: node.id, type: node.type, name: node.name,
+        outputNames: [...(node.outputNames || [])]
+      })),
+      wires: window.fpgaWires.map(wire => ({
+        from: wire.from, to: wire.to, toPin: wire.toPin || 0
+      }))
+    }));
+    const nodeByName = (type, name) => imported.nodes.find(node => node.type === type && node.name === name);
+    const drivers = new Map();
+    for (const input of circuit.inputs) {
+      const node = nodeByName('INPUT', input);
+      expect(node, name + ': primary input ' + input + ' must be imported').toBeTruthy();
+      drivers.set(input, node);
+    }
+    for (const gate of circuit.gates) {
+      const node = nodeByName(gate.type, gate.name);
+      expect(node, name + ': gate instance ' + gate.name + ' must be imported as ' + gate.type).toBeTruthy();
+      const pins = gate.type === 'DFF' && gate.pins.length === 3
+        ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
+      expect(node.outputNames, name + ': output net for ' + gate.name).toContain(pins[0]);
+      expect(drivers.has(pins[0]), name + ': net ' + pins[0] + ' must have a unique driver').toBe(false);
+      drivers.set(pins[0], node);
+    }
+    const expectedWireKeys = [];
+    for (const gate of circuit.gates) {
+      const node = nodeByName(gate.type, gate.name);
+      const pins = gate.type === 'DFF' && gate.pins.length === 3
+        ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
+      for (let pin = 1; pin < pins.length; pin++) {
+        const source = drivers.get(pins[pin]);
+        expect(source, name + ': source net ' + pins[pin] + ' for ' + gate.name + ' must have a driver').toBeTruthy();
+        expectedWireKeys.push(source.id + ':' + node.id + ':' + (pin - 1));
+      }
+    }
+    for (const output of circuit.outputs) {
+      const target = nodeByName('OUTPUT', output);
+      const source = drivers.get(output);
+      expect(target, name + ': primary output ' + output + ' must be imported').toBeTruthy();
+      expect(source, name + ': primary output ' + output + ' must have a driver').toBeTruthy();
+      expectedWireKeys.push(source.id + ':' + target.id + ':0');
+    }
+    const actualWireKeys = imported.wires.map(wire => wire.from + ':' + wire.to + ':' + wire.toPin).sort();
+    expect(actualWireKeys, name + ': every imported wire must connect the correct source net to the correct gate/output pin')
+      .toEqual(expectedWireKeys.sort());
+    expect(report.nodes, name + ': exact primary-port and gate node count').toBe(circuit.inputs.length + circuit.outputs.length + circuit.gates.length);
+    expect(report.wires, name + ': exact structural connection count').toBe(circuit.expectedWires);
     expect(pageErrors, name + ': no browser runtime errors').toEqual([]);
     expect(report.nodes, name + ': every placed block must render').toBe(report.renderedNodes);
     expect(report.dffs, name + ': every sequential element must be imported').toBe(circuit.dffs);
