@@ -135,7 +135,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
         resolved: mod.instances.filter(x => !!x.cell || !!x.definition).length,
         unresolved: mod.instances.filter(x => x.unresolved).length };
     });
-    const selectedInstance = top?.instances[0] || null;
+    const selectedInstance = top?.instances.find(instance => !!instance.definition) || null;
     const node = selectedInstance && window.fpgaNodes.find(n => n.id === selectedInstance.graphNodeId);
     return { moduleCount: project.modules.size, topInstances: top?.instances.length || 0,
       topUnresolved: top?.instances.filter(x => x.unresolved).length ?? -1,
