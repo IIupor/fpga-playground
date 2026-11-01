@@ -386,12 +386,20 @@ function installProject(project,topName) {
 }
 function setupUI() {
   const toolbar=$('importVerilog')?.parentElement;
-  if(!toolbar||$('importLibraries'))return;
-  const button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load libraries';toolbar.appendChild(button);
-  const fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib';fileInput.hidden=true;toolbar.appendChild(fileInput);
-  const nav=document.createElement('div');nav.className='editor-toolbar';nav.style.marginTop='8px';
-  nav.innerHTML='<span id="hierarchyStatus" class="status-chip">Hierarchy: —</span><button id="hierarchyUp" class="toolbtn" disabled>Parent (Ctrl+E)</button><span class="editor-hint">Select a module instance and press Shift+E to enter.</span><span id="libraryStatus" class="status-chip">No libraries loaded</span>';
-  toolbar.after(nav);
+  if(!toolbar)return;
+  let button=$('importLibraries');
+  if(!button){
+    button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load libraries';toolbar.appendChild(button);
+  }
+  let fileInput=$('libraryFiles');
+  if(!fileInput){
+    fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib';fileInput.hidden=true;toolbar.appendChild(fileInput);
+  }
+  if(!$('hierarchyStatus')){
+    const nav=document.createElement('div');nav.className='editor-toolbar';nav.style.marginTop='8px';
+    nav.innerHTML='<span id="hierarchyStatus" class="status-chip">Hierarchy: —</span><button id="hierarchyUp" class="toolbtn" disabled>Parent (Ctrl+E)</button><span class="editor-hint">Select a module instance and press Shift+E to enter.</span><span id="libraryStatus" class="status-chip">No libraries loaded</span>';
+    toolbar.after(nav);
+  }
   button.addEventListener('click',()=>fileInput.click());
   fileInput.addEventListener('change',async()=>{
     try{
@@ -451,9 +459,9 @@ function setupUI() {
       else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);
-  window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,hasHierarchicalInstances,get state(){return state;},importProject};
 }
 setupUI();
+window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,hasHierarchicalInstances,get state(){return state;},importProject};
 })();).map((key,index)=>({name:'IN'+index,index,direction:'INPUT',base:'IN'+index,width:1}));
     inputPorts.forEach((port,index)=>{
       const signal=portSignal(port,inst),source=drivers.get(signal);
