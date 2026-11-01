@@ -148,7 +148,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   expect(report.topInstances).toBeGreaterThan(0);
   expect(report.topUnresolved).toBe(0);
   expect(report.hasSelectedNode).toBe(true);
-  expect(report.selectedInstanceType).toBeTruthy();
+  expect(report.childType).toBeTruthy();
   for (const design of report.designs) {
     expect(design, 'all ten named SKY130 designs must be present').toBeTruthy();
     expect(design.instances, design.name + ' standard-cell instances').toBeGreaterThan(0);
