@@ -3,7 +3,8 @@ name: ISCAS89 sequential acceptance
 on:
   push:
     branches:
-      - work/iscas89-sequential
+      - main
+  pull_request:
   workflow_dispatch:
 
 jobs:
