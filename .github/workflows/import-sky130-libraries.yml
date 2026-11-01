@@ -1,0 +1,102 @@
+name: Import pinned SKY130 libraries
+
+on:
+  push:
+    branches:
+      - test/commit-sky130-regression-fixtures
+    paths:
+      - .github/workflows/import-sky130-libraries.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: test/commit-sky130-regression-fixtures
+          fetch-depth: 1
+      - name: Download pinned upstream sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sky130-source libraries/sky130/verilog libraries/sky130/liberty libraries/sky130/LICENSES
+          curl -fL --retry 3 'https://github.com/wilson/risc-v-soc-full-synth/archive/6ed4604cff77c9cc975d64fa50bc67b00de2d4eb.zip' -o /tmp/sky130-source/designs.zip
+          unzip -q /tmp/sky130-source/designs.zip '*/src/*.v' -d /tmp/sky130-source
+          find /tmp/sky130-source -path '*/src/*.v' -type f -exec cp {} libraries/sky130/verilog/ \;
+          test "$(find libraries/sky130/verilog -maxdepth 1 -name '*.v' | wc -l)" -eq 35
+          curl -fL --retry 3 'https://raw.githubusercontent.com/siliconcompiler/lambdapdk/e8d9fbe31e7ab1c0f82db86c9ae3539b8b622727/lambdapdk/sky130/libs/sky130hd/nldm/sky130_fd_sc_hd__tt_025C_1v80.lib.gz' -o libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz
+          test "$(sha1sum libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz | cut -d' ' -f1)" = 'e032d41deb2875be28cfa184b279c64bff6ccd57'
+          curl -fL --retry 3 'https://raw.githubusercontent.com/siliconcompiler/lambdapdk/e8d9fbe31e7ab1c0f82db86c9ae3539b8b622727/LICENSE' -o libraries/sky130/LICENSES/Apache-2.0
+          cat > libraries/sky130/LICENSES/MIT-LICENSE <<'EOF'
+          MIT License
+
+          Copyright (c) 2026 Param Saini
+
+          Permission is hereby granted, free of charge, to any person obtaining a copy
+          of this software and associated documentation files (the "Software"), to deal
+          in the Software without restriction, including without limitation the rights
+          to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+          copies of the Software, and to permit persons to whom the Software is
+          furnished to do so, subject to the following conditions:
+
+          The above copyright notice and this permission notice shall be included in all
+          copies or substantial portions of the Software.
+
+          THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+          IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+          FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+          AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+          LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+          OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+          SOFTWARE.
+          EOF
+          cat > libraries/sky130/SOURCES.md <<'EOF'
+          # SKY130 library sources
+
+          This directory contains pinned source files used by the FPGA Playground SKY130
+          hierarchical Verilog and Liberty import regression.
+
+          ## Gate-level Verilog
+
+          - Source repository: https://github.com/wilson/risc-v-soc-full-synth
+          - Pinned commit: `6ed4604cff77c9cc975d64fa50bc67b00de2d4eb`
+          - Source directory: `src/`
+          - Files copied: all 35 `.v` files from that directory
+          - License: MIT; copyright notice from the upstream README is retained in
+            `LICENSES/MIT-LICENSE`.
+          - The Verilog files are copied without modification.
+
+          ## SKY130 standard-cell Liberty
+
+          - Source repository: https://github.com/siliconcompiler/lambdapdk
+          - Pinned commit: `e8d9fbe31e7ab1c0f82db86c9ae3539b8b622727`
+          - Source path: `lambdapdk/sky130/libs/sky130hd/nldm/sky130_fd_sc_hd__tt_025C_1v80.lib.gz`
+          - License: Apache-2.0; see `LICENSES/Apache-2.0`.
+          - The compressed file is preserved byte-for-byte. The upstream version includes
+            the repository's documented `dont_use` additions; it is not represented as
+            an unmodified Google/SkyWater PDK source file.
+          - The compressed source SHA-1 Git blob ID is
+            `e032d41deb2875be28cfa184b279c64bff6ccd57`.
+
+          These files are third-party source materials, kept separate from the
+          FPGA Playground application code. Refer to the upstream repositories for
+          additional project and PDK documentation.
+          EOF
+      - name: Verify and commit library assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gzip -t libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz
+          test "$(find libraries/sky130/verilog -maxdepth 1 -name '*.v' | wc -l)" -eq 35
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/import-sky130-libraries.yml
+          git add libraries/sky130
+          git commit -m 'Add pinned SKY130 Verilog and Liberty libraries'
+          git push origin HEAD:test/commit-sky130-regression-fixtures
