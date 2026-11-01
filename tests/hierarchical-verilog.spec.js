@@ -46,10 +46,21 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
   const netlist = ['module mapped_top(input wire a, input wire b, input wire clk, output wire y, output wire z, output wire w, output wire v, output wire q, output wire qn);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));',' SKY_DFF_X1 u_dff (.CLK(clk), .D(a), .Q(q), .Q_N(qn));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(netlist);
+  const parsedPortReport = await page.evaluate(source => {
+    const mod = window.fpgaVerilogProject.parseVerilog(source, 'diagnostic.v').get('mapped_top');
+    return { header: mod.header, ports: mod.ports.map(port => ({ name: port.name, direction: port.direction })) };
+  }, netlist);
+  console.log('MAPPED_PORT_REPORT ' + JSON.stringify(parsedPortReport));
   await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('SKY_AND2_X1');
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' });
+  const graphInputReport = await page.evaluate(() => ({
+    module: window.fpgaVerilogProject.state.current.module.name,
+    ports: window.fpgaVerilogProject.state.current.module.ports.map(port => ({ name: port.name, direction: port.direction })),
+    inputNodes: window.fpgaNodes.filter(node => node.type === 'INPUT').map(node => node.name)
+  }));
+  console.log('MAPPED_GRAPH_REPORT ' + JSON.stringify(graphInputReport));
   const inputControls = page.locator('#editorControls .control');
   await expect(inputControls).toHaveCount(3);
   await inputControls.filter({ hasText: 'Input a' }).locator('button').click();
@@ -113,7 +124,10 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     const node = child && window.fpgaNodes.find(n => n.name === child.name);
     return { moduleCount: project.modules.size, topInstances: top?.instances.length || 0,
       topUnresolved: top?.instances.filter(x => x.unresolved).length ?? -1,
-      childName: child?.name || null, childType: child?.type || null, hasSelectedNode: !!node, designs };
+      childName: child?.name || null, childType: child?.type || null,
+      childGraphNodeId: child?.graphNodeId ?? null,
+      graphNodeNames: window.fpgaNodes.map(n => ({ id: n.id, name: n.name, type: n.type })),
+      hasSelectedNode: !!node, designs };
   });
   expect(report.moduleCount).toBeGreaterThan(20);
   expect(report.topInstances).toBeGreaterThan(0);
