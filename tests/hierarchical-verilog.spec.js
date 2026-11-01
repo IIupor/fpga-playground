@@ -130,8 +130,8 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     '    .rx_data_4(rx_data[4]), .rx_data_5(rx_data[5]), .rx_data_6(rx_data[6]), .rx_data_7(rx_data[7]),',
     '    .rx_error(rx_error), .rx_valid(rx_valid));',
     'endmodule'
-  ].join('\\n');
-  const topSource = hierarchyTop + '\\n' + socTopSource;
+  ].join('\n');
+  const topSource = hierarchyTop + '\n' + socTopSource;
   await page.locator('#verilogFile').setInputFiles({ name: 'soc_top.v', mimeType: 'text/plain', buffer: Buffer.from(topSource) });
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 120000 });
   await expect(page.locator('#editorMessage')).toContainText('0 unresolved instances');
