@@ -199,54 +199,72 @@ for (const name of circuits) {
       };
     });
     console.log('ISCAS89_ACCEPTANCE', name, JSON.stringify({ ...report, pageErrors }));
-    const imported = await page.evaluate(() => ({
-      nodes: window.fpgaNodes.map(node => ({
-        id: node.id, type: node.type, name: node.name,
-        outputNames: [...(node.outputNames || [])]
-      })),
-      wires: window.fpgaWires.map(wire => ({
-        from: wire.from, to: wire.to, toPin: wire.toPin || 0
-      }))
-    }));
-    const nodesByKey = new Map(imported.nodes.map(node => [node.type + ':' + node.name, node]));
-    const nodeByName = (type, name) => nodesByKey.get(type + ':' + name);
-    const drivers = new Map();
-    for (const input of circuit.inputs) {
-      const node = nodeByName('INPUT', input);
-      expect(node, name + ': primary input ' + input + ' must be imported').toBeTruthy();
-      drivers.set(input, node);
-    }
-    for (const gate of circuit.gates) {
-      const node = nodeByName(gate.type, gate.name);
-      expect(node, name + ': gate instance ' + gate.name + ' must be imported as ' + gate.type).toBeTruthy();
-      const pins = gate.type === 'DFF' && gate.pins.length === 3
-        ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
-      expect(node.outputNames, name + ': output net for ' + gate.name).toContain(pins[0]);
-      expect(drivers.has(pins[0]), name + ': net ' + pins[0] + ' must have a unique driver').toBe(false);
-      drivers.set(pins[0], node);
-    }
-    const expectedWireKeys = [];
-    for (const gate of circuit.gates) {
-      const node = nodeByName(gate.type, gate.name);
-      const pins = gate.type === 'DFF' && gate.pins.length === 3
-        ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
-      for (let pin = 1; pin < pins.length; pin++) {
-        const source = drivers.get(pins[pin]);
-        expect(source, name + ': source net ' + pins[pin] + ' for ' + gate.name + ' must have a driver').toBeTruthy();
-        expectedWireKeys.push(source.id + ':' + node.id + ':' + (pin - 1));
+    const structure = await page.evaluate(({ inputs, outputs, gates, expectedNodeCount, expectedWireCount }) => {
+      const nodes = [...window.fpgaNodes], wires = [...window.fpgaWires];
+      const key = (type, name) => type + ':' + name;
+      const nodeByKey = new Map(nodes.map(node => [key(node.type, node.name), node]));
+      const drivers = new Map(), expectedWires = new Map(), actualWires = new Map();
+      const errors = [];
+      let errorCount = 0;
+      const error = message => { errorCount++; if (errors.length < 20) errors.push(message); };
+      const addExpectedWire = (from, to, pin) => {
+        const id = from + ':' + to + ':' + pin;
+        expectedWires.set(id, (expectedWires.get(id) || 0) + 1);
+      };
+      for (const input of inputs) {
+        const node = nodeByKey.get(key('INPUT', input));
+        if (!node) error('Missing primary input ' + input);
+        else drivers.set(input, node);
       }
-    }
-    for (const output of circuit.outputs) {
-      const target = nodeByName('OUTPUT', output);
-      const source = drivers.get(output);
-      expect(target, name + ': primary output ' + output + ' must be imported').toBeTruthy();
-      expect(source, name + ': primary output ' + output + ' must have a driver').toBeTruthy();
-      expectedWireKeys.push(source.id + ':' + target.id + ':0');
-    }
-    const actualWireKeys = imported.wires.map(wire => wire.from + ':' + wire.to + ':' + wire.toPin).sort();
-    expect(actualWireKeys, name + ': every imported wire must connect the correct source net to the correct gate/output pin')
-      .toEqual(expectedWireKeys.sort());
-    expect(report.nodes, name + ': exact primary-port and gate node count').toBe(circuit.inputs.length + circuit.outputs.length + circuit.gates.length);
+      for (const gate of gates) {
+        const node = nodeByKey.get(key(gate.type, gate.name));
+        if (!node) { error('Missing ' + gate.type + ' gate instance ' + gate.name); continue; }
+        const pins = gate.type === 'DFF' && gate.pins.length === 3
+          ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
+        if (!(node.outputNames || []).includes(pins[0])) error('Wrong output net for ' + gate.name + ': expected ' + pins[0]);
+        if (drivers.has(pins[0])) error('Multiple drivers for net ' + pins[0]);
+        else drivers.set(pins[0], node);
+      }
+      for (const gate of gates) {
+        const node = nodeByKey.get(key(gate.type, gate.name));
+        if (!node) continue;
+        const pins = gate.type === 'DFF' && gate.pins.length === 3
+          ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
+        for (let pin = 1; pin < pins.length; pin++) {
+          const source = drivers.get(pins[pin]);
+          if (!source) error('No driver for ' + pins[pin] + ' feeding ' + gate.name);
+          else addExpectedWire(source.id, node.id, pin - 1);
+        }
+      }
+      for (const output of outputs) {
+        const target = nodeByKey.get(key('OUTPUT', output));
+        const source = drivers.get(output);
+        if (!target) error('Missing primary output ' + output);
+        if (!source) error('No driver for primary output ' + output);
+        if (target && source) addExpectedWire(source.id, target.id, 0);
+      }
+      for (const wire of wires) {
+        const id = wire.from + ':' + wire.to + ':' + (wire.toPin || 0);
+        actualWires.set(id, (actualWires.get(id) || 0) + 1);
+      }
+      for (const [id, count] of expectedWires) {
+        if (actualWires.get(id) !== count) error('Missing/incorrect wire ' + id + ' (expected ' + count + ', got ' + (actualWires.get(id) || 0) + ')');
+      }
+      for (const [id, count] of actualWires) {
+        if (expectedWires.get(id) !== count) error('Unexpected/duplicate wire ' + id + ' (actual ' + count + ', expected ' + (expectedWires.get(id) || 0) + ')');
+      }
+      if (nodes.length !== expectedNodeCount) error('Node count mismatch: expected ' + expectedNodeCount + ', got ' + nodes.length);
+      if (wires.length !== expectedWireCount) error('Wire count mismatch: expected ' + expectedWireCount + ', got ' + wires.length);
+      return { errorCount, errors, nodeCount: nodes.length, wireCount: wires.length };
+    }, {
+      inputs: circuit.inputs, outputs: circuit.outputs, gates: circuit.gates,
+      expectedNodeCount: circuit.inputs.length + circuit.outputs.length + circuit.gates.length,
+      expectedWireCount: circuit.expectedWires
+    });
+    expect(structure.errorCount, name + ': imported graph must exactly match every source net and pin; errors: ' + structure.errors.join('; '))
+      .toBe(0);
+    expect(report.nodes, name + ': exact primary-port and gate node count')
+      .toBe(circuit.inputs.length + circuit.outputs.length + circuit.gates.length);
     expect(report.wires, name + ': exact structural connection count').toBe(circuit.expectedWires);
     expect(pageErrors, name + ': no browser runtime errors').toEqual([]);
     expect(report.nodes, name + ': every placed block must render').toBe(report.renderedNodes);
