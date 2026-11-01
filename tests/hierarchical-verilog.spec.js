@@ -19,7 +19,7 @@ test('imports a multi-module Verilog project and navigates down and up the hiera
   await expect(child).toHaveCount(1);
   await child.click();
   await page.keyboard.press('Shift+E');
-  await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / u_leaf / leaf');
+  await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / middle / u_leaf / leaf');
   await page.keyboard.press('Control+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('top / u_middle / middle');
   await page.locator('#hierarchyUp').click();
@@ -49,8 +49,10 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('SKY_AND2_X1');
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' });
-  await page.locator('#editorControls button').nth(0).click();
-  await page.locator('#editorControls button').nth(1).click();
+  const inputControls = page.locator('#editorControls .control');
+  await expect(inputControls).toHaveCount(3);
+  await inputControls.filter({ hasText: 'Input a' }).locator('button').click();
+  await inputControls.filter({ hasText: 'Input b' }).locator('button').click();
   await expect(cell).toContainText('VALUE: 1');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' })).toContainText('VALUE: 0');
   const custom = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_buf' });
