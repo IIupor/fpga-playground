@@ -53,7 +53,9 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
     return {
       parserPorts: mod.ports.map(port => ({ name: port.name, direction: port.direction })),
       projectPorts: projectTop.ports.map(port => ({ name: port.name, direction: port.direction })),
-      projectTopNames: project.tops.map(top => top.name)
+      projectTopNames: project.tops.map(top => top.name),
+      graphInputs: window.fpgaVerilogProject.graphFor(projectTop, []).nodes.filter(node => node.type === 'INPUT').map(node => node.name),
+      portsAfterGraph: projectTop.ports.map(port => ({ name: port.name, direction: port.direction }))
     };
   }, netlist);
   console.log('MAPPED_PORT_REPORT ' + JSON.stringify(parsedPortReport));
@@ -136,6 +138,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
       hasSelectedNode: !!node, designs };
   });
   expect(report.moduleCount).toBeGreaterThan(20);
+  console.log('SKY130_REPORT ' + JSON.stringify(report));
   expect(report.topInstances).toBeGreaterThan(0);
   expect(report.topUnresolved).toBe(0);
   expect(report.hasSelectedNode).toBe(true);
