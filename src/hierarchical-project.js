@@ -451,7 +451,7 @@ function setupUI() {
       else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);
-  window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,get state(){return state;},importProject};
+  window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,hasHierarchicalInstances,get state(){return state;},importProject};
 }
 setupUI();
 })();).map((key,index)=>({name:'IN'+index,index,direction:'INPUT',base:'IN'+index,width:1}));
