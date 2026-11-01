@@ -283,7 +283,7 @@ function graphFor(mod,path) {
     // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
     const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
     const output=pins[0],gateInputs=pins.slice(1);
-    const node=add(gateTypes[gate.kind],gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1))});
+    const node=add(gateTypes[gate.kind],gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
     drivers.set(output,{node,pin:0});
   }
   for(const inst of mod.instances){
@@ -314,10 +314,140 @@ function graphFor(mod,path) {
     for(const assign of mod.assigns){const source=drivers.get(assign.from);if(source&&drivers.get(assign.to)!==source){drivers.set(assign.to,source);changed=true;}}
     if(!changed)break;
   }
+  // Connect primitive gates as well as module/Liberty instances.
+  for(const node of nodes){
+    (node.gateInputSignals||[]).forEach((signal,index)=>{
+      const source=drivers.get(signal);
+      if(source) wires.push({id:id++,from:source.node.id,fromPin:source.pin||0,to:node.id,toPin:index});
+    });
+  }
   for(const inst of mod.instances){
     const node=nodes.find(n=>n.id===inst.graphNodeId);
     let inputPorts=inst._inputPorts;
-    if(!inputPorts.length) inputPorts=Object.keys(inst.connections).filter(k=>k[0]==='$').map((key,index)=>({name:'IN'+index,index,direction:'INPUT',base:'IN'+index,width:1}));
+    if(!inputPorts.length) inputPorts=Object.keys(inst.connections).filter(k=>k[0]==='
+  for(const port of outputs){
+    const target=nodes.find(n=>n.type==='OUTPUT'&&n.name===port.name),source=drivers.get(port.name);
+    if(source) wires.push({id:id++,from:source.node.id,fromPin:source.pin||0,to:target.id,toPin:0});
+  }
+  const columns=new Map();
+  for(const node of nodes){
+    const column=node.type==='INPUT'?0:node.type==='OUTPUT'?1000:Math.max(1,Math.min(20,Math.floor(node.id/18)));
+    if(!columns.has(column))columns.set(column,[]);
+    columns.get(column).push(node);
+  }
+  const keys=[...columns.keys()].sort((a,b)=>a-b);
+  for(let ci=0;ci<keys.length;ci++) columns.get(keys[ci]).forEach((node,index)=>{node.x=40+ci*220;node.y=35+index*105;});
+  return {nodes,wires,nextId:id};
+}
+function renderModule(mod,path) {
+  const graph=graphFor(mod,path);
+  state.current={module:mod,path:path.slice(),graph};
+  window.fpgaLoadCircuit(graph.nodes,graph.wires,graph.nextId);
+  window.fpgaFitView?.();
+  updateNav();
+}
+function updateNav() {
+  const nav=$('hierarchyStatus');if(!nav)return;
+  const names=[];
+  if(state.stack.length){
+    names.push(state.stack[0].module.name);
+    for(let i=1;i<state.stack.length;i++) names.push(state.stack[i].path[state.stack[i].path.length-1],state.stack[i].module.name);
+    if(state.current) names.push(state.current.path[state.current.path.length-1],state.current.module.name);
+  } else if(state.current) names.push(state.current.module.name);
+  nav.textContent='Hierarchy: '+names.join(' / ');
+  $('hierarchyUp').disabled=!state.stack.length;
+}
+function enterSelected() {
+  const selection=window.fpgaSelected;
+  const node=selection?.kind==='node'?window.fpgaNodes.find(n=>n.id===selection.id):null;
+  if(!node?.moduleType){$('editorMessage').textContent=node?.cellType?'Library cell '+node.cellType+' is a leaf cell.':'Select a hierarchical module instance first.';return;}
+  const child=state.project.modules.get(node.moduleType);
+  if(!child){$('editorMessage').textContent='Module definition is unavailable: '+node.moduleType;return;}
+  if(state.current.path.includes(node.name)){$('editorMessage').textContent='Recursive hierarchy detected; navigation stopped.';return;}
+  state.stack.push({module:state.current.module,path:state.current.path,graph:state.current.graph});
+  renderModule(child,state.current.path.concat(node.name));
+  $('editorMessage').textContent='Entered '+node.name+' ('+child.name+'). Press Ctrl+E to return to parent.';
+}
+function leave() {
+  if(!state.stack.length)return;
+  const parent=state.stack.pop();
+  state.current={module:parent.module,path:parent.path,graph:parent.graph};
+  window.fpgaLoadCircuit(parent.graph.nodes,parent.graph.wires,parent.graph.nextId);
+  window.fpgaFitView?.();
+  updateNav();
+  $('editorMessage').textContent='Returned to '+parent.module.name+'.';
+}
+function installProject(project,topName) {
+  const top=project.modules.get(topName)||project.tops[0];
+  state.project=project;state.stack=[];
+  renderModule(top,[]);
+  const unresolved=[...project.modules.values()].reduce((count,mod)=>count+mod.instances.filter(inst=>inst.unresolved).length,0);
+  $('editorMessage').textContent='Imported hierarchical project: '+project.modules.size+' Verilog modules, '+project.cells.size+' Liberty cells, '+unresolved+' unresolved instances. Top: '+top.name+'.';
+}
+function setupUI() {
+  const toolbar=$('importVerilog')?.parentElement;
+  if(!toolbar||$('importLibraries'))return;
+  const button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load libraries';toolbar.appendChild(button);
+  const fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib';fileInput.hidden=true;toolbar.appendChild(fileInput);
+  const nav=document.createElement('div');nav.className='editor-toolbar';nav.style.marginTop='8px';
+  nav.innerHTML='<span id="hierarchyStatus" class="status-chip">Hierarchy: —</span><button id="hierarchyUp" class="toolbtn" disabled>Parent (Ctrl+E)</button><span class="editor-hint">Select a module instance and press Shift+E to enter.</span><span id="libraryStatus" class="status-chip">No libraries loaded</span>';
+  toolbar.after(nav);
+  button.addEventListener('click',()=>fileInput.click());
+  fileInput.addEventListener('change',async()=>{
+    try{
+      const incoming=await Promise.all([...fileInput.files].map(async file=>({name:file.name,text:await file.text()})));
+      const checkModules=new Map(),checkCells=new Map();
+      for(const file of [...state.libraries,...incoming]){
+        if(/\.lib$/i.test(file.name)){
+          for(const [name,cell] of parseLiberty(file.text,file.name)){if(checkCells.has(name))throw Error('Duplicate Liberty cell '+name);checkCells.set(name,cell);}
+        } else mergeModules(checkModules,parseVerilog(file.text,file.name),file.name);
+      }
+      state.libraries.push(...incoming);
+      $('libraryStatus').textContent=state.libraries.length+' library file(s) · '+checkCells.size+' Liberty cells · '+checkModules.size+' Verilog modules';
+      $('editorMessage').textContent='Loaded '+incoming.length+' library file(s).';
+    } catch(error){$('editorMessage').textContent='Library load failed: '+error.message;}
+    finally{fileInput.value='';}
+  });
+  $('hierarchyUp').addEventListener('click',leave);
+  document.addEventListener('keydown',event=>{
+    if(event.target instanceof HTMLElement&&/INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
+    if(event.shiftKey&&!event.ctrlKey&&!event.altKey&&event.key.toLowerCase()==='e'){event.preventDefault();enterSelected();}
+    else if(event.ctrlKey&&!event.shiftKey&&!event.altKey&&event.key.toLowerCase()==='e'){event.preventDefault();leave();}
+  });
+  const importButton=$('importVerilog'),area=$('verilogText'),verilogFile=$('verilogFile');
+  function importProject(source,topName){
+    const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
+    area.value=source;
+    installProject(project,topName||project.tops[0].name);
+    return true;
+  }
+  document.addEventListener('click',event=>{
+    if(event.target!==importButton||!area.value.trim())return;
+    try{
+      const parsed=parseVerilog(area.value,'design.v');
+      const declared=new Set(parsed.keys());
+      const hasHierarchy=[...parsed.values()].some(mod=>mod.instances.some(inst=>declared.has(inst.type)));
+      // Some legacy ISCAS89 files declare a helper module named "dff".
+      // A second module declaration alone does not make the design hierarchical.
+      if(!hasHierarchy&&!state.libraries.length)return;
+      event.preventDefault();event.stopImmediatePropagation();importProject(area.value);
+    } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
+  },true);
+  document.addEventListener('change',event=>{
+    if(event.target!==verilogFile||!verilogFile.files?.[0])return;
+    const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
+    selectedFile.text().then(source=>{
+      const parsed=parseVerilog(source,selectedFile.name);
+      const declared=new Set(parsed.keys());
+      const hasHierarchy=[...parsed.values()].some(mod=>mod.instances.some(inst=>declared.has(inst.type)));
+      if(hasHierarchy||state.libraries.length)importProject(source);
+      else {area.value=source;importButton.click();}
+    }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
+  },true);
+  window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,get state(){return state;},importProject};
+}
+setupUI();
+})();).map((key,index)=>({name:'IN'+index,index,direction:'INPUT',base:'IN'+index,width:1}));
     inputPorts.forEach((port,index)=>{
       const signal=portSignal(port,inst),source=drivers.get(signal);
       if(source) wires.push({id:id++,from:source.node.id,fromPin:source.pin||0,to:node.id,toPin:index});
@@ -421,17 +551,24 @@ function setupUI() {
   }
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
-    const count=[...area.value.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;
-    if(count<2&&!state.libraries.length)return;
-    try{event.preventDefault();event.stopImmediatePropagation();importProject(area.value);}
-    catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
+    try{
+      const parsed=parseVerilog(area.value,'design.v');
+      const declared=new Set(parsed.keys());
+      const hasHierarchy=[...parsed.values()].some(mod=>mod.instances.some(inst=>declared.has(inst.type)));
+      // Some legacy ISCAS89 files declare a helper module named "dff".
+      // A second module declaration alone does not make the design hierarchical.
+      if(!hasHierarchy&&!state.libraries.length)return;
+      event.preventDefault();event.stopImmediatePropagation();importProject(area.value);
+    } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
   },true);
   document.addEventListener('change',event=>{
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     selectedFile.text().then(source=>{
-      const count=[...source.matchAll(/\bmodule\s+[A-Za-z_$][\w$]*/g)].length;
-      if(count>=2||state.libraries.length)importProject(source);
+      const parsed=parseVerilog(source,selectedFile.name);
+      const declared=new Set(parsed.keys());
+      const hasHierarchy=[...parsed.values()].some(mod=>mod.instances.some(inst=>declared.has(inst.type)));
+      if(hasHierarchy||state.libraries.length)importProject(source);
       else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);
