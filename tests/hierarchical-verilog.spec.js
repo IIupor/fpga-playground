@@ -1,6 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
@@ -107,19 +108,21 @@ test('rejects duplicate Liberty cell definitions without discarding already load
 
 test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level blocks', async ({ page }) => {
   test.setTimeout(180000);
-  const fixtureDir = path.join(__dirname, 'fixtures', 'sky130');
-  test.skip(!fs.existsSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib')), 'SKY130 PDK fixtures are provisioned by the PDK-enabled CI workflows');
-  const liberty = fs.readFileSync(path.join(fixtureDir, 'sky130_fd_sc_hd__tt_025C_1v80.lib'));
-  const libraryFiles = fs.readdirSync(fixtureDir).filter(name => name.endsWith('.v') && name !== 'soc_top.v');
+  const fixtureDir = path.join(__dirname, '..', 'libraries', 'sky130');
+  const verilogDir = path.join(fixtureDir, 'verilog');
+  const libertyPath = path.join(fixtureDir, 'liberty', 'sky130_fd_sc_hd__tt_025C_1v80.lib.gz');
+  test.skip(!fs.existsSync(libertyPath), 'Pinned SKY130 libraries are stored in libraries/sky130');
+  const liberty = zlib.gunzipSync(fs.readFileSync(libertyPath));
+  const libraryFiles = fs.readdirSync(verilogDir).filter(name => name.endsWith('.v') && name !== 'soc_top.v');
   const libraryInputs = [
     { name: 'sky130_fd_sc_hd__tt_025C_1v80.lib', mimeType: 'text/plain', buffer: liberty },
-    ...libraryFiles.map(name => ({ name, mimeType: 'text/plain', buffer: fs.readFileSync(path.join(fixtureDir, name)) }))
+    ...libraryFiles.map(name => ({ name, mimeType: 'text/plain', buffer: fs.readFileSync(path.join(verilogDir, name)) }))
   ];
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
   await expect(page.locator('#libraryStatus')).toContainText('Verilog modules', { timeout: 120000 });
 
-  const socTopSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
+  const socTopSource = fs.readFileSync(path.join(verilogDir, 'soc_top.v'), 'utf8');
   // The upstream exported soc_top is already flattened to standard cells. Add a
   // small structural wrapper around a real mapped block so this fixture also
   // exercises a genuine module-definition edge and Shift+E/Ctrl+E navigation.
