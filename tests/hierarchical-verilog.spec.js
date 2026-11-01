@@ -119,14 +119,27 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
   await expect(page.locator('#libraryStatus')).toContainText('Verilog modules', { timeout: 120000 });
 
-  const topSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
+  const socTopSource = fs.readFileSync(path.join(fixtureDir, 'soc_top.v'), 'utf8');
+  // The upstream exported soc_top is already flattened to standard cells. Add a
+  // small structural wrapper around a real mapped block so this fixture also
+  // exercises a genuine module-definition edge and Shift+E/Ctrl+E navigation.
+  const hierarchyTop = [
+    'module hierarchy_test_top(input wire clk, input wire rst_n, input wire rx_in, output wire [7:0] rx_data, output wire rx_error, output wire rx_valid);',
+    '  uart_rx u_uart_rx (.clk(clk), .rst_n(rst_n), .rx_in(rx_in),',
+    '    .rx_data_0(rx_data[0]), .rx_data_1(rx_data[1]), .rx_data_2(rx_data[2]), .rx_data_3(rx_data[3]),',
+    '    .rx_data_4(rx_data[4]), .rx_data_5(rx_data[5]), .rx_data_6(rx_data[6]), .rx_data_7(rx_data[7]),',
+    '    .rx_error(rx_error), .rx_valid(rx_valid));',
+    'endmodule'
+  ].join('\\n');
+  const topSource = hierarchyTop + '\\n' + socTopSource;
   await page.locator('#verilogFile').setInputFiles({ name: 'soc_top.v', mimeType: 'text/plain', buffer: Buffer.from(topSource) });
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 120000 });
   await expect(page.locator('#editorMessage')).toContainText('0 unresolved instances');
 
   const report = await page.evaluate(() => {
     const project = window.fpgaVerilogProject.state.project;
-    const top = project.modules.get('soc_top');
+    const top = project.modules.get('hierarchy_test_top');
+    const socTop = project.modules.get('soc_top');
     const selectedNames = ['uart_rx','apb_spi','apb_i2c','clk_rst_ctrl','boot_rom','sys_ctrl','icache','dma_axi_master','dcache','pll_ctrl'];
     const designs = selectedNames.map(fileName => {
       const mod = [...project.modules.values()].find(m => m.source === fileName + '.v');
@@ -137,8 +150,8 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     });
     const selectedInstance = top?.instances.find(instance => !!instance.definition) || null;
     const node = selectedInstance && window.fpgaNodes.find(n => n.id === selectedInstance.graphNodeId);
-    return { moduleCount: project.modules.size, topInstances: top?.instances.length || 0,
-      topUnresolved: top?.instances.filter(x => x.unresolved).length ?? -1,
+    return { moduleCount: project.modules.size, topInstances: socTop?.instances.length || 0,
+      topUnresolved: socTop?.instances.filter(x => x.unresolved).length ?? -1,
       childName: selectedInstance?.name || null, childType: selectedInstance?.type || null,
       selectedNodeId: selectedInstance?.graphNodeId ?? null,
       hasSelectedNode: !!node, designs };
@@ -161,7 +174,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   await expect(childNode).toHaveCount(1);
   await childNode.click();
   await page.keyboard.press('Shift+E');
-  await expect(page.locator('#hierarchyStatus')).toContainText('soc_top / ' + report.childName + ' / ' + report.childType);
+  await expect(page.locator('#hierarchyStatus')).toContainText('hierarchy_test_top / ' + report.childName + ' / ' + report.childType);
   await page.keyboard.press('Control+E');
-  await expect(page.locator('#hierarchyStatus')).toContainText('soc_top');
+  await expect(page.locator('#hierarchyStatus')).toContainText('hierarchy_test_top');
 });
