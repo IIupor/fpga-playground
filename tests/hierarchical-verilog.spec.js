@@ -7,6 +7,7 @@ test.beforeEach(async ({ page }) => { await page.goto('/'); });
 test('imports a multi-module Verilog project and navigates down and up the hierarchy', async ({ page }) => {
   const source = ['module leaf(input wire [1:0] a, output wire y);','  and g1 (y, a[1], a[0]);','endmodule','module middle(input wire [1:0] a, output wire y);','  leaf u_leaf (.a(a), .y(y));','endmodule','module top(input wire [1:0] a, output wire y);','  middle u_middle (.a(a), .y(y));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(source);
+  expect(await page.evaluate(text => window.fpgaVerilogProject.hasHierarchicalInstances(text), source)).toBe(true);
   await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#hierarchyStatus')).toContainText('top');
