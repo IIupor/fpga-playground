@@ -61,20 +61,20 @@ function parseVerilog(source,label) {
   const clean=stripComments(source), modules=new Map();
   // Scan module boundaries explicitly. This handles ANSI/non-ANSI headers,
   // parameter lists and modules without a parenthesized port list.
-  const declarations=/\\bmodule\\s+([A-Za-z_$][\\w$]*)/gi;
+  const declarations=/\bmodule\s+([A-Za-z_$][\w$]*)/gi;
   let declaration;
   while((declaration=declarations.exec(clean))){
     const name=declaration[1];
     let cursor=declarations.lastIndex;
-    while(/\\s/.test(clean[cursor]||''))cursor++;
+    while(/\s/.test(clean[cursor]||''))cursor++;
     if(clean[cursor]==='#'){
       cursor++;
-      while(/\\s/.test(clean[cursor]||''))cursor++;
+      while(/\s/.test(clean[cursor]||''))cursor++;
       if(clean[cursor]==='('){
         let depth=1;cursor++;
         while(cursor<clean.length&&depth){if(clean[cursor]==='(')depth++;else if(clean[cursor]===')')depth--;cursor++;}
       }
-      while(/\\s/.test(clean[cursor]||''))cursor++;
+      while(/\s/.test(clean[cursor]||''))cursor++;
     }
     let header='';
     if(clean[cursor]==='('){
@@ -93,15 +93,15 @@ function parseVerilog(source,label) {
   for(const mod of modules.values()){
     for(const statement of mod.body.split(';')){
       const s=statement.trim(); if(!s) continue;
-      const assign=s.match(/^assign\\s+([A-Za-z_$][\\w$]*(?:\\s*\\[[^\\]]+\\])?)\\s*=\\s*([^;]+)$/i);
+      const assign=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
-      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\\s+(?:\\w+\\s*)?\\(([^()]*)\\)$/i);
+      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\s+(?:\w+\s*)?\(([^()]*)\)$/i);
       if(gate){mod.gates.push({kind:gate[1].toLowerCase(),pins:splitComma(gate[2])});continue;}
-      const instance=s.match(/^([A-Za-z_$][\\w$]*)\\s*(?:#\\s*\\([\\s\\S]*?\\)\\s*)?([A-Za-z_$][\\w$]*)\\s*\\(([\\s\\S]*)\\)$/);
+      const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
       if(instance){
         const connections={};let positional=0;
         for(const p of splitComma(instance[3])){
-          const named=p.match(/^\\.([A-Za-z_$][\\w$]*)\\s*\\((.*)\\)$/);
+          const named=p.match(/^\.([A-Za-z_$][\w$]*)\s*\((.*)\)$/);
           if(named) connections[named[1]]=named[2].trim();
           else connections['$'+(positional++)]=p.trim();
         }
