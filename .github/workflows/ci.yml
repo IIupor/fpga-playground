@@ -1,5 +1,8 @@
 name: FPGA Playground tests
 
+permissions:
+  contents: write
+
 on:
   push:
   pull_request:
@@ -33,7 +36,7 @@ jobs:
           find /tmp/sky130-vendor -path '*/src/*.v' -type f -exec cp {} libraries/sky130/verilog/ \;
           test "$(find libraries/sky130/verilog -maxdepth 1 -name '*.v' | wc -l)" -eq 35
           curl -fL --retry 3 'https://raw.githubusercontent.com/siliconcompiler/lambdapdk/e8d9fbe31e7ab1c0f82db86c9ae3539b8b622727/lambdapdk/sky130/libs/sky130hd/nldm/sky130_fd_sc_hd__tt_025C_1v80.lib.gz' -o libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz
-          test "$(sha1sum libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz | cut -d' ' -f1)" = 'e032d41deb2875be28cfa184b279c64bff6ccd57'
+          test "$(git hash-object libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz)" = 'e032d41deb2875be28cfa184b279c64bff6ccd57'
           gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz > tests/fixtures/sky130/sky130_fd_sc_hd__tt_025C_1v80.lib
           curl -fL --retry 3 'https://raw.githubusercontent.com/siliconcompiler/lambdapdk/e8d9fbe31e7ab1c0f82db86c9ae3539b8b622727/LICENSE' -o libraries/sky130/LICENSES/Apache-2.0
           cat > libraries/sky130/LICENSES/MIT-LICENSE <<'EOF'
@@ -85,7 +88,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add libraries/sky130
-          if ! git diff --cached --quiet; then
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]] && ! git diff --cached --quiet; then
             git commit -m 'Add pinned SKY130 Verilog and Liberty libraries'
             git push origin HEAD:${GITHUB_REF_NAME}
           fi
