@@ -59,8 +59,8 @@ function parsePorts(header, body) {
 }
 function parseVerilog(source,label) {
   const clean=stripComments(source), modules=new Map();
-  const ident='[A-Za-z_$][\w$]*';
-  const re=new RegExp('\\bmodule\\s+('+ident+')\\s*(?:#\\s*\\([\\s\\S]*?\\)\\s*)?\\(([^;]*?)\\)\\s*;([\\s\\S]*?)\\bendmodule\\b','gi');
+  // Match module declarations with a regex literal to avoid dynamic-pattern escaping.
+  const re=/\bmodule\s+([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?\(([^;]*?)\)\s*;([\s\S]*?)\bendmodule\b/gi;
   for(const m of clean.matchAll(re)){
     const name=m[1];
     if(modules.has(name)) throw Error('Duplicate Verilog module '+name+' in '+label);
