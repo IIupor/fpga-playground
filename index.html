@@ -571,7 +571,8 @@ window.fpgaLegacyImport=importVerilog;
  document.addEventListener('click',e=>{
   if(e.target?.id!=='importVerilog'||!area.value.trim())return;
   let source=area.value;
-  source=source.replace(/\b(input|output)(?:\s+wire)?\s+([^;]+);/gi,(whole,kind,list)=>list.split(',').map(name=>`${kind} ${name.trim()};`).join('\n'));
+  // Normalize legacy body declarations only; never rewrite ANSI module ports.
+  source=source.replace(/(^|\n)([ \t]*)(input|output)(?:\s+wire)?\s+([^;]+);/gi,(whole,prefix,indent,kind,list)=>prefix+list.split(',').map(name=>indent+kind+' '+name.trim()+';').join('\n'));
   area.value=source;
  },true);
 })();
