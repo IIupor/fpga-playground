@@ -48,7 +48,13 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await page.locator('#verilogText').fill(netlist);
   const parsedPortReport = await page.evaluate(source => {
     const mod = window.fpgaVerilogProject.parseVerilog(source, 'diagnostic.v').get('mapped_top');
-    return { header: mod.header, ports: mod.ports.map(port => ({ name: port.name, direction: port.direction })) };
+    const project = window.fpgaVerilogProject.projectFrom([...window.fpgaVerilogProject.state.libraries, { name: 'design.v', text: source }]);
+    const projectTop = project.modules.get('mapped_top');
+    return {
+      parserPorts: mod.ports.map(port => ({ name: port.name, direction: port.direction })),
+      projectPorts: projectTop.ports.map(port => ({ name: port.name, direction: port.direction })),
+      projectTopNames: project.tops.map(top => top.name)
+    };
   }, netlist);
   console.log('MAPPED_PORT_REPORT ' + JSON.stringify(parsedPortReport));
   await page.locator('#importVerilog').click();
