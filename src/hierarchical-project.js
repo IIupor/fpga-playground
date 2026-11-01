@@ -59,25 +59,49 @@ function parsePorts(header, body) {
 }
 function parseVerilog(source,label) {
   const clean=stripComments(source), modules=new Map();
-  // Match module declarations with a regex literal to avoid dynamic-pattern escaping.
-  const re=/\bmodule\s+([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?\(([^;]*?)\)\s*;([\s\S]*?)\bendmodule\b/gi;
-  for(const m of clean.matchAll(re)){
-    const name=m[1];
-    if(modules.has(name)) throw Error('Duplicate Verilog module '+name+' in '+label);
-    modules.set(name,{name,header:m[2],body:m[3],ports:parsePorts(m[2],m[3]),instances:[],gates:[],assigns:[],source:label});
+  // Scan module boundaries explicitly. This handles ANSI/non-ANSI headers,
+  // parameter lists and modules without a parenthesized port list.
+  const declarations=/\\bmodule\\s+([A-Za-z_$][\\w$]*)/gi;
+  let declaration;
+  while((declaration=declarations.exec(clean))){
+    const name=declaration[1];
+    let cursor=declarations.lastIndex;
+    while(/\\s/.test(clean[cursor]||''))cursor++;
+    if(clean[cursor]==='#'){
+      cursor++;
+      while(/\\s/.test(clean[cursor]||''))cursor++;
+      if(clean[cursor]==='('){
+        let depth=1;cursor++;
+        while(cursor<clean.length&&depth){if(clean[cursor]==='(')depth++;else if(clean[cursor]===')')depth--;cursor++;}
+      }
+      while(/\\s/.test(clean[cursor]||''))cursor++;
+    }
+    let header='';
+    if(clean[cursor]==='('){
+      const start=++cursor;let depth=1;
+      while(cursor<clean.length&&depth){if(clean[cursor]==='(')depth++;else if(clean[cursor]===')')depth--;cursor++;}
+      header=clean.slice(start,cursor-1);
+    }
+    const semicolon=clean.indexOf(';',cursor);
+    const end=clean.indexOf('endmodule',semicolon+1);
+    if(semicolon<0||end<0)throw Error('Malformed Verilog module '+name+' in '+label);
+    if(modules.has(name))throw Error('Duplicate Verilog module '+name+' in '+label);
+    const body=clean.slice(semicolon+1,end);
+    modules.set(name,{name,header,body,ports:parsePorts(header,body),instances:[],gates:[],assigns:[],source:label});
+    declarations.lastIndex=end+'endmodule'.length;
   }
   for(const mod of modules.values()){
     for(const statement of mod.body.split(';')){
       const s=statement.trim(); if(!s) continue;
-      const assign=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);
+      const assign=s.match(/^assign\\s+([A-Za-z_$][\\w$]*(?:\\s*\\[[^\\]]+\\])?)\\s*=\\s*([^;]+)$/i);
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
-      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf)\s+(?:\w+\s*)?\(([^()]*)\)$/i);
+      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\\s+(?:\\w+\\s*)?\\(([^()]*)\\)$/i);
       if(gate){mod.gates.push({kind:gate[1].toLowerCase(),pins:splitComma(gate[2])});continue;}
-      const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
+      const instance=s.match(/^([A-Za-z_$][\\w$]*)\\s*(?:#\\s*\\([\\s\\S]*?\\)\\s*)?([A-Za-z_$][\\w$]*)\\s*\\(([\\s\\S]*)\\)$/);
       if(instance){
         const connections={};let positional=0;
         for(const p of splitComma(instance[3])){
-          const named=p.match(/^\.([A-Za-z_$][\w$]*)\s*\((.*)\)$/);
+          const named=p.match(/^\\.([A-Za-z_$][\\w$]*)\\s*\\((.*)\\)$/);
           if(named) connections[named[1]]=named[2].trim();
           else connections['$'+(positional++)]=p.trim();
         }
@@ -85,7 +109,7 @@ function parseVerilog(source,label) {
       }
     }
   }
-  if(!modules.size) throw Error('No Verilog module declarations found in '+label);
+  if(!modules.size)throw Error('No Verilog module declarations found in '+label);
   return modules;
 }
 function evalLibertyFunction(expression,env) {
@@ -254,9 +278,11 @@ function graphFor(mod,path) {
     drivers.set(port.name,{node,pin:0});
   }
   for(const port of outputs) add('OUTPUT',port.name,1,0,{inputNames:[port.name]});
-  const gateTypes={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',buf:'BUF'};
+  const gateTypes={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',buf:'BUF',dff:'DFF'};
   for(const gate of mod.gates){
-    const output=gate.pins[0],gateInputs=gate.pins.slice(1);
+    // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
+    const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
+    const output=pins[0],gateInputs=pins.slice(1);
     const node=add(gateTypes[gate.kind],gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1))});
     drivers.set(output,{node,pin:0});
   }
