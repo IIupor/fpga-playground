@@ -417,9 +417,9 @@ function setupUI() {
   const importButton=$('importVerilog'),area=$('verilogText'),verilogFile=$('verilogFile');
   function hasHierarchicalInstances(source){
     const clean=stripComments(source);
-    const declared=new Set([...clean.matchAll(/\\bmodule\\s+([A-Za-z_$][\\w$]*)/gi)].map(match=>match[1].toLowerCase()));
+    const declared=new Set([...clean.matchAll(/\bmodule\s+([A-Za-z_$][\w$]*)/gi)].map(match=>match[1].toLowerCase()));
     if(declared.size<2)return false;
-    const instances=/(?:^|;)\\s*([A-Za-z_$][\\w$]*)\\s*(?:#\\s*\\([\\s\\S]*?\\)\\s*)?([A-Za-z_$][\\w$]*)\\s*\\(/gm;
+    const instances=/(?:^|;)\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
     let match;
     while((match=instances.exec(clean))){
       const type=match[1].toLowerCase();
