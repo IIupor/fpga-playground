@@ -208,7 +208,8 @@ for (const name of circuits) {
         from: wire.from, to: wire.to, toPin: wire.toPin || 0
       }))
     }));
-    const nodeByName = (type, name) => imported.nodes.find(node => node.type === type && node.name === name);
+    const nodesByKey = new Map(imported.nodes.map(node => [node.type + ':' + node.name, node]));
+    const nodeByName = (type, name) => nodesByKey.get(type + ':' + name);
     const drivers = new Map();
     for (const input of circuit.inputs) {
       const node = nodeByName('INPUT', input);
