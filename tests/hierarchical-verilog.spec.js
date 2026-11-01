@@ -108,10 +108,10 @@ test('rejects duplicate Liberty cell definitions without discarding already load
 
 test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level blocks', async ({ page }) => {
   test.setTimeout(180000);
-  const fixtureDir = path.join(__dirname, '..', 'libraries', 'sky130');
-  const verilogDir = path.join(fixtureDir, 'verilog');
-  const libertyPath = path.join(fixtureDir, 'liberty', 'sky130_fd_sc_hd__tt_025C_1v80.lib.gz');
-  test.skip(!fs.existsSync(libertyPath), 'Pinned SKY130 libraries are stored in libraries/sky130');
+  const benchmarkDir = path.join(__dirname, '..', 'benchmarks', 'sky130');
+  const verilogDir = path.join(benchmarkDir, 'verilog');
+  const libertyPath = path.join(__dirname, '..', 'libraries', 'sky130', 'liberty', 'sky130_fd_sc_hd__tt_025C_1v80.lib.gz');
+  test.skip(!fs.existsSync(libertyPath), 'Pinned SKY130 SoC regression designs are stored in benchmarks/sky130');
   const liberty = zlib.gunzipSync(fs.readFileSync(libertyPath));
   const libraryFiles = fs.readdirSync(verilogDir).filter(name => name.endsWith('.v') && name !== 'soc_top.v');
   const libraryInputs = [
