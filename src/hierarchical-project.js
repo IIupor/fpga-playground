@@ -345,9 +345,12 @@ function graphFor(mod,path) {
   return {nodes,wires,nextId:id};
 }
 function renderModule(mod,path) {
+  console.log('HIER_RENDER_PRE',JSON.stringify({name:mod.name,ports:mod.ports.map(p=>({name:p.name,direction:p.direction}))}));
   const graph=graphFor(mod,path);
+  console.log('HIER_RENDER_POST_GRAPH',JSON.stringify({name:mod.name,ports:mod.ports.map(p=>({name:p.name,direction:p.direction})),inputs:graph.nodes.filter(n=>n.type==='INPUT').map(n=>n.name)}));
   state.current={module:mod,path:path.slice(),graph};
   window.fpgaLoadCircuit(graph.nodes,graph.wires,graph.nextId);
+  console.log('HIER_RENDER_POST_LOAD',JSON.stringify({name:mod.name,ports:mod.ports.map(p=>({name:p.name,direction:p.direction}))}));
   window.fpgaFitView?.();
   updateNav();
 }
@@ -438,8 +441,11 @@ function setupUI() {
   }
   function importProject(source,topName){
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
+    const selectedTop=project.modules.get(topName||project.tops[0].name);
+    console.log('HIER_IMPORT',JSON.stringify({libraryFiles:state.libraries.map(f=>f.name),sourceHeader:source.slice(0,240),top:selectedTop?.name,topHeader:selectedTop?.header,ports:selectedTop?.ports?.map(p=>({name:p.name,direction:p.direction}))}));
     area.value=source;
     installProject(project,topName||project.tops[0].name);
+    console.log('HIER_IMPORT_DONE',JSON.stringify({current:state.current?.module?.name,ports:state.current?.module?.ports?.map(p=>({name:p.name,direction:p.direction}))}));
     return true;
   }
   document.addEventListener('click',event=>{
