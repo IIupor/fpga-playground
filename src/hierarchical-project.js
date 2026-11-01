@@ -429,20 +429,6 @@ function setupUI() {
     }
     return false;
   }
-  function hasHierarchicalInstances(source){
-    const clean=stripComments(source);
-    const declared=new Set([...clean.matchAll(/\bmodule\s+([A-Za-z_$][\w$]*)/gi)].map(match=>match[1].toLowerCase()));
-    if(declared.size<2)return false;
-    const instances=/(?:^|;)\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
-    let match;
-    while((match=instances.exec(clean))){
-      const type=match[1].toLowerCase();
-      // ISCAS89 netlists often declare "module dff" only to describe a
-      // primitive DFF model; dff instances must remain on the legacy path.
-      if(declared.has(type)&&type!=='dff')return true;
-    }
-    return false;
-  }
   function importProject(source,topName){
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
     area.value=source;
