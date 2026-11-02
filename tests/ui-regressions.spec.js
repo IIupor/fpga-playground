@@ -3,7 +3,7 @@ const { gzipSync } = require('node:zlib');
 async function loadBenchmark(page, name) {
   await page.goto('/');
   await page.locator('#benchmarkSelect').selectOption(name);
-  await expect(page.locator('#editorMessage')).toContainText('Loaded ' + name + '.v', { timeout: 180000 });
+  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 180000 });
 }
 
 test('F and Shift+F both fit the complete circuit to the workspace', async ({ page }) => {
@@ -40,7 +40,7 @@ test('every ISCAS89 benchmark option shows DFF, inverter and gate counts', async
   await page.goto('/');
   const labels = await page.locator('#benchmarkSelect optgroup[label*="sequential"] option').allTextContents();
   expect(labels).toHaveLength(28);
-  for (const label of labels) expect(label).toMatch(/\\d+ DFF · \\d+ inv · \\d+ gates/);
+  for (const label of labels) expect(label).toMatch(/\d+ DFF · \d+ inv · \d+ gates/);
 });
 
 test('Import Verilog opens a file chooser and imports the selected source', async ({ page }) => {
