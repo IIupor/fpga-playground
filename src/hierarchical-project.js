@@ -162,30 +162,63 @@ function parseSequentialGroup(body,kind) {
     ? {kind:'ff',stateVar:args[0]||'IQ',stateVarN:args[1]||'IQ_N',nextState:attr('next_state'),clockedOn:attr('clocked_on'),clear:attr('clear'),preset:attr('preset')}
     : {kind:'latch',stateVar:args[0]||'IQ',stateVarN:args[1]||'IQ_N',dataIn:attr('data_in'),enable:attr('enable')||attr('gate'),clear:attr('clear'),preset:attr('preset')};
 }
-function parseLiberty(source,label) {
-  const cells=new Map(); let i=0;
-  while((i=source.indexOf('cell',i))>=0){
-    const m=source.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);
-    if(!m){i+=4;continue;}
-    const name=m[1].trim().replace(/^['"]|['"]$/g,''),start=i+m[0].length;
-    let depth=1,j=start;
-    for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}
-    const body=source.slice(start,j-1),pins=[];let p=0;
-    while((p=body.indexOf('pin',p))>=0){
-      const pm=body.slice(p).match(/^pin\s*\(\s*([^\)]+)\s*\)\s*\{/);
-      if(!pm){p+=3;continue;}
-      const ps=p+pm[0].length;let d=1,k=ps;
-      for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}
-      const pb=body.slice(ps,k-1);
-      const direction=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1];
-      const fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
-      const pinName=pm[1].trim().replace(/^['"]|['"]$/g,'');
-      pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:(direction||'').toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
-      p=k;
-    }
-    cells.set(name,{name,pins,sequential:parseSequentialGroup(body,'ff')||parseSequentialGroup(body,'latch'),source:label});i=j;
+function maskLibertyComments(source) {
+  // Preserve offsets while hiding comments, so regex matches cannot mistake
+  // commented-out cell()/pin() declarations for real groups.
+  const chars=source.split('');
+  let quote=null,escaped=false,lineComment=false,blockComment=false;
+  for(let i=0;i<source.length;i++){
+    const ch=source[i],next=source[i+1];
+    if(lineComment){if(ch==='\n')lineComment=false;else chars[i]=' ';continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=false;}else if(ch!=='\n'&&ch!=='\r')chars[i]=' ';continue;}
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(ch==='/'&&next==='*'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=true;continue;}
+    if(ch==='/'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;lineComment=true;continue;}
+    if(ch==='"'||ch==="'")quote=ch;
   }
-  if(!cells.size) throw Error('No Liberty cell() definitions found in '+label);
+  return chars.join('');
+}
+function libertyGroupEnd(source,openBrace,label) {
+  let depth=0,quote=null,escaped=false,lineComment=false,blockComment=false;
+  for(let i=openBrace;i<source.length;i++){
+    const ch=source[i],next=source[i+1];
+    if(lineComment){if(ch==='\n')lineComment=false;continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){i++;blockComment=false;}continue;}
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(ch==='/'&&next==='*'){i++;blockComment=true;continue;}
+    if(ch==='/'&&next==='/'){i++;lineComment=true;continue;}
+    if(ch==='"'||ch==="'"){quote=ch;continue;}
+    if(ch==='{')depth++;
+    else if(ch==='}'&&--depth===0)return i;
+  }
+  throw Error('Unterminated Liberty group in '+label);
+}
+function parseLiberty(source,label) {
+  const cells=new Map(),masked=maskLibertyComments(source);let i=0;
+  while((i=masked.indexOf('cell',i))>=0){
+    const m=masked.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);
+    if(!m){i+=4;continue;}
+    const name=m[1].trim().replace(/^['"]|['"]$/g,''),open=i+m[0].length-1;
+    const j=libertyGroupEnd(source,open,label),body=source.slice(open+1,j),maskedBody=masked.slice(open+1,j),pins=[];
+    const pinPattern=/\bpin\s*\(\s*([^\)]+)\s*\)\s*\{/g;
+    let pm;
+    while((pm=pinPattern.exec(maskedBody))){
+      const pinOpen=open+1+pinPattern.lastIndex-1;
+      const pinEnd=libertyGroupEnd(source,pinOpen,label);
+      const pinBody=masked.slice(pinOpen+1,pinEnd);
+      const direction=(pinBody.match(/\bdirection\s*:\s*[\"']?(input|output|inout)[\"']?\s*;/i)||[])[1];
+      const fn=(pinBody.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
+      const pinName=pm[1].trim().replace(/^['"]|['"]$/g,'');
+      if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
+      pinPattern.lastIndex=pinEnd-(open+1)+1;
+    }
+    // Physical-only cells (e.g. decaps/taps) may legitimately expose no
+    // logical input/output pins. Keep them in the parsed library, but do not
+    // offer them as placeable schematic cells.
+    cells.set(name,{name,pins,sequential:parseSequentialGroup(body,'ff')||parseSequentialGroup(body,'latch'),source:label});
+    i=j+1;
+  }
+  if(!cells.size)throw Error('No Liberty cell() definitions found in '+label);
   return cells;
 }
 function mergeModules(target,source,label) {
@@ -450,7 +483,8 @@ function setupUI() {
     let cells;
     try{cells=[...getLoadedLibertyCells().values()].sort((a,b)=>a.name.localeCompare(b.name));}
     catch(error){list.replaceChildren();count.textContent='Library parse error';empty.textContent=error.message;empty.hidden=false;return;}
-    const query=(search?.value||'').trim().toLowerCase(),visible=cells.filter(cell=>cell.name.toLowerCase().includes(query));
+    const placeable=cells.filter(cell=>cell.pins.some(pin=>pin.direction==='OUTPUT'));
+    const query=(search?.value||'').trim().toLowerCase(),visible=placeable.filter(cell=>cell.name.toLowerCase().includes(query));
     list.replaceChildren();
     for(const cell of visible){
       const inputs=cell.pins.filter(pin=>pin.direction==='INPUT'||pin.direction==='INOUT').length;
@@ -460,9 +494,9 @@ function setupUI() {
       const meta=document.createElement('small');meta.style.color='var(--muted)';meta.textContent=inputs+' inputs · '+outputs+' outputs'+(cell.sequential?' · '+cell.sequential.kind:'');
       item.append(title,meta);item.addEventListener('click',()=>addLibraryCell(cell));list.append(item);
     }
-    count.textContent=visible.length+' / '+cells.length+' cells';
+    count.textContent=visible.length+' / '+placeable.length+' placeable cells';
     empty.hidden=visible.length>0;
-    if(!cells.length)empty.textContent='No Liberty cells loaded. Use Load libraries to add a .lib or .lib.gz file.';
+    if(!placeable.length)empty.textContent='No placeable Liberty cells found. Physical-only cells without a logical output are hidden.';
     else if(!visible.length)empty.textContent='No cells match this filter.';
   }
   libraryBrowserButton.addEventListener('click',()=>{
@@ -492,7 +526,7 @@ function setupUI() {
       $('libraryStatus').textContent=state.libraries.length+' library file(s) · '+checkCells.size+' Liberty cells · '+checkModules.size+' Verilog modules';
       refreshLibraryCellList();
       $('editorMessage').textContent='Loaded '+incoming.length+' library file(s).';
-    } catch(error){$('editorMessage').textContent='Library load failed: '+error.message;}
+    } catch(error){$('editorMessage').textContent='Library load failed: '+error.message;console.error('LIBRARY_LOAD_FAILED',error);}
     finally{fileInput.value='';}
   });
   $('hierarchyUp').addEventListener('click',leave);

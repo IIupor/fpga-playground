@@ -6,7 +6,7 @@ async function loadBenchmark(page, name) {
   await expect(page.locator('#editorMessage')).toContainText(/^(Imported|Loaded )/, { timeout: 180000 });
 }
 
-test('F and Shift+F both fit the complete circuit to the workspace', async ({ page }) => {
+test('Fit to view works with F, Shift+F and the Russian keyboard layout', async ({ page }) => {
   await loadBenchmark(page, 'c432');
   const viewport = page.locator('#editorViewport');
   const stage = page.locator('#editorStage');
@@ -24,23 +24,34 @@ test('F and Shift+F both fit the complete circuit to the workspace', async ({ pa
     const view = await viewport.boundingBox();
     return box && view && box.width <= view.width + 2 && box.height <= view.height + 2;
   }).toBe(true);
+  await page.locator('#editorZoomIn').click();
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'а', code: 'KeyF', bubbles: true, cancelable: true })));
+  await expect.poll(async () => {
+    const box = await stage.boundingBox();
+    const view = await viewport.boundingBox();
+    return box && view && box.width <= view.width + 2 && box.height <= view.height + 2;
+  }).toBe(true);
 });
 
 test('ISCAS89 benchmark statistics are calculated from the selected circuit', async ({ page }) => {
   await loadBenchmark(page, 's298');
-  await expect(page.locator('#benchmarkGateCount')).toHaveText('Gates: 75');
-  await expect(page.locator('#benchmarkInverterCount')).toHaveText('Inverters: 44');
+  await expect(page.locator('#benchmarkGateCount')).toHaveText('Gates: 119');
+  await expect(page.locator('#benchmarkInverterCount')).toHaveCount(0);
   await expect(page.locator('#benchmarkDffCount')).toHaveText('DFF: 14');
   await expect(page.locator('#benchmarkLatchCount')).toHaveText('Latches: 0');
   await expect(page.locator('#benchmarkSelect option:checked')).toContainText('14 DFF');
-  await expect(page.locator('#benchmarkSelect option:checked')).toContainText('75 gates');
+  await expect(page.locator('#benchmarkSelect option:checked')).toContainText('119 gates');
+  await expect(page.locator('#benchmarkSelect option:checked')).not.toContainText('inv');
 });
 
 test('every ISCAS89 benchmark option shows DFF, inverter and gate counts', async ({ page }) => {
   await page.goto('/');
   const labels = await page.locator('#benchmarkSelect optgroup[label*="sequential"] option').allTextContents();
   expect(labels).toHaveLength(28);
-  for (const label of labels) expect(label).toMatch(/\d+ DFF · \d+ inv · \d+ gates/);
+  for (const label of labels) {
+    expect(label).toMatch(/\d+ DFF · \d+ gates/);
+    expect(label).not.toContain(' inv ');
+  }
 });
 
 test('Import Verilog opens a file chooser and imports the selected source', async ({ page }) => {
@@ -63,7 +74,7 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
 });
 
-test('logic gates render standard SVG symbols instead of rectangular gate blocks', async ({ page }) => {
+test('logic gates render standard symbols and input/output terminals are mirrored', async ({ page }) => {
   await page.goto('/');
   for (const type of ['OR', 'XOR', 'NAND', 'NOR', 'XNOR', 'NOT']) {
     await page.locator('[data-add="' + type + '"]').click();
@@ -73,6 +84,20 @@ test('logic gates render standard SVG symbols instead of rectangular gate blocks
   }
   const and = page.locator('#editorStage g[data-node="3"]');
   await expect.poll(() => and.locator('.gate-symbol').count()).toBeGreaterThan(0);
+  await page.locator('[data-add="INPUT"]').click();
+  await page.locator('[data-add="OUTPUT"]').click();
+  const terminals = await page.evaluate(() => {
+    const groups = [...document.querySelectorAll('#editorStage g[data-node]')];
+    const input = groups.filter(g => [...g.querySelectorAll('.nodemeta')].some(t => t.textContent === 'INPUT')).at(-1);
+    const output = groups.filter(g => [...g.querySelectorAll('.nodemeta')].some(t => t.textContent === 'OUTPUT')).at(-1);
+    return { inputPinX: Number(input.querySelector('.nodepin').getAttribute('cx')),
+      outputPinX: Number(output.querySelector('.nodepin').getAttribute('cx')),
+      inputPath: input.querySelector('path.gate-symbol').getAttribute('d'),
+      outputPath: output.querySelector('path.gate-symbol').getAttribute('d') };
+  });
+  expect(terminals.inputPinX).toBe(112);
+  expect(terminals.outputPinX).toBe(0);
+  expect(terminals.inputPath).not.toBe(terminals.outputPath);
 });
 
 test('Library browser lists and places functional Liberty cells', async ({ page }) => {
@@ -105,6 +130,14 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   expect(details).toEqual({
     type: 'MODULE', cellType: 'AND2_X1', inputs: 2, outputs: 1, functions: { Y: 'A & B' }
   });
+  const geometry = await cell.evaluate(g => ({
+    pins: [...g.querySelectorAll('.nodepin')].map(p => [Number(p.getAttribute('cx')), Number(p.getAttribute('cy'))]),
+    leads: [...g.querySelectorAll('line.gate-symbol')].map(l => [Number(l.getAttribute('x1')),Number(l.getAttribute('y1')),Number(l.getAttribute('x2')),Number(l.getAttribute('y2'))])
+  }));
+  expect(geometry.pins).toEqual([[0,30],[0,52],[150,30]]);
+  expect(geometry.leads).toContainEqual([6,30,18,30]);
+  expect(geometry.leads).toContainEqual([6,52,18,52]);
+  expect(geometry.leads).toContainEqual([132,30,144,30]);
 
   // Replace the example AND's output with the library cell output.
   await page.locator('#editorStage g[data-node="1"] .nodepin').click();

@@ -31,9 +31,9 @@ test('imports a multi-module Verilog project and navigates down and up the hiera
 test('loads multiple Liberty and Verilog libraries and simulates combinational and sequential cells', async ({ page }) => {
   page.on('console', message => console.log('BROWSER_CONSOLE ' + message.text()));
   page.on('pageerror', error => console.log('BROWSER_PAGEERROR ' + error.message));
-  const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : input; } pin(B) { direction : input; } pin(Y) { direction : output; function : "A & B"; } } }';
-  const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : input; } pin(Y) { direction : output; function : "!A"; } } }';
-  const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : input; } pin(D) { direction : input; } pin(Q) { direction : output; function : "IQ"; } pin(Q_N) { direction : output; function : "!IQ"; } } }';
+  const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : \"input\"; } pin(B) { direction : \"input\"; } pin(Y) { direction : \"output\"; function : "A & B"; } } }';
+  const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : \"input\"; } pin(Y) { direction : \"output\"; function : \"!A\"; } } cell(SKY_DECAP_X1) { area : 1; } }';
+  const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : \"input\"; } pin(D) { direction : \"input\"; } pin(Q) { direction : \"output\"; function : "IQ"; } pin(Q_N) { direction : \"output\"; function : "!IQ"; } } }';
   const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
   const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
   await page.locator('#importLibraries').click();
@@ -45,7 +45,9 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
     { name: 'custom_cells_2.v', mimeType: 'text/plain', buffer: Buffer.from(verilogLib2) }
   ]);
   await expect(page.locator('#libraryStatus')).toContainText('5 library file(s)');
-  await expect(page.locator('#libraryStatus')).toContainText('3 Liberty cells');
+  await expect(page.locator('#libraryStatus')).toContainText('4 Liberty cells');
+  await page.locator('#libraryBrowserButton').click();
+  await expect(page.locator('#libraryCellList button').filter({ hasText: 'SKY_DECAP_X1' })).toHaveCount(0);
   await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
   const netlist = ['module mapped_top(input wire a, input wire b, input wire clk, output wire y, output wire z, output wire w, output wire v, output wire q, output wire qn);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));',' SKY_DFF_X1 u_dff (.CLK(clk), .D(a), .Q(q), .Q_N(qn));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(netlist);
@@ -96,7 +98,7 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
 });
 
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
-  const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : input; } } }';
+  const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : \"input\"; } } }';
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
@@ -120,7 +122,12 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   ];
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
-  await expect(page.locator('#libraryStatus')).toContainText('Verilog modules', { timeout: 120000 });
+  await expect.poll(async () => {
+    const status = await page.locator('#libraryStatus').textContent();
+    const message = await page.locator('#editorMessage').textContent();
+    if (message?.startsWith('Library load failed:')) throw new Error(message);
+    return status || '';
+  }, { timeout: 120000 }).toContain('Verilog modules');
 
   const socTopSource = fs.readFileSync(path.join(verilogDir, 'soc_top.v'), 'utf8');
   // The upstream exported soc_top is already flattened to standard cells. Add a
