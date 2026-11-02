@@ -62,7 +62,7 @@ test('logic gates render standard SVG symbols instead of rectangular gate blocks
     await page.locator('[data-add="' + type + '"]').click();
     const gate = page.locator('#editorStage g[data-node]').last();
     await expect.poll(() => gate.locator('.gate-symbol').count()).toBeGreaterThan(0);
-    await expect(gate.locator('rect.nodebox')).toHaveAttribute('fill', 'transparent');
+    await expect(gate.locator('rect.nodebox')).toHaveCSS('opacity', '0');
   }
   const and = page.locator('#editorStage g[data-node="3"]');
   await expect.poll(() => and.locator('.gate-symbol').count()).toBeGreaterThan(0);
