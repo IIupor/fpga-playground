@@ -398,16 +398,90 @@ function setupUI() {
   let button=$('importLibraries');
   if(!button){button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load libraries';toolbar.appendChild(button);}
   let fileInput=$('libraryFiles');
-  if(!fileInput){fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib';fileInput.hidden=true;toolbar.appendChild(fileInput);}
+  if(!fileInput){fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib,.lib.gz';fileInput.hidden=true;toolbar.appendChild(fileInput);}
   if(!$('hierarchyStatus')){
     const nav=document.createElement('div');nav.className='editor-toolbar';nav.style.marginTop='8px';
     nav.innerHTML='<span id="hierarchyStatus" class="status-chip">Hierarchy: —</span><button id="hierarchyUp" class="toolbtn" disabled>Parent (Ctrl+E)</button><span class="editor-hint">Select a module instance and press Shift+E to enter.</span><span id="libraryStatus" class="status-chip">No libraries loaded</span>';
     toolbar.after(nav);
   }
+  let libraryBrowserButton=$('libraryBrowserButton');
+  if(!libraryBrowserButton){libraryBrowserButton=document.createElement('button');libraryBrowserButton.id='libraryBrowserButton';libraryBrowserButton.className='toolbtn';libraryBrowserButton.textContent='Library';button.after(libraryBrowserButton);}
+  let libraryBrowser=$('libraryBrowser');
+  if(!libraryBrowser){
+    libraryBrowser=document.createElement('section');libraryBrowser.id='libraryBrowser';libraryBrowser.hidden=true;
+    libraryBrowser.style.cssText='margin-top:10px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--surface2)';
+    libraryBrowser.innerHTML='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><strong>Available library cells</strong><input id="libraryCellSearch" type="search" placeholder="Filter cells…" style="min-width:180px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"><span id="libraryCellCount" class="status-chip">0 cells</span></div><div id="libraryCellList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:7px;max-height:300px;overflow:auto"></div><p id="libraryCellEmpty" class="editor-hint">Load a Liberty (.lib or .lib.gz) library to browse and place its cells.</p>';
+    const nav=$('hierarchyStatus')?.closest('.editor-toolbar');(nav||toolbar).after(libraryBrowser);
+  }
+  let cachedLibraryCells=null,cachedLibrarySignature='';
+  function getLoadedLibertyCells(){
+    const signature=state.libraries.filter(file=>/\.lib$/i.test(file.name)).map(file=>file.name+':'+file.text.length).join('|');
+    if(cachedLibraryCells&&signature===cachedLibrarySignature)return cachedLibraryCells;
+    const cells=new Map();
+    for(const file of state.libraries)if(/\.lib$/i.test(file.name)){
+      for(const [name,cell] of parseLiberty(file.text,file.name))cells.set(name,cell);
+    }
+    cachedLibraryCells=cells;cachedLibrarySignature=signature;
+    return cells;
+  }
+  function addLibraryCell(cell){
+    const inputPins=cell.pins.filter(pin=>pin.direction==='INPUT'||pin.direction==='INOUT');
+    const outputPins=cell.pins.filter(pin=>pin.direction==='OUTPUT');
+    if(!outputPins.length){$('editorMessage').textContent='Cannot place '+cell.name+': the library cell has no output pin.';return;}
+    const nodes=[...(window.fpgaNodes||[])],wires=[...(window.fpgaWires||[])];
+    const id=Math.max(0,...nodes.map(node=>Number(node.id)||0),...wires.map(wire=>Number(wire.id)||0))+1;
+    const count=nodes.filter(node=>node.cellType===cell.name).length+1;
+    const nodeName='U_'+cell.name.replace(/[^A-Za-z0-9_$]/g,'_')+'_'+count;
+    const width=node=>['INPUT','OUTPUT','VDD','GND'].includes(node.type)?112:150;
+    const x=Math.max(40,...nodes.map(node=>node.x+width(node)+45));
+    const y=40;
+    const type=cell.sequential?.kind==='ff'?'DFF':cell.sequential?.kind==='latch'?'LATCH':'MODULE';
+    const node={id,type,name:nodeName,x,y,value:0,inputs:inputPins.length,outputs:outputPins.length,
+      inputNames:inputPins.map(pin=>pin.name),outputNames:outputPins.map(pin=>pin.name),
+      cellType:cell.name,cellFunctions:Object.fromEntries(outputPins.filter(pin=>pin.function).map(pin=>[pin.name,pin.function])),
+      cellSequential:cell.sequential||null,prevClock:0,state:0};
+    window.fpgaLoadCircuit([...nodes,node],wires,id+1);
+    window.fpgaFitView?.();
+    $('editorMessage').textContent='Placed library cell '+cell.name+'. Connect its pins to use it in the circuit.';
+  }
+  function refreshLibraryCellList(){
+    const list=$('libraryCellList'),search=$('libraryCellSearch'),count=$('libraryCellCount'),empty=$('libraryCellEmpty');
+    if(!list)return;
+    let cells;
+    try{cells=[...getLoadedLibertyCells().values()].sort((a,b)=>a.name.localeCompare(b.name));}
+    catch(error){list.replaceChildren();count.textContent='Library parse error';empty.textContent=error.message;empty.hidden=false;return;}
+    const query=(search?.value||'').trim().toLowerCase(),visible=cells.filter(cell=>cell.name.toLowerCase().includes(query));
+    list.replaceChildren();
+    for(const cell of visible){
+      const inputs=cell.pins.filter(pin=>pin.direction==='INPUT'||pin.direction==='INOUT').length;
+      const outputs=cell.pins.filter(pin=>pin.direction==='OUTPUT').length;
+      const item=document.createElement('button');item.type='button';item.className='toolbtn';item.style.cssText='text-align:left;display:flex;flex-direction:column;gap:3px;white-space:normal';
+      const title=document.createElement('strong');title.textContent=cell.name;
+      const meta=document.createElement('small');meta.style.color='var(--muted)';meta.textContent=inputs+' inputs · '+outputs+' outputs'+(cell.sequential?' · '+cell.sequential.kind:'');
+      item.append(title,meta);item.addEventListener('click',()=>addLibraryCell(cell));list.append(item);
+    }
+    count.textContent=visible.length+' / '+cells.length+' cells';
+    empty.hidden=visible.length>0;
+    if(!cells.length)empty.textContent='No Liberty cells loaded. Use Load libraries to add a .lib or .lib.gz file.';
+    else if(!visible.length)empty.textContent='No cells match this filter.';
+  }
+  libraryBrowserButton.addEventListener('click',()=>{
+    libraryBrowser.hidden=!libraryBrowser.hidden;
+    if(!libraryBrowser.hidden)refreshLibraryCellList();
+  });
+  $('libraryCellSearch').addEventListener('input',refreshLibraryCellList);
+  window.fpgaLibraryBrowser={refresh:refreshLibraryCellList,get cells(){return [...getLoadedLibertyCells().values()];},add:addLibraryCell};
   button.addEventListener('click',()=>fileInput.click());
   fileInput.addEventListener('change',async()=>{
     try{
-      const incoming=await Promise.all([...fileInput.files].map(async file=>({name:file.name,text:await file.text()})));
+      const incoming=await Promise.all([...fileInput.files].map(async file=>{
+       if(/\.lib\.gz$/i.test(file.name)){
+         if(typeof DecompressionStream==='undefined')throw Error('This browser cannot decompress .lib.gz files.');
+         const stream=file.stream().pipeThrough(new DecompressionStream('gzip'));
+         return {name:file.name.replace(/\.gz$/i,''),text:await new Response(stream).text()};
+       }
+       return {name:file.name,text:await file.text()};
+     }));
       const checkModules=new Map(),checkCells=new Map();
       for(const file of [...state.libraries,...incoming]){
         if(/\.lib$/i.test(file.name)){
@@ -416,6 +490,7 @@ function setupUI() {
       }
       state.libraries.push(...incoming);
       $('libraryStatus').textContent=state.libraries.length+' library file(s) · '+checkCells.size+' Liberty cells · '+checkModules.size+' Verilog modules';
+      refreshLibraryCellList();
       $('editorMessage').textContent='Loaded '+incoming.length+' library file(s).';
     } catch(error){$('editorMessage').textContent='Library load failed: '+error.message;}
     finally{fileInput.value='';}
@@ -439,6 +514,18 @@ function setupUI() {
     }
     return false;
   }
+  function hasLoadedLibraryInstances(source){
+    if(!state.libraries.length)return false;
+    const clean=stripComments(source),instanceTypes=new Set();
+    const pattern=/(?:^|;)\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
+    let match;while((match=pattern.exec(clean)))instanceTypes.add(match[1].toLowerCase());
+    if(!instanceTypes.size)return false;
+    const known=new Set([...getLoadedLibertyCells().keys()].map(name=>name.toLowerCase()));
+    for(const file of state.libraries)if(!/\.lib$/i.test(file.name)){
+      try{for(const name of parseVerilog(file.text,file.name).keys())known.add(name.toLowerCase());}catch(_){}
+    }
+    return [...instanceTypes].some(name=>known.has(name));
+  }
   function importProject(source,topName){
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
     const selectedTop=project.modules.get(topName||project.tops[0].name);
@@ -451,7 +538,7 @@ function setupUI() {
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
     try{
-      if(!hasHierarchicalInstances(area.value)&&!state.libraries.length)return;
+      if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();importProject(area.value);
     } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
   },true);
@@ -459,7 +546,7 @@ function setupUI() {
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     selectedFile.text().then(source=>{
-      if(hasHierarchicalInstances(source)||state.libraries.length)importProject(source);
+      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source))importProject(source);
       else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);

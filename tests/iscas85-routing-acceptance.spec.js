@@ -37,7 +37,11 @@ for (const [name, gateCount, baselineArea] of circuits) {
       for(const w of wires){const key=w.from+':'+(w.fromPin||0);fanoutCounts.set(key,(fanoutCounts.get(key)||0)+1)}
       const expectedJunctions=[...fanoutCounts.values()].filter(count=>count>1).reduce((sum,count)=>sum+count,0);
       const boxes = groups.map(g => {
-        const b = g.getBBox();
+        // Measure the physical block bounds, not the union of pins, labels,
+        // and gate artwork. Decorations can extend outside a block without
+        // representing a physical block overlap.
+        const bounds = g.querySelector('rect.nodebox');
+        const b = bounds ? bounds.getBBox() : {x:NaN,y:NaN,width:NaN,height:NaN};
         const m = /translate\(\s*([-+\d.eE]+)[,\s]+([-+\d.eE]+)\s*\)/.exec(g.getAttribute('transform') || '');
         const x = b.x + (m ? Number(m[1]) : 0);
         const y = b.y + (m ? Number(m[2]) : 0);
