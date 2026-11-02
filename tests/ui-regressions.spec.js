@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { gzipSync } = require('node:zlib');
 async function loadBenchmark(page, name) {
   await page.goto('/');
   await page.locator('#benchmarkSelect').selectOption(name);
@@ -78,9 +79,11 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
     '  }',
     '}'
   ].join('\n');
-  await page.evaluate(source => {
-    window.fpgaVerilogProject.state.libraries.push({ name: 'test.lib', text: source });
-  }, liberty);
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.locator('#importLibraries').click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({ name: 'test.lib.gz', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from(liberty)) });
+  await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
   await page.locator('#libraryBrowserButton').click();
   const cellButton = page.getByRole('button', { name: /AND2_X1/ });
   await expect(cellButton).toBeVisible();
