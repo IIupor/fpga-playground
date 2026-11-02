@@ -1,9 +1,9 @@
 const { test, expect } = require('@playwright/test');
 
 const cases = [
-  { name: 'c17', minNodes: 1 },
-  { name: 'c432', minNodes: 100 },
-  { name: 'c7552', minNodes: 1000 }
+  { name: 'c17', nodes: 13 },
+  { name: 'c432', nodes: 214 },
+  { name: 'c7552', nodes: 2646 }
 ];
 
 for (const circuit of cases) {
@@ -11,8 +11,8 @@ for (const circuit of cases) {
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(circuit.name);
     await page.locator('#loadBenchmark').click();
-    await expect(page.locator('#editorMessage')).toContainText(/^(Imported|Loaded )/, { timeout: 30000 });
-    await expect(page.locator('#editorMessage')).toContainText('logic levels');
+    await expect(page.locator('#editorStage g[data-node]')).toHaveCount(circuit.nodes, { timeout: 180000 });
+    await expect(page.locator('#editorStage path.editor-wire').first()).toBeVisible();
 
     const report = await page.locator('#editorStage').evaluate((svg) => {
       const groups = [...svg.querySelectorAll('g[data-node]')];
@@ -57,7 +57,7 @@ for (const circuit of cases) {
       };
     });
 
-    expect(report.nodes, 'benchmark should import a substantial circuit').toBeGreaterThanOrEqual(circuit.minNodes);
+    expect(report.nodes, 'benchmark should import the expected number of blocks').toBe(circuit.nodes);
     expect(report.wires, 'imported circuit should contain routed wires').toBeGreaterThan(0);
     expect(report.distinctColumns, 'layout should place nodes in multiple dependency columns').toBeGreaterThan(1);
     expect(report.missingGeometry, 'all blocks should have valid SVG geometry').toBe(0);
