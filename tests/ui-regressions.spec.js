@@ -36,6 +36,13 @@ test('ISCAS89 benchmark statistics are calculated from the selected circuit', as
   await expect(page.locator('#benchmarkSelect option:checked')).toContainText('75 gates');
 });
 
+test('every ISCAS89 benchmark option shows DFF, inverter and gate counts', async ({ page }) => {
+  await page.goto('/');
+  const labels = await page.locator('#benchmarkSelect optgroup[label*="sequential"] option').allTextContents();
+  expect(labels).toHaveLength(28);
+  for (const label of labels) expect(label).toMatch(/\\d+ DFF · \\d+ inv · \\d+ gates/);
+});
+
 test('Import Verilog opens a file chooser and imports the selected source', async ({ page }) => {
   await page.goto('/');
   const chooserPromise = page.waitForEvent('filechooser');
