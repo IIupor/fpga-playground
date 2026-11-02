@@ -490,7 +490,7 @@ for(const n of nodes){
   }
   const labelY=['INPUT','OUTPUT','VDD','GND'].includes(n.type)?cy+4:cy+5;
   g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
-  if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-4,'text-anchor':'middle',class:'nodemeta'},String(n.value)));
+  if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-4,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+String(n.value)));
   g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
   for(let i=0;i<s.ins;i++){
     const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
