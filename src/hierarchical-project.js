@@ -520,12 +520,9 @@ function setupUI() {
     const pattern=/(?:^|;)\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
     let match;while((match=pattern.exec(clean)))instanceTypes.add(match[1].toLowerCase());
     if(!instanceTypes.size)return false;
-    const known=new Set();
-    for(const file of state.libraries){
-      try{
-        if(/\.lib$/i.test(file.name))for(const name of parseLiberty(file.text,file.name).keys())known.add(name.toLowerCase());
-        else for(const name of parseVerilog(file.text,file.name).keys())known.add(name.toLowerCase());
-      }catch(_){}
+    const known=new Set([...getLoadedLibertyCells().keys()].map(name=>name.toLowerCase()));
+    for(const file of state.libraries)if(!/\.lib$/i.test(file.name)){
+      try{for(const name of parseVerilog(file.text,file.name).keys())known.add(name.toLowerCase());}catch(_){}
     }
     return [...instanceTypes].some(name=>known.has(name));
   }
