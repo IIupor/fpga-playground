@@ -170,19 +170,22 @@ function parseLiberty(source,label) {
     const name=m[1].trim().replace(/^['"]|['"]$/g,''),start=i+m[0].length;
     let depth=1,j=start;
     for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}
-    const body=source.slice(start,j-1),pins=[];let p=0;
-    while((p=body.indexOf('pin',p))>=0){
-      const pm=body.slice(p).match(/^pin\s*\(\s*([^\)]+)\s*\)\s*\{/);
-      if(!pm){p+=3;continue;}
-      const ps=p+pm[0].length;let d=1,k=ps;
-      for(;k<body.length&&d;k++){if(body[k]==='{')d++;else if(body[k]==='}')d--;}
+    const body=source.slice(start,j-1),pins=[];
+    // Liberty pin groups are often indented and may contain nested timing groups.
+    const pinPattern=/\\bpin\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/g;
+    let pm;
+    while((pm=pinPattern.exec(body))){
+      const ps=pinPattern.lastIndex;let depth=1,k=ps;
+      for(;k<body.length&&depth;k++){if(body[k]==='{')depth++;else if(body[k]==='}')depth--;}
+      if(depth!==0)throw Error('Unterminated Liberty pin '+pm[1].trim()+' in '+label);
       const pb=body.slice(ps,k-1);
-      const direction=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1];
-      const fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
-      const pinName=pm[1].trim().replace(/^['"]|['"]$/g,'');
-      pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:(direction||'').toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
-      p=k;
+      const direction=(pb.match(/\\bdirection\\s*:\\s*(input|output|inout)\\s*;/i)||[])[1];
+      const fn=(pb.match(/\\bfunction\\s*:\\s*([^;]+);/i)||[])[1];
+      const pinName=pm[1].trim().replace(/^['\"]|['\"]$/g,'');
+      if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['\"]|['\"]$/g,''):null});
+      pinPattern.lastIndex=k;
     }
+    if(!pins.length)throw Error('Liberty cell '+name+' in '+label+' has no pins with input/output direction.');
     cells.set(name,{name,pins,sequential:parseSequentialGroup(body,'ff')||parseSequentialGroup(body,'latch'),source:label});i=j;
   }
   if(!cells.size) throw Error('No Liberty cell() definitions found in '+label);

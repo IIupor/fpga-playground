@@ -37,7 +37,7 @@
 <section class="panel editor-panel"><div class="panelhead"><div><h2>Graphical circuit editor</h2><div class="eyebrow" style="margin-top:5px">Build · connect · simulate</div></div><span class="pill">BETA 01</span></div><div class="body">
 <div class="editor-toolbar"><button class="toolbtn" data-add="INPUT">＋ Input</button><button class="toolbtn" data-add="VDD">vdd! · 1</button><button class="toolbtn" data-add="GND">gnd! · 0</button><button class="toolbtn" data-add="AND">AND</button><button class="toolbtn" data-add="OR">OR</button><button class="toolbtn" data-add="XOR">XOR</button><button class="toolbtn" data-add="NOT">NOT</button><button class="toolbtn" data-add="NAND">NAND</button><button class="toolbtn" data-add="NOR">NOR</button><button class="toolbtn" data-add="XNOR">XNOR</button><button class="toolbtn" data-add="DFF">D flip-flop</button><button class="toolbtn" data-add="LATCH">D latch</button><button class="toolbtn" data-add="OUTPUT">＋ Output</button><button class="toolbtn" id="editorUndo" disabled>Undo</button><button class="toolbtn" id="editorRedo" disabled>Redo</button><button class="toolbtn" id="editorDelete">Delete selected</button><button class="toolbtn" id="editorReset">Reset example</button><button class="toolbtn" id="exportVerilog">Export Verilog</button><button class="toolbtn" id="importVerilog">Import Verilog</button><input id="verilogFile" type="file" accept=".v,.sv,.txt,text/plain" hidden></div>
 <div class="editor-toolbar" style="margin-top:10px"><label class="status-chip" style="display:flex;align-items:center;gap:8px">ISCAS’85 / ISCAS’89 benchmark<select id="benchmarkSelect" style="max-width:220px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"><option value="">Choose a circuit…</option><option value="c17">c17 · 6 gates</option><option value="c432">c432 · 171 gates</option><option value="c499">c499 · 174 gates</option><option value="c880">c880 · 323 gates</option><option value="c1355">c1355 · 518 gates</option><option value="c1908">c1908 · 479 gates · up to 8 inputs</option><option value="c2670">c2670 · 699 gates</option><option value="c3540">c3540 · 1,043 gates</option><option value="c5315">c5315 · 1,586 gates</option><option value="c6288">c6288 · 2,353 gates</option><option value="c7552">c7552 · 2,331 gates</option><optgroup label="ISCAS’89 · sequential"><option value="s27">s27 · 3 DFF · 8 gates</option><option value="s298">s298</option><option value="s344">s344</option><option value="s349">s349</option><option value="s382">s382</option><option value="s386">s386</option><option value="s400">s400</option><option value="s420">s420</option><option value="s444">s444</option><option value="s510">s510</option><option value="s526">s526</option><option value="s641">s641</option><option value="s713">s713</option><option value="s820">s820</option><option value="s832">s832</option><option value="s838">s838</option><option value="s953">s953</option><option value="s1196">s1196</option><option value="s1238">s1238</option><option value="s1423">s1423</option><option value="s1488">s1488</option><option value="s5378">s5378</option><option value="s9234">s9234</option><option value="s13207">s13207</option><option value="s15850">s15850</option><option value="s35932">s35932</option><option value="s38417">s38417</option><option value="s38584">s38584</option></optgroup></select></label><button class="toolbtn primary" id="loadBenchmark">Load benchmark</button><span class="editor-hint" style="margin:0">Loads an ISCAS’85 or ISCAS’89 Verilog benchmark from this repository.</span></div>
-<div class="editor-status" id="benchmarkStats" aria-live="polite" style="margin-top:8px"><span class="status-chip" id="benchmarkGateCount">Gates: —</span><span class="status-chip" id="benchmarkInverterCount">Inverters: —</span><span class="status-chip" id="benchmarkDffCount">DFF: —</span><span class="status-chip" id="benchmarkLatchCount">Latches: —</span></div>
+<div class="editor-status" id="benchmarkStats" aria-live="polite" style="margin-top:8px"><span class="status-chip" id="benchmarkGateCount">Gates: —</span><span class="status-chip" id="benchmarkDffCount">DFF: —</span><span class="status-chip" id="benchmarkLatchCount">Latches: —</span></div>
 <div class="editor-toolbar" style="margin-top:10px"><span class="status-chip">Selected block ports:</span><button class="toolbtn" id="inputMinus">− Input</button><button class="toolbtn" id="inputPlus">＋ Input</button><button class="toolbtn" id="outputMinus">− Output</button><button class="toolbtn" id="outputPlus">＋ Output</button><span class="editor-hint" style="margin:0">Adjust ports of the selected block (logic gates support 2–4 inputs).</span></div>
 <div class="editor-toolbar" id="instanceEditor" style="margin-top:10px;align-items:end"><label class="status-chip" style="display:grid;gap:5px">Instance / signal name<input id="instanceName" type="text" placeholder="Select a block" style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><label class="status-chip" style="display:grid;gap:5px">Input pin names<input id="inputPinNames" type="text" placeholder="A, B, ..." style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><label class="status-chip" style="display:grid;gap:5px">Output pin names<input id="outputPinNames" type="text" placeholder="Y, Q, ..." style="max-width:190px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"></label><button class="toolbtn" id="applyInstanceNames">Apply names</button><span class="editor-hint" style="margin:0">Select a block, enter comma-separated pin names, then apply. Instance names must be unique.</span></div>
 <textarea id="verilogText" aria-label="Verilog source" placeholder="Verilog source appears here after export; paste code here to import it." style="display:block;width:100%;min-height:150px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);color:var(--text);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace"></textarea>
@@ -478,9 +478,9 @@ for(const n of nodes){
     g.append(make('text',{x:left+8,y:cy+19,class:'nodemeta'},n.inputNames?.[1]||(n.type==='DFF'?'CLK':'EN')));
     g.append(make('text',{x:right-7,y:cy+4,'text-anchor':'end',class:'nodemeta'},n.outputNames?.[0]||'Q'));
   }else if(n.type==='INPUT'){
-    path('M 12 '+(cy-17)+' L '+right+' '+(cy-17)+' L '+right+' '+(cy+17)+' L 12 '+(cy+17)+' Z');line(0,cy,12,cy);
+    path('M 12 '+cy+' L 25 '+(cy-17)+' L '+right+' '+(cy-17)+' L '+right+' '+(cy+17)+' L 25 '+(cy+17)+' Z');line(right,cy,s.w,cy);
   }else if(n.type==='OUTPUT'){
-    path('M 12 '+(cy-17)+' L '+(right-13)+' '+(cy-17)+' L '+right+' '+cy+' L '+(right-13)+' '+(cy+17)+' L 12 '+(cy+17)+' Z');line(right,cy,s.w,cy);
+    path('M 12 '+(cy-17)+' L '+(right-13)+' '+(cy-17)+' L '+right+' '+cy+' L '+(right-13)+' '+(cy+17)+' L 12 '+(cy+17)+' Z');line(0,cy,12,cy);
   }else if(n.type==='VDD'){
     line(s.w/2,cy-17,s.w/2,cy-8);path('M '+(s.w/2)+' '+(cy-29)+' l -12 15 h 24 Z');line(s.w/2,cy+10,s.w/2,cy+17,{stroke:'var(--on)'});
   }else if(n.type==='GND'){
@@ -492,6 +492,10 @@ for(const n of nodes){
   g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
   if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-12,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+String(n.value)));
   g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
+  if(n.type==='MODULE'||n.type==='DFF'||n.type==='LATCH'){
+    for(let i=0;i<s.ins;i++){const y=30+i*22;line(6,y,left,y,{stroke:'var(--site-primary)','stroke-width':2});}
+    for(let i=0;i<s.outs;i++){const y=30+i*22;line(right,y,s.w-6,y,{stroke:'var(--site-primary)','stroke-width':2});}
+  }
   for(let i=0;i<s.ins;i++){
     const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
     p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p);
@@ -640,19 +644,18 @@ window.fpgaLegacyImport=importVerilog;
  const select=document.getElementById('benchmarkSelect'),button=document.getElementById('loadBenchmark'),area=document.getElementById('verilogText'),msg=document.getElementById('editorMessage');
  let activeRequest=0;
  const benchmark89Stats={"s27":[3,2,8],"s298":[14,44,75],"s344":[15,59,101],"s349":[15,57,104],"s382":[21,59,99],"s386":[6,41,118],"s400":[21,58,106],"s420":[16,78,140],"s444":[21,62,119],"s510":[6,32,179],"s526":[21,52,141],"s641":[19,272,107],"s713":[19,254,139],"s820":[5,33,256],"s832":[5,25,262],"s838":[32,158,288],"s953":[29,84,311],"s1196":[18,141,388],"s1238":[18,80,428],"s1423":[74,167,490],"s1488":[6,103,550],"s5378":[179,1775,1004],"s9234":[211,3570,2027],"s13207":[638,5378,2573],"s15850":[534,6324,3448],"s35932":[1728,3861,12204],"s38417":[1636,13470,8709],"s38584":[1426,7805,11448]};
-  for(const [name,counts] of Object.entries(benchmark89Stats)){const option=[...select.options].find(item=>item.value===name);if(option){option.dataset.baseLabel=name;option.textContent=name+' · '+counts[0]+' DFF · '+counts[1]+' inv · '+counts[2]+' gates';}}
+  for(const [name,counts] of Object.entries(benchmark89Stats)){const option=[...select.options].find(item=>item.value===name);if(option){option.dataset.baseLabel=name;option.textContent=name+' · '+counts[0]+' DFF · '+(counts[1]+counts[2])+' gates';}}
   function updateBenchmarkStats(name){
   const imported=window.fpgaNodes||[];
   const dffs=imported.filter(n=>n.type==='DFF').length;
   const latches=imported.filter(n=>n.type==='LATCH').length;
-  const inverters=imported.filter(n=>n.type==='NOT').length;
-  const gates=imported.filter(n=>['AND','OR','XOR','NAND','NOR','XNOR','BUF'].includes(n.type)||(n.type==='MODULE'&&!n.cellSequential)).length;
-  const counts={gates,inverters,dffs,latches};
-  for(const [id,label,value] of [['benchmarkGateCount','Gates',gates],['benchmarkInverterCount','Inverters',inverters],['benchmarkDffCount','DFF',dffs],['benchmarkLatchCount','Latches',latches]]){
+  const gates=imported.filter(n=>['AND','OR','XOR','NAND','NOR','XNOR','NOT','BUF'].includes(n.type)||(n.type==='MODULE'&&!n.cellSequential)).length;
+  const counts={gates,dffs,latches};
+  for(const [id,label,value] of [['benchmarkGateCount','Gates',gates],['benchmarkDffCount','DFF',dffs],['benchmarkLatchCount','Latches',latches]]){
    const el=document.getElementById(id);if(el)el.textContent=label+': '+value;
   }
   const option=[...select.options].find(item=>item.value===name);
-  if(option){option.dataset.baseLabel??=option.textContent.split(' · ')[0];option.textContent=option.dataset.baseLabel+' · '+dffs+' DFF · '+inverters+' inv · '+gates+' gates'+(latches?' · '+latches+' latches':'');}
+  if(option){option.dataset.baseLabel??=option.textContent.split(' · ')[0];option.textContent=option.dataset.baseLabel+' · '+dffs+' DFF · '+gates+' gates'+(latches?' · '+latches+' latches':'');}
   return counts;
  }
  async function loadBenchmark(){
@@ -812,7 +815,7 @@ window.fpgaLegacyImport=importVerilog;
  window.fpgaFitView=()=>fitToView(true);
  fit.addEventListener('click',fitToView);
  window.addEventListener('keydown',e=>{
-  if(e.key.toLowerCase()!=='f'||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(!(e.code==='KeyF'||['f','а'].includes(e.key.toLowerCase()))||e.ctrlKey||e.metaKey||e.altKey)return;
   const target=e.target||document.activeElement;
   if(target?.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target?.tagName||''))return;
   e.preventDefault();fitToView();
