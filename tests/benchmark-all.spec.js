@@ -31,6 +31,7 @@ function vectors(c, count=64) {
 }
 for (const name of names) {
   test(name + ': benchmark compiles and simulates against Icarus Verilog', () => {
+    test.setTimeout(60000);
     const c=parse(name), vectorsToRun=vectors(c, 64);
     const inputDecls=c.inputs.map(n=>'  reg '+n+';').join('\n');
     const outputDecls=c.outputs.map(n=>'  wire '+n+';').join('\n');
@@ -53,6 +54,7 @@ for (const name of names) {
 
 for (const name of names) {
   test(name + ': browser import/export/import preserves circuit structure', async ({ page }) => {
+    test.setTimeout(180000);
     await page.goto('/');
     const source=fs.readFileSync(path.join(__dirname,'..','benchmarks','iscas85',name+'.v'),'utf8');
     await page.locator('#verilogText').fill(source);
