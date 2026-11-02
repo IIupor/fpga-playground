@@ -639,36 +639,34 @@ window.fpgaLegacyImport=importVerilog;
   const dffs=imported.filter(n=>n.type==='DFF').length;
   const latches=imported.filter(n=>n.type==='LATCH').length;
   const inverters=imported.filter(n=>n.type==='NOT').length;
-  const gates=imported.filter(n=>['AND','OR','XOR','NAND','NOR','XNOR','BUF'].includes(n.type)||n.type==='MODULE'&&!n.cellSequential).length;
+  const gates=imported.filter(n=>['AND','OR','XOR','NAND','NOR','XNOR','BUF'].includes(n.type)||(n.type==='MODULE'&&!n.cellSequential)).length;
   const counts={gates,inverters,dffs,latches};
   for(const [id,label,value] of [['benchmarkGateCount','Gates',gates],['benchmarkInverterCount','Inverters',inverters],['benchmarkDffCount','DFF',dffs],['benchmarkLatchCount','Latches',latches]]){
    const el=document.getElementById(id);if(el)el.textContent=label+': '+value;
   }
   const option=[...select.options].find(item=>item.value===name);
-  if(option){option.dataset.baseLabel??=option.textContent.split(' · ')[0];option.textContent=dffs||latches
-    ? option.dataset.baseLabel+' · '+dffs+' DFF · '+gates+' gates'
-    : option.dataset.baseLabel+' · '+gates+' gates';}
+  if(option){option.dataset.baseLabel??=option.textContent.split(' · ')[0];option.textContent=(dffs||latches)?option.dataset.baseLabel+' · '+dffs+' DFF · '+gates+' gates':option.dataset.baseLabel+' · '+gates+' gates';}
   return counts;
  }
  async function loadBenchmark(){
   const name=select.value;if(!name){msg.textContent='Choose an ISCAS’85 or ISCAS’89 benchmark first.';return}
   const request=++activeRequest;let source=benchmarkSources[name];
-  button.disabled=true;button.textContent='Loading…';msg.textContent=\`Loading \${name}.v…\`;
+  button.disabled=true;button.textContent='Loading…';msg.textContent='Loading '+name+'.v…';
   try{
    if(!source&&name.startsWith('s')){
-    const url=new URL(\`benchmarks/iscas89/\${name}.v\`,document.baseURI);
+    const url=new URL('benchmarks/iscas89/'+name+'.v',document.baseURI);
     const response=await fetch(url.href,{cache:'no-cache'});
-    if(!response.ok)throw Error(\`HTTP \${response.status} while loading \${name}.v\`);
+    if(!response.ok)throw Error('HTTP '+response.status+' while loading '+name+'.v');
     source=await response.text();
    }
-   if(!source||!/^\\s*module\\s+/m.test(source))throw Error(\`Benchmark \${name} is empty or is not a Verilog module.\`);
+   if(!source||!/^\s*module\s+/m.test(source))throw Error('Benchmark '+name+' is empty or is not a Verilog module.');
    if(request!==activeRequest)return;
    area.value=source;
    document.getElementById('importVerilog').click();
-   if(!/^Imported\\b/.test(msg.textContent))throw Error(msg.textContent||'The Verilog importer did not report a successful import.');
+   if(!/^Imported\b/.test(msg.textContent))throw Error(msg.textContent||'The Verilog importer did not report a successful import.');
    const counts=updateBenchmarkStats(name);
-   msg.textContent=\`Loaded \${name}.v · \${counts.gates} gates · \${counts.inverters} inverters · \${counts.dffs} DFF · \${counts.latches} latches.\`;
-  }catch(error){if(request===activeRequest)msg.textContent=\`Could not load \${name}: \${error.message}.\`}
+   msg.textContent='Loaded '+name+'.v · '+counts.gates+' gates · '+counts.inverters+' inverters · '+counts.dffs+' DFF · '+counts.latches+' latches.';
+  }catch(error){if(request===activeRequest)msg.textContent='Could not load '+name+': '+error.message+'.'}
   finally{if(request===activeRequest){button.disabled=false;button.textContent='Load benchmark'}}
  }
  button.addEventListener('click',loadBenchmark);
