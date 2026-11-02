@@ -88,8 +88,8 @@ test('logic gates render standard symbols and input/output terminals are mirrore
   await page.locator('[data-add="OUTPUT"]').click();
   const terminals = await page.evaluate(() => {
     const groups = [...document.querySelectorAll('#editorStage g[data-node]')];
-    const input = groups.find(g => g.textContent.includes('IN1'));
-    const output = groups.find(g => g.textContent.includes('OUT1'));
+    const input = groups.filter(g => [...g.querySelectorAll('.nodemeta')].some(t => t.textContent === 'INPUT')).at(-1);
+    const output = groups.filter(g => [...g.querySelectorAll('.nodemeta')].some(t => t.textContent === 'OUTPUT')).at(-1);
     return { inputPinX: Number(input.querySelector('.nodepin').getAttribute('cx')),
       outputPinX: Number(output.querySelector('.nodepin').getAttribute('cx')),
       inputPath: input.querySelector('path.gate-symbol').getAttribute('d'),

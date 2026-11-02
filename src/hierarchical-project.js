@@ -172,15 +172,15 @@ function parseLiberty(source,label) {
     for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}
     const body=source.slice(start,j-1),pins=[];
     // Liberty pin groups are often indented and may contain nested timing groups.
-    const pinPattern=/\\bpin\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/g;
+    const pinPattern=/\bpin\s*\(\s*([^\)]+)\s*\)\s*\{/g;
     let pm;
     while((pm=pinPattern.exec(body))){
       const ps=pinPattern.lastIndex;let depth=1,k=ps;
       for(;k<body.length&&depth;k++){if(body[k]==='{')depth++;else if(body[k]==='}')depth--;}
       if(depth!==0)throw Error('Unterminated Liberty pin '+pm[1].trim()+' in '+label);
       const pb=body.slice(ps,k-1);
-      const direction=(pb.match(/\\bdirection\\s*:\\s*(input|output|inout)\\s*;/i)||[])[1];
-      const fn=(pb.match(/\\bfunction\\s*:\\s*([^;]+);/i)||[])[1];
+      const direction=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1];
+      const fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
       const pinName=pm[1].trim().replace(/^['\"]|['\"]$/g,'');
       if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['\"]|['\"]$/g,''):null});
       pinPattern.lastIndex=k;
