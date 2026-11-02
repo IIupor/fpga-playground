@@ -162,33 +162,61 @@ function parseSequentialGroup(body,kind) {
     ? {kind:'ff',stateVar:args[0]||'IQ',stateVarN:args[1]||'IQ_N',nextState:attr('next_state'),clockedOn:attr('clocked_on'),clear:attr('clear'),preset:attr('preset')}
     : {kind:'latch',stateVar:args[0]||'IQ',stateVarN:args[1]||'IQ_N',dataIn:attr('data_in'),enable:attr('enable')||attr('gate'),clear:attr('clear'),preset:attr('preset')};
 }
+function maskLibertyComments(source) {
+  // Preserve offsets while hiding comments, so regex matches cannot mistake
+  // commented-out cell()/pin() declarations for real groups.
+  const chars=source.split('');
+  let quote=null,escaped=false,lineComment=false,blockComment=false;
+  for(let i=0;i<source.length;i++){
+    const ch=source[i],next=source[i+1];
+    if(lineComment){if(ch==='\\n')lineComment=false;else chars[i]=' ';continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=false;}else if(ch!=='\\n'&&ch!=='\\r')chars[i]=' ';continue;}
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(ch==='/'&&next==='*'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=true;continue;}
+    if(ch==='/'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;lineComment=true;continue;}
+    if(ch==='"'||ch==="'")quote=ch;
+  }
+  return chars.join('');
+}
+function libertyGroupEnd(source,openBrace,label) {
+  let depth=0,quote=null,escaped=false,lineComment=false,blockComment=false;
+  for(let i=openBrace;i<source.length;i++){
+    const ch=source[i],next=source[i+1];
+    if(lineComment){if(ch==='\\n')lineComment=false;continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){i++;blockComment=false;}continue;}
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(ch==='/'&&next==='*'){i++;blockComment=true;continue;}
+    if(ch==='/'&&next==='/'){i++;lineComment=true;continue;}
+    if(ch==='"'||ch==="'"){quote=ch;continue;}
+    if(ch==='{')depth++;
+    else if(ch==='}'&&--depth===0)return i;
+  }
+  throw Error('Unterminated Liberty group in '+label);
+}
 function parseLiberty(source,label) {
-  const cells=new Map(); let i=0;
-  while((i=source.indexOf('cell',i))>=0){
-    const m=source.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);
+  const cells=new Map(),masked=maskLibertyComments(source);let i=0;
+  while((i=masked.indexOf('cell',i))>=0){
+    const m=masked.slice(i).match(/^cell\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/);
     if(!m){i+=4;continue;}
-    const name=m[1].trim().replace(/^['"]|['"]$/g,''),start=i+m[0].length;
-    let depth=1,j=start;
-    for(;j<source.length&&depth;j++){if(source[j]==='{')depth++;else if(source[j]==='}')depth--;}
-    const body=source.slice(start,j-1),pins=[];
-    // Liberty pin groups are often indented and may contain nested timing groups.
-    const pinPattern=/\bpin\s*\(\s*([^\)]+)\s*\)\s*\{/g;
+    const name=m[1].trim().replace(/^['"]|['"]$/g,''),open=i+m[0].length-1;
+    const j=libertyGroupEnd(source,open,label),body=source.slice(open+1,j),maskedBody=masked.slice(open+1,j),pins=[];
+    const pinPattern=/\\bpin\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/g;
     let pm;
-    while((pm=pinPattern.exec(body))){
-      const ps=pinPattern.lastIndex;let depth=1,k=ps;
-      for(;k<body.length&&depth;k++){if(body[k]==='{')depth++;else if(body[k]==='}')depth--;}
-      if(depth!==0)throw Error('Unterminated Liberty pin '+pm[1].trim()+' in '+label);
-      const pb=body.slice(ps,k-1);
-      const direction=(pb.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1];
-      const fn=(pb.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
-      const pinName=pm[1].trim().replace(/^['\"]|['\"]$/g,'');
-      if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['\"]|['\"]$/g,''):null});
-      pinPattern.lastIndex=k;
+    while((pm=pinPattern.exec(maskedBody))){
+      const pinOpen=open+1+pinPattern.lastIndex-1;
+      const pinEnd=libertyGroupEnd(source,pinOpen,label);
+      const pinBody=masked.slice(pinOpen+1,pinEnd);
+      const direction=(pinBody.match(/\\bdirection\\s*:\\s*(input|output|inout)\\s*;/i)||[])[1];
+      const fn=(pinBody.match(/\\bfunction\\s*:\\s*([^;]+);/i)||[])[1];
+      const pinName=pm[1].trim().replace(/^['"]|['"]$/g,'');
+      if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
+      pinPattern.lastIndex=pinEnd-(open+1)+1;
     }
     if(!pins.length)throw Error('Liberty cell '+name+' in '+label+' has no pins with input/output direction.');
-    cells.set(name,{name,pins,sequential:parseSequentialGroup(body,'ff')||parseSequentialGroup(body,'latch'),source:label});i=j;
+    cells.set(name,{name,pins,sequential:parseSequentialGroup(body,'ff')||parseSequentialGroup(body,'latch'),source:label});
+    i=j+1;
   }
-  if(!cells.size) throw Error('No Liberty cell() definitions found in '+label);
+  if(!cells.size)throw Error('No Liberty cell() definitions found in '+label);
   return cells;
 }
 function mergeModules(target,source,label) {
