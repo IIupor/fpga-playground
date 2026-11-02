@@ -31,9 +31,9 @@ test('imports a multi-module Verilog project and navigates down and up the hiera
 test('loads multiple Liberty and Verilog libraries and simulates combinational and sequential cells', async ({ page }) => {
   page.on('console', message => console.log('BROWSER_CONSOLE ' + message.text()));
   page.on('pageerror', error => console.log('BROWSER_PAGEERROR ' + error.message));
-  const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : input; } pin(B) { direction : input; } pin(Y) { direction : output; function : "A & B"; } } }';
-  const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : input; } pin(Y) { direction : output; function : "!A"; } } }';
-  const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : input; } pin(D) { direction : input; } pin(Q) { direction : output; function : "IQ"; } pin(Q_N) { direction : output; function : "!IQ"; } } }';
+  const libertyA = 'library(test_a) { cell(SKY_AND2_X1) { pin(A) { direction : \"input\"; } pin(B) { direction : \"input\"; } pin(Y) { direction : \"output\"; function : "A & B"; } } }';
+  const libertyB = 'library(test_b) { cell(SKY_INV_X1) { pin(A) { direction : \"input\"; } pin(Y) { direction : \"output\"; function : "!A"; } } }';
+  const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : \"input\"; } pin(D) { direction : \"input\"; } pin(Q) { direction : \"output\"; function : "IQ"; } pin(Q_N) { direction : \"output\"; function : "!IQ"; } } }';
   const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
   const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
   await page.locator('#importLibraries').click();
@@ -96,7 +96,7 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
 });
 
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
-  const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : input; } } }';
+  const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : \"input\"; } } }';
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');

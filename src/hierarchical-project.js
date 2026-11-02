@@ -206,7 +206,7 @@ function parseLiberty(source,label) {
       const pinOpen=open+1+pinPattern.lastIndex-1;
       const pinEnd=libertyGroupEnd(source,pinOpen,label);
       const pinBody=masked.slice(pinOpen+1,pinEnd);
-      const direction=(pinBody.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1];
+      const direction=(pinBody.match(/\bdirection\s*:\s*[\"']?(input|output|inout)[\"']?\s*;/i)||[])[1];
       const fn=(pinBody.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
       const pinName=pm[1].trim().replace(/^['"]|['"]$/g,'');
       if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
