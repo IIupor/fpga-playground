@@ -14,8 +14,7 @@ for (const name of benchmarks) {
 
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(name);
-    await page.locator('#loadBenchmark').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+    await expect(page.locator('#editorMessage')).toContainText(/^(Imported|Loaded )/, { timeout: 30000 });
     await expect.poll(() => page.locator('#editorStage g[data-node]').count(), { timeout: 15000 })
       .toBeGreaterThan(0);
     const wires = page.locator('#editorStage path.editor-wire');
@@ -65,8 +64,7 @@ for (const name of benchmarks) {
     });
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(name);
-    await page.locator('#loadBenchmark').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+    await expect(page.locator('#editorMessage')).toContainText(/^(Imported|Loaded )/, { timeout: 30000 });
 
     const result = await page.locator('#editorStage').evaluate(svg => {
       const nodes = [...svg.querySelectorAll('g[data-node]')].map(g => {
@@ -117,8 +115,7 @@ for (const name of benchmarks) {
     });
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(name);
-    await page.locator('#loadBenchmark').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+    await expect(page.locator('#editorMessage')).toContainText(/^(Imported|Loaded )/, { timeout: 30000 });
     const stats = await page.locator('#editorStage').evaluate(svg => {
       const wires = [...svg.querySelectorAll('path.editor-wire')].map(path => ({
         id: path.getAttribute('data-wire'),
