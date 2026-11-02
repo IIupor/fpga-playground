@@ -510,6 +510,21 @@ function setupUI() {
     }
     return false;
   }
+  function hasLoadedLibraryInstances(source){
+    if(!state.libraries.length)return false;
+    const clean=stripComments(source),instanceTypes=new Set();
+    const pattern=/(?:^|;)\s*([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(/gm;
+    let match;while((match=pattern.exec(clean)))instanceTypes.add(match[1].toLowerCase());
+    if(!instanceTypes.size)return false;
+    const known=new Set();
+    for(const file of state.libraries){
+      try{
+        if(/\.lib$/i.test(file.name))for(const name of parseLiberty(file.text,file.name).keys())known.add(name.toLowerCase());
+        else for(const name of parseVerilog(file.text,file.name).keys())known.add(name.toLowerCase());
+      }catch(_){}
+    }
+    return [...instanceTypes].some(name=>known.has(name));
+  }
   function importProject(source,topName){
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
     const selectedTop=project.modules.get(topName||project.tops[0].name);
@@ -522,7 +537,7 @@ function setupUI() {
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
     try{
-      if(!hasHierarchicalInstances(area.value)&&!state.libraries.length)return;
+      if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();importProject(area.value);
     } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
   },true);
@@ -530,7 +545,7 @@ function setupUI() {
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     selectedFile.text().then(source=>{
-      if(hasHierarchicalInstances(source)||state.libraries.length)importProject(source);
+      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source))importProject(source);
       else {area.value=source;importButton.click();}
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
   },true);
