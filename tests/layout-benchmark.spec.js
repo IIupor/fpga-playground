@@ -10,7 +10,6 @@ for (const circuit of cases) {
   test(`${circuit.name}: layered layout has no overlapping blocks and keeps wires`, async ({ page }) => {
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(circuit.name);
-    await page.locator('#loadBenchmark').click();
     await expect(page.locator('#editorStage g[data-node]')).toHaveCount(circuit.nodes, { timeout: 180000 });
     await expect(page.locator('#editorStage path.editor-wire').first()).toBeVisible();
 
