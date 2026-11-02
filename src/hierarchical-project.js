@@ -413,11 +413,15 @@ function setupUI() {
     libraryBrowser.innerHTML='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px"><strong>Available library cells</strong><input id="libraryCellSearch" type="search" placeholder="Filter cells…" style="min-width:180px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)"><span id="libraryCellCount" class="status-chip">0 cells</span></div><div id="libraryCellList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:7px;max-height:300px;overflow:auto"></div><p id="libraryCellEmpty" class="editor-hint">Load a Liberty (.lib or .lib.gz) library to browse and place its cells.</p>';
     const nav=$('hierarchyStatus')?.closest('.editor-toolbar');(nav||toolbar).after(libraryBrowser);
   }
+  let cachedLibraryCells=null,cachedLibrarySignature='';
   function getLoadedLibertyCells(){
+    const signature=state.libraries.filter(file=>/\.lib$/i.test(file.name)).map(file=>file.name+':'+file.text.length).join('|');
+    if(cachedLibraryCells&&signature===cachedLibrarySignature)return cachedLibraryCells;
     const cells=new Map();
     for(const file of state.libraries)if(/\.lib$/i.test(file.name)){
       for(const [name,cell] of parseLiberty(file.text,file.name))cells.set(name,cell);
     }
+    cachedLibraryCells=cells;cachedLibrarySignature=signature;
     return cells;
   }
   function addLibraryCell(cell){
