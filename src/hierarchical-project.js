@@ -415,7 +415,7 @@ function setupUI() {
   }
   function getLoadedLibertyCells(){
     const cells=new Map();
-    for(const file of state.libraries)if(/\\.lib$/i.test(file.name)){
+    for(const file of state.libraries)if(/\.lib$/i.test(file.name)){
       for(const [name,cell] of parseLiberty(file.text,file.name))cells.set(name,cell);
     }
     return cells;
