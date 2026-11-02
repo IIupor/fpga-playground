@@ -495,7 +495,7 @@ function setupUI() {
       $('libraryStatus').textContent=state.libraries.length+' library file(s) · '+checkCells.size+' Liberty cells · '+checkModules.size+' Verilog modules';
       refreshLibraryCellList();
       $('editorMessage').textContent='Loaded '+incoming.length+' library file(s).';
-    } catch(error){$('editorMessage').textContent='Library load failed: '+error.message;$('libraryStatus').textContent='Library load failed: '+error.message;console.error('LIBRARY_LOAD_FAILED',error);}
+    } catch(error){$('editorMessage').textContent='Library load failed: '+error.message;console.error('LIBRARY_LOAD_FAILED',error);}
     finally{fileInput.value='';}
   });
   $('hierarchyUp').addEventListener('click',leave);

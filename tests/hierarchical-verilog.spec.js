@@ -120,7 +120,12 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   ];
   await page.locator('#importLibraries').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
-  await expect(page.locator('#libraryStatus')).toContainText('Verilog modules', { timeout: 120000 });
+  await expect.poll(async () => {
+    const status = await page.locator('#libraryStatus').textContent();
+    const message = await page.locator('#editorMessage').textContent();
+    if (message?.startsWith('Library load failed:')) throw new Error(message);
+    return status || '';
+  }, { timeout: 120000 }).toContain('Verilog modules');
 
   const socTopSource = fs.readFileSync(path.join(verilogDir, 'soc_top.v'), 'utf8');
   // The upstream exported soc_top is already flattened to standard cells. Add a
