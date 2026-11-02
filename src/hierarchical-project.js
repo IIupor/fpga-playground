@@ -212,7 +212,9 @@ function parseLiberty(source,label) {
       if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
       pinPattern.lastIndex=pinEnd-(open+1)+1;
     }
-    if(!pins.length)throw Error('Liberty cell '+name+' in '+label+' has no pins with input/output direction.');
+    // Physical-only cells (e.g. decaps/taps) may legitimately expose no
+    // logical input/output pins. Keep them in the parsed library, but do not
+    // offer them as placeable schematic cells.
     cells.set(name,{name,pins,sequential:parseSequentialGroup(body,'ff')||parseSequentialGroup(body,'latch'),source:label});
     i=j+1;
   }
@@ -481,7 +483,8 @@ function setupUI() {
     let cells;
     try{cells=[...getLoadedLibertyCells().values()].sort((a,b)=>a.name.localeCompare(b.name));}
     catch(error){list.replaceChildren();count.textContent='Library parse error';empty.textContent=error.message;empty.hidden=false;return;}
-    const query=(search?.value||'').trim().toLowerCase(),visible=cells.filter(cell=>cell.name.toLowerCase().includes(query));
+    const placeable=cells.filter(cell=>cell.pins.some(pin=>pin.direction==='OUTPUT'));
+    const query=(search?.value||'').trim().toLowerCase(),visible=placeable.filter(cell=>cell.name.toLowerCase().includes(query));
     list.replaceChildren();
     for(const cell of visible){
       const inputs=cell.pins.filter(pin=>pin.direction==='INPUT'||pin.direction==='INOUT').length;
@@ -491,9 +494,9 @@ function setupUI() {
       const meta=document.createElement('small');meta.style.color='var(--muted)';meta.textContent=inputs+' inputs · '+outputs+' outputs'+(cell.sequential?' · '+cell.sequential.kind:'');
       item.append(title,meta);item.addEventListener('click',()=>addLibraryCell(cell));list.append(item);
     }
-    count.textContent=visible.length+' / '+cells.length+' cells';
+    count.textContent=visible.length+' / '+placeable.length+' placeable cells';
     empty.hidden=visible.length>0;
-    if(!cells.length)empty.textContent='No Liberty cells loaded. Use Load libraries to add a .lib or .lib.gz file.';
+    if(!placeable.length)empty.textContent='No placeable Liberty cells found. Physical-only cells without a logical output are hidden.';
     else if(!visible.length)empty.textContent='No cells match this filter.';
   }
   libraryBrowserButton.addEventListener('click',()=>{
