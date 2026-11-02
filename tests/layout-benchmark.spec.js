@@ -11,7 +11,7 @@ for (const circuit of cases) {
     await page.goto('/');
     await page.locator('#benchmarkSelect').selectOption(circuit.name);
     await page.locator('#loadBenchmark').click();
-    await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+    await expect(page.locator('#editorMessage')).toContainText('Loaded ', { timeout: 30000 });
     await expect(page.locator('#editorMessage')).toContainText('logic levels');
 
     const report = await page.locator('#editorStage').evaluate((svg) => {
