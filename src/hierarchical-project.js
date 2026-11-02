@@ -169,9 +169,9 @@ function maskLibertyComments(source) {
   let quote=null,escaped=false,lineComment=false,blockComment=false;
   for(let i=0;i<source.length;i++){
     const ch=source[i],next=source[i+1];
-    if(lineComment){if(ch==='\\n')lineComment=false;else chars[i]=' ';continue;}
-    if(blockComment){if(ch==='*'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=false;}else if(ch!=='\\n'&&ch!=='\\r')chars[i]=' ';continue;}
-    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(lineComment){if(ch==='\n')lineComment=false;else chars[i]=' ';continue;}
+    if(blockComment){if(ch==='*'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=false;}else if(ch!=='\n'&&ch!=='\r')chars[i]=' ';continue;}
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
     if(ch==='/'&&next==='*'){chars[i]=' ';chars[i+1]=' ';i++;blockComment=true;continue;}
     if(ch==='/'&&next==='/'){chars[i]=' ';chars[i+1]=' ';i++;lineComment=true;continue;}
     if(ch==='"'||ch==="'")quote=ch;
@@ -182,9 +182,9 @@ function libertyGroupEnd(source,openBrace,label) {
   let depth=0,quote=null,escaped=false,lineComment=false,blockComment=false;
   for(let i=openBrace;i<source.length;i++){
     const ch=source[i],next=source[i+1];
-    if(lineComment){if(ch==='\\n')lineComment=false;continue;}
+    if(lineComment){if(ch==='\n')lineComment=false;continue;}
     if(blockComment){if(ch==='*'&&next==='/'){i++;blockComment=false;}continue;}
-    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
     if(ch==='/'&&next==='*'){i++;blockComment=true;continue;}
     if(ch==='/'&&next==='/'){i++;lineComment=true;continue;}
     if(ch==='"'||ch==="'"){quote=ch;continue;}
@@ -196,18 +196,18 @@ function libertyGroupEnd(source,openBrace,label) {
 function parseLiberty(source,label) {
   const cells=new Map(),masked=maskLibertyComments(source);let i=0;
   while((i=masked.indexOf('cell',i))>=0){
-    const m=masked.slice(i).match(/^cell\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/);
+    const m=masked.slice(i).match(/^cell\s*\(\s*([^\)]+)\s*\)\s*\{/);
     if(!m){i+=4;continue;}
     const name=m[1].trim().replace(/^['"]|['"]$/g,''),open=i+m[0].length-1;
     const j=libertyGroupEnd(source,open,label),body=source.slice(open+1,j),maskedBody=masked.slice(open+1,j),pins=[];
-    const pinPattern=/\\bpin\\s*\\(\\s*([^\\)]+)\\s*\\)\\s*\\{/g;
+    const pinPattern=/\bpin\s*\(\s*([^\)]+)\s*\)\s*\{/g;
     let pm;
     while((pm=pinPattern.exec(maskedBody))){
       const pinOpen=open+1+pinPattern.lastIndex-1;
       const pinEnd=libertyGroupEnd(source,pinOpen,label);
       const pinBody=masked.slice(pinOpen+1,pinEnd);
-      const direction=(pinBody.match(/\\bdirection\\s*:\\s*(input|output|inout)\\s*;/i)||[])[1];
-      const fn=(pinBody.match(/\\bfunction\\s*:\\s*([^;]+);/i)||[])[1];
+      const direction=(pinBody.match(/\bdirection\s*:\s*(input|output|inout)\s*;/i)||[])[1];
+      const fn=(pinBody.match(/\bfunction\s*:\s*([^;]+);/i)||[])[1];
       const pinName=pm[1].trim().replace(/^['"]|['"]$/g,'');
       if(direction)pins.push({name:pinName,base:pinName,index:pins.length,bitIndex:0,bitOffset:0,width:1,direction:direction.toUpperCase(),function:fn?fn.trim().replace(/^['"]|['"]$/g,''):null});
       pinPattern.lastIndex=pinEnd-(open+1)+1;
