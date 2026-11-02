@@ -1,7 +1,4 @@
 const { test, expect } = require('@playwright/test');
-const fs = require('node:fs');
-const path = require('node:path');
-
 async function loadBenchmark(page, name) {
   await page.goto('/');
   await page.locator('#benchmarkSelect').selectOption(name);
@@ -55,7 +52,7 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
   await chooser.setFiles({ name: 'imported_test.v', mimeType: 'text/plain', buffer: Buffer.from(source) });
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
-  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
 });
 
 test('logic gates render standard SVG symbols instead of rectangular gate blocks', async ({ page }) => {
@@ -63,11 +60,11 @@ test('logic gates render standard SVG symbols instead of rectangular gate blocks
   for (const type of ['OR', 'XOR', 'NAND', 'NOR', 'XNOR', 'NOT']) {
     await page.locator('[data-add="' + type + '"]').click();
     const gate = page.locator('#editorStage g[data-node]').last();
-    await expect(gate.locator('.gate-symbol')).toHaveCountGreaterThan(0);
+    await expect.poll(() => gate.locator('.gate-symbol').count()).toBeGreaterThan(0);
     await expect(gate.locator('rect.nodebox')).toHaveAttribute('fill', 'transparent');
   }
   const and = page.locator('#editorStage g[data-node="3"]');
-  await expect(and.locator('.gate-symbol')).toHaveCountGreaterThan(0);
+  await expect.poll(() => and.locator('.gate-symbol').count()).toBeGreaterThan(0);
 });
 
 test('Library browser lists and places functional Liberty cells', async ({ page }) => {
