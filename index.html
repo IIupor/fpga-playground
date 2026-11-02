@@ -484,20 +484,6 @@ for(const n of nodes){
  }else if(n.type==='GND'){line(s.w/2,cy-17,s.w/2,cy-8);line(s.w/2-14,cy-8,s.w/2+14,cy-8);line(s.w/2-9,cy-2,s.w/2+9,cy-2);line(s.w/2-4,cy+4,s.w/2+4,cy+4);
  }else{
   g.append(make('rect',{x:left,y:top,width:right-left,height:bottom-top,rx:3,class:'gate-symbol',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));
-  for(let i=0;i<s.ins;i++)line(0,30+i*22,left,30+i*22);
-  for(let i=0;i<s.outs;i++)line(right,30+i*22,s.w,30+i*22);
- }
- const labelY=['INPUT','OUTPUT','VDD','GND'].includes(n.type)?cy+4:cy+5;
- g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
- if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-4,'text-anchor':'middle',class:'nodemeta'},String(n.value)));
- g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
- for(let i=0;i<s.ins;i++)line(0,30+i*22,left,30+i*22);
-  for(let i=0;i<s.outs;i++)line(right,30+i*22,s.w,30+i*22);
- }
- const labelY=['INPUT','OUTPUT','VDD','GND'].includes(n.type)?cy+4:cy+5;
- g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
- if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-4,'text-anchor':'middle',class:'nodemeta'},String(n.value)));
- g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
 for(let i=0;i<s.ins;i++){const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p)}for(let i=0;i<s.outs;i++){const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent=`Output port ${i+1} of ${n.name} selected — now click an input pin.`;render()});g.append(c)}
 g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});g.addEventListener('click',e=>{if(n.type==='INPUT'&&e.detail===2){n.value=1-n.value;msg.textContent=`${n.name} toggled to ${n.value}.`;render()}else{selected={kind:'node',id:n.id};render()}});svg.append(g)}
 updateTables()}
