@@ -3,7 +3,7 @@ const { gzipSync } = require('node:zlib');
 async function loadBenchmark(page, name) {
   await page.goto('/');
   await page.locator('#benchmarkSelect').selectOption(name);
-  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 180000 });
+  await expect(page.locator('#editorMessage')).toContainText(/^(Imported|Loaded )/, { timeout: 180000 });
 }
 
 test('F and Shift+F both fit the complete circuit to the workspace', async ({ page }) => {
