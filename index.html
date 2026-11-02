@@ -450,7 +450,7 @@ if(globalChannelRouting){
  }
 }
 for(const n of nodes){
- const s=spec(n),g=make('g',{transform:\`translate(\${n.x} \${n.y})\`,'data-node':n.id});
+ const s=spec(n),g=make('g',{transform:'translate('+n.x+' '+n.y+')','data-node':n.id});
  if(selected?.kind==='node'&&selected.id===n.id)g.setAttribute('data-selected','true');
  // Keep an invisible hit/bounds rectangle for selection, drag, and pin-label logic.
  g.append(make('rect',{x:0,y:0,width:s.w,height:s.h,rx:4,class:'nodebox',fill:'transparent',stroke:'transparent'}));
@@ -461,36 +461,37 @@ for(const n of nodes){
  const inverted=['NAND','NOR','XNOR','NOT'].includes(n.type);
  if(n.type==='AND'||n.type==='NAND'){
   const face=right-9,rad=(bottom-top)/2;
-  path(\`M \${left} \${top} L \${face-rad} \${top} A \${rad} \${rad} 0 0 1 \${face-rad} \${bottom} L \${left} \${bottom} Z\`);
+  path('M '+left+' '+top+' L '+(face-rad)+' '+top+' A '+rad+' '+rad+' 0 0 1 '+(face-rad)+' '+bottom+' L '+left+' '+bottom+' Z');
   line(0,cy,left,cy);line(face+(inverted?10:0),cy,s.w,cy);if(inverted)bubble(face+5,cy);
  }else if(['OR','NOR','XOR','XNOR'].includes(n.type)){
   const face=right-9,extra=n.type==='XOR'||n.type==='XNOR';
-  path(\`M \${left} \${top} Q \${left+18} \${cy} \${left} \${bottom} Q \${left+34} \${bottom-1} \${face-18} \${cy} Q \${left+34} \${top+1} \${left} \${top} Z\`);
-  if(extra)path(\`M \${left-7} \${top} Q \${left+11} \${cy} \${left-7} \${bottom}\`,{fill:'none'});
+  path('M '+left+' '+top+' Q '+(left+18)+' '+cy+' '+left+' '+bottom+' Q '+(left+34)+' '+(bottom-1)+' '+(face-18)+' '+cy+' Q '+(left+34)+' '+(top+1)+' '+left+' '+top+' Z');
+  if(extra)path('M '+(left-7)+' '+top+' Q '+(left+11)+' '+cy+' '+(left-7)+' '+bottom,{fill:'none'});
   line(0,cy,left,cy);line(face+(inverted?10:0),cy,s.w,cy);if(inverted)bubble(face+5,cy);
  }else if(n.type==='NOT'||n.type==='BUF'){
-  const tip=right-10;
-  path(\`M \${left} \${top} L \${tip} \${cy} L \${left} \${bottom} Z\`);
-  line(0,cy,left,cy);
+  const tip=right-10;path('M '+left+' '+top+' L '+tip+' '+cy+' L '+left+' '+bottom+' Z');line(0,cy,left,cy);
   if(n.type==='NOT'){bubble(tip+6,cy);line(tip+11,cy,s.w,cy)}else line(tip,cy,s.w,cy);
  }else if(n.type==='DFF'||n.type==='LATCH'){
   g.append(make('rect',{x:left,y:top,width:right-left,height:bottom-top,rx:1,class:'gate-symbol',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));
   line(0,cy,left,cy);line(right,cy,s.w,cy);
-  if(n.type==='DFF')path(\`M \${left} \${cy+12} l 7 5 -7 5\`,{fill:'none'});
+  if(n.type==='DFF')path('M '+left+' '+(cy+12)+' l 7 5 -7 5',{fill:'none'});
   g.append(make('text',{x:left+8,y:cy-8,class:'nodemeta'},n.inputNames?.[0]||'D'));
   g.append(make('text',{x:left+8,y:cy+19,class:'nodemeta'},n.inputNames?.[1]||(n.type==='DFF'?'CLK':'EN')));
   g.append(make('text',{x:right-7,y:cy+4,'text-anchor':'end',class:'nodemeta'},n.outputNames?.[0]||'Q'));
- }else if(n.type==='INPUT'){
-  path(\`M 12 \${cy-17} L \${right} \${cy-17} L \${right} \${cy+17} L 12 \${cy+17} Z\`);line(0,cy,12,cy);
- }else if(n.type==='OUTPUT'){
-  path(\`M 12 \${cy-17} L \${right-13} \${cy-17} L \${right} \${cy} L \${right-13} \${cy+17} L 12 \${cy+17} Z\`);line(right,cy,s.w,cy);
- }else if(n.type==='VDD'){
-  line(s.w/2,cy-17,s.w/2,cy-8);path(\`M \${s.w/2} \${cy-29} l -12 15 h 24 Z\`);line(s.w/2,cy+10,s.w/2,cy+17,{stroke:'var(--on)'});
- }else if(n.type==='GND'){
-  line(s.w/2,cy-17,s.w/2,cy-8);line(s.w/2-14,cy-8,s.w/2+14,cy-8);line(s.w/2-9,cy-2,s.w/2+9,cy-2);line(s.w/2-4,cy+4,s.w/2+4,cy+4);
+ }else if(n.type==='INPUT'){path('M 12 '+(cy-17)+' L '+right+' '+(cy-17)+' L '+right+' '+(cy+17)+' L 12 '+(cy+17)+' Z');line(0,cy,12,cy);
+ }else if(n.type==='OUTPUT'){path('M 12 '+(cy-17)+' L '+(right-13)+' '+(cy-17)+' L '+right+' '+cy+' L '+(right-13)+' '+(cy+17)+' L 12 '+(cy+17)+' Z');line(right,cy,s.w,cy);
+ }else if(n.type==='VDD'){line(s.w/2,cy-17,s.w/2,cy-8);path('M '+(s.w/2)+' '+(cy-29)+' l -12 15 h 24 Z');line(s.w/2,cy+10,s.w/2,cy+17,{stroke:'var(--on)'});
+ }else if(n.type==='GND'){line(s.w/2,cy-17,s.w/2,cy-8);line(s.w/2-14,cy-8,s.w/2+14,cy-8);line(s.w/2-9,cy-2,s.w/2+9,cy-2);line(s.w/2-4,cy+4,s.w/2+4,cy+4);
  }else{
   g.append(make('rect',{x:left,y:top,width:right-left,height:bottom-top,rx:3,class:'gate-symbol',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));
   for(let i=0;i<s.ins;i++)line(0,30+i*22,left,30+i*22);
+  for(let i=0;i<s.outs;i++)line(right,30+i*22,s.w,30+i*22);
+ }
+ const labelY=['INPUT','OUTPUT','VDD','GND'].includes(n.type)?cy+4:cy+5;
+ g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
+ if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-4,'text-anchor':'middle',class:'nodemeta'},String(n.value)));
+ g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
+ for(let i=0;i<s.ins;i++)line(0,30+i*22,left,30+i*22);
   for(let i=0;i<s.outs;i++)line(right,30+i*22,s.w,30+i*22);
  }
  const labelY=['INPUT','OUTPUT','VDD','GND'].includes(n.type)?cy+4:cy+5;
