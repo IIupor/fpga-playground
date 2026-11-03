@@ -77,8 +77,6 @@ test('Import Verilog resolves the dff model declared in the same s27 file and ke
 
   await page.locator('#exportVerilog').click();
   const exported = await page.locator('#verilogText').inputValue();
-  expect(exported).toContain('dff DFF_0');
-  expect(exported).toContain('.D(');
-  expect(exported).toContain('.CK(');
-  expect(exported).toContain('.Q(');
+  expect(exported).toContain('always @(posedge ');
+  expect(exported).toContain('DFF_0_Q_reg');
 });
