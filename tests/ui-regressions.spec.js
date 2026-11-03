@@ -174,7 +174,7 @@ test('Liberty input inversion is marked with a bubble distinct from square pins'
     '    pin(Y) { direction : output; function : "!A & B"; }',
     '  }',
     '}'
-  ].join('\\n');
+  ].join('\n');
   const chooserPromise = page.waitForEvent('filechooser');
   await page.locator('#importLibraries').click();
   const chooser = await chooserPromise;
