@@ -475,7 +475,6 @@ function setupUI() {
       inputNames:inputPins.map(pin=>pin.name),outputNames:outputPins.map(pin=>pin.name),
       cellType:cell.name,cellFunctions:Object.fromEntries(outputPins.filter(pin=>pin.function).map(pin=>[pin.name,pin.function])),
       cellInputInversions:[...new Set(outputPins.flatMap(pin=>inputPins.filter(input=>pin.function&&new RegExp('(?:!|~)\\s*'+input.name+'\\b').test(pin.function)).map(input=>input.name)))],
-      cellSequential:cell.sequential||null,prevClock:0,state:0};')+'\\\\b').test(pin.function)).map(input=>input.name)))],
       cellSequential:cell.sequential||null,prevClock:0,state:0};
     window.fpgaLoadCircuit([...nodes,node],wires,id+1);
     window.fpgaFitView?.();
