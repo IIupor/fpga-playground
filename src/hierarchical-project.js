@@ -95,8 +95,9 @@ function parseVerilog(source,label) {
       const s=statement.trim(); if(!s) continue;
       const assign=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
-      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\s+(?:\w+\s*)?\(([^()]*)\)$/i);
-      if(gate){mod.gates.push({kind:gate[1].toLowerCase(),pins:splitComma(gate[2])});continue;}
+      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\\s+(?:\\w+\\s*)?\\(([^()]*)\\)$/i);
+      // A declared module named dff is a real hierarchical definition, not the legacy ISCAS primitive.
+      if(gate&&!modules.has(gate[1])){mod.gates.push({kind:gate[1].toLowerCase(),pins:splitComma(gate[2])});continue;}
       const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
       if(instance){
         const connections={};let positional=0;
@@ -357,13 +358,20 @@ function graphFor(mod,path) {
     const definition=inst.definition,cell=inst.cell,ports=definition?.ports||cell?.pins||[];
     let inputPorts=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT');
     const outputPorts=ports.filter(p=>p.direction==='OUTPUT');
+    // The editor's DFF state machine expects data first and clock second.
+    // Keep model port names while mapping positional CK,Q,D instances correctly.
+    if(definition?.name.toLowerCase()==='dff') {
+      const data=inputPorts.find(p=>/^D$/i.test(p.name));
+      const clock=inputPorts.find(p=>/^(CK|CLK)$/i.test(p.name));
+      if(data&&clock) inputPorts=[data,clock,...inputPorts.filter(p=>p!==data&&p!==clock)];
+    }
     if(cell?.sequential){
       const seq=cell.sequential,dataExpr=seq.kind==='ff'?seq.nextState:seq.dataIn,clockExpr=seq.kind==='ff'?seq.clockedOn:seq.enable;
       const pick=expr=>{const names=String(expr||'').match(/[A-Za-z_$][\w$]*/g)||[];return inputPorts.find(p=>names.includes(p.name));};
       const dataPin=pick(dataExpr),clockPin=pick(clockExpr);
       inputPorts=[...new Set([dataPin,clockPin,...inputPorts].filter(Boolean))];
     }
-    const nodeType=cell?.sequential?.kind==='ff'?'DFF':cell?.sequential?.kind==='latch'?'LATCH':'MODULE';
+    const nodeType=definition?.name.toLowerCase()==='dff'?'DFF':cell?.sequential?.kind==='ff'?'DFF':cell?.sequential?.kind==='latch'?'LATCH':'MODULE';
     const node=add(nodeType,inst.name,inputPorts.length||Object.keys(inst.connections).filter(k=>k[0]==='$').length,outputPorts.length||1,{
       moduleType:definition?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),
       inputNames:inputPorts.map(p=>p.name),outputNames:outputPorts.map(p=>p.name),
@@ -581,7 +589,7 @@ function setupUI() {
     let match;
     while((match=instances.exec(clean))){
       const type=match[1].toLowerCase();
-      if(declared.has(type)&&type!=='dff')return true;
+      if(declared.has(type))return true;
     }
     return false;
   }
