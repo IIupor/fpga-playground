@@ -72,6 +72,11 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
+  const secondChooserPromise = page.waitForEvent('filechooser');
+  await page.locator('#importVerilog').click();
+  const secondChooser = await secondChooserPromise;
+  await secondChooser.setFiles({ name: 'imported_test.v', mimeType: 'text/plain', buffer: Buffer.from(source) });
+  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
 });
 
 test('logic gates render standard symbols and input/output terminals are mirrored', async ({ page }) => {
@@ -138,6 +143,8 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   expect(geometry.leads).toContainEqual([6,30,18,30]);
   expect(geometry.leads).toContainEqual([6,52,18,52]);
   expect(geometry.leads).toContainEqual([132,30,144,30]);
+  await expect(cell.locator('path.gate-symbol')).toHaveCount(1);
+  await expect(cell.locator('rect.gate-symbol')).toHaveCount(0);
 
   // Replace the example AND's output with the library cell output.
   await page.locator('#editorStage g[data-node="1"] .nodepin').click();
@@ -149,4 +156,10 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   await page.locator('#editorControls button').nth(0).click();
   await page.locator('#editorControls button').nth(1).click();
   await expect(page.locator('#editorResults')).toContainText('= 1');
+  await page.locator('#exportVerilog').click();
+  await expect(page.locator('#verilogText')).toContainText('SKY_AND2_X1 u_and (.A(a), .B(b), .Y(u_and_Y));');
+  await expect(page.locator('#verilogText')).toContainText('assign y = u_and_Y;');
+  await expect(cell.locator('circle.gate-symbol')).toHaveCount(0);
+  const invertedCell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' });
+  await expect(invertedCell.locator('circle.gate-symbol')).toHaveCount(1);
 });
