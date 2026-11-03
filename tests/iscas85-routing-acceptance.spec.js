@@ -71,7 +71,7 @@ for (const [name, gateCount, baselineArea] of circuits) {
           const wire=wires.find(w=>w.id===route.id);
           const sourcePin=Number(wire?.fromPin||0),targetPin=Number(wire?.toPin||0);
           const pinY=(node,count,index)=>{
-            const height=Math.max(94,50+Math.max(node.inputs,node.outputs)*22);
+            const height=Math.max(76,50+Math.max(node.inputs,node.outputs)*22);
             return node.y+(height-(count-1)*22)/2+index*22;
           };
           const first=route.points[0],last=route.points[route.points.length-1];
