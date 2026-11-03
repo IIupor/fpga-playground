@@ -1,4 +1,12 @@
 const { test, expect } = require('@playwright/test');
+async function clickWireAtVisibleSegment(page, locator) {
+  const point = await locator.evaluate(path => {
+    const p = path.getPointAtLength(path.getTotalLength() * 0.5);
+    const screen = new DOMPoint(p.x, p.y).matrixTransform(path.getScreenCTM());
+    return { x: screen.x, y: screen.y };
+  });
+  await page.mouse.click(point.x, point.y);
+}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -75,7 +83,7 @@ test('deleting a wire preserves blocks and removes that connection', async ({ pa
   await expect(wires).toHaveCount(3);
 
   // Remove the AND-to-output connection without deleting either block.
-  await wires.nth(2).click({ force: true });
+  await clickWireAtVisibleSegment(page, wires.nth(2));
   await page.getByRole('button', { name: 'Delete selected' }).click();
 
   await expect(blocks).toHaveCount(4);
@@ -276,7 +284,7 @@ test('wire hit areas make wires easy to select and delete', async ({ page }) => 
   await expect(hitAreas).toHaveCount(3);
 
   // The wider transparent hit area selects the wire without selecting its blocks.
-  await hitAreas.nth(2).click({ force: true });
+  await clickWireAtVisibleSegment(page, hitAreas.nth(2));
   await page.getByRole('button', { name: 'Delete selected' }).click();
 
   await expect(blocks).toHaveCount(4);
@@ -293,7 +301,7 @@ test('undo and redo restore deleted wires and added blocks', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled();
 
-  await page.locator('#editorStage path.wire-hit-area').nth(2).click({ force: true });
+  await clickWireAtVisibleSegment(page, page.locator('#editorStage path.wire-hit-area').nth(2));
   await page.getByRole('button', { name: 'Delete selected' }).click();
   await expect(wires).toHaveCount(2);
 
