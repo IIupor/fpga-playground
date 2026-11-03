@@ -53,7 +53,7 @@ test('rewiring a gate input replaces its previous connection', async ({ page }) 
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
 });
 
-test('deleting a connected gate also removes its wires', async ({ page }) => {
+test('deleting a connected gate keeps its attached wires as loose connections', async ({ page }) => {
   const wires = page.locator('#editorStage path.editor-wire');
   await expect(wires).toHaveCount(3);
 
@@ -62,7 +62,9 @@ test('deleting a connected gate also removes its wires', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete selected' }).click();
 
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(3);
-  await expect(wires).toHaveCount(0);
+  await expect(wires).toHaveCount(3);
+  const loose = await page.evaluate(() => window.fpgaWires.filter(w => w.from == null || w.to == null).length);
+  expect(loose).toBe(3);
   await expect(page.locator('#editorResults')).toContainText('= 0');
 });
 

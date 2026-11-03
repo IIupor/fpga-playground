@@ -81,6 +81,8 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
     };
   });
   console.log('MAPPED_GRAPH_REPORT ' + JSON.stringify(graphInputReport));
+  const libertyInvReport = await page.evaluate(() => { const node=window.fpgaNodes.find(item=>item.name==='u_inv'); return { type:node?.type, cellType:node?.cellType, moduleType:node?.moduleType, inputNames:node?.inputNames, outputNames:node?.outputNames, cellFunctions:node?.cellFunctions, symbol:node?window.fpgaLibertySymbolType(node):null, evalZero:window.fpgaEvalLibertyFunction('!A',{A:0}) }; });
+  console.log('LIBERTY_INV_REPORT ' + JSON.stringify(libertyInvReport));
   const inputControls = page.locator('#editorControls .control');
   await expect(inputControls).toHaveCount(3);
   await inputControls.filter({ hasText: 'Input a' }).locator('button').click();
@@ -92,6 +94,11 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_custom_inv' })).toContainText('VALUE: 1');
   await page.locator('#editorControls button').nth(2).click();
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_dff' })).toContainText('VALUE: 1');
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' }).locator('circle.inverted-pin-bubble')).toHaveCount(1);
+  await page.locator('#exportVerilog').click();
+  await expect(page.locator('#verilogText')).toHaveValue(/SKY_AND2_X1 u_and \(/);
+  await expect(page.locator('#verilogText')).toHaveValue(/\.A\(a\), \.B\(b\), \.Y\(u_and_Y\)/);
+  await expect(page.locator('#verilogText')).toHaveValue(/assign y = u_and_Y;/);
   await custom.click();
   await page.keyboard.press('Shift+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('CUSTOM_BUF');
