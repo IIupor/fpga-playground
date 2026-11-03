@@ -94,7 +94,7 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_custom_inv' })).toContainText('VALUE: 1');
   await page.locator('#editorControls button').nth(2).click();
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_dff' })).toContainText('VALUE: 1');
-  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_dff' }).locator('circle.gate-symbol')).toHaveCount(1);
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' }).locator('circle.inverted-pin-bubble')).toHaveCount(1);
   await page.locator('#exportVerilog').click();
   await expect(page.locator('#verilogText')).toHaveValue(/SKY_AND2_X1 u_and \(/);
   await expect(page.locator('#verilogText')).toHaveValue(/\.A\(a\), \.B\(b\), \.Y\(u_and_Y\)/);
