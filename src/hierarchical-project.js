@@ -87,7 +87,7 @@ function parseVerilog(source,label) {
     if(semicolon<0||end<0)throw Error('Malformed Verilog module '+name+' in '+label);
     if(modules.has(name))throw Error('Duplicate Verilog module '+name+' in '+label);
     const body=clean.slice(semicolon+1,end);
-    modules.set(name,{name,header,body,ports:parsePorts(header,body),instances:[],gates:[],assigns:[],source:label});
+    modules.set(name,{name,header,body,ports:parsePorts(header,body),instances:[],gates:[],elements:[],assigns:[],source:label});
     declarations.lastIndex=end+'endmodule'.length;
   }
   for(const mod of modules.values()){
@@ -97,7 +97,7 @@ function parseVerilog(source,label) {
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
       const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\s+(?:([A-Za-z_$][\w$]*)\s*)?\(([^()]*)\)$/i);
       // A declared module named dff is a real hierarchical definition, not the legacy ISCAS primitive.
-      if(gate&&!modules.has(gate[1])){mod.gates.push({kind:gate[1].toLowerCase(),name:gate[2]||null,pins:splitComma(gate[3])});continue;}
+      if(gate&&!modules.has(gate[1])){const item={kind:gate[1].toLowerCase(),name:gate[2]||null,pins:splitComma(gate[3])};mod.gates.push(item);mod.elements.push({kind:'gate',value:item});continue;}
       const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
       if(instance){
         const connections={};let positional=0;
@@ -106,7 +106,7 @@ function parseVerilog(source,label) {
           if(named) connections[named[1]]=named[2].trim();
           else connections['$'+(positional++)]=p.trim();
         }
-        mod.instances.push({type:instance[1],name:instance[2],connections});
+        const item={type:instance[1],name:instance[2],connections};mod.instances.push(item);mod.elements.push({kind:'instance',value:item});
       }
     }
   }
@@ -345,16 +345,23 @@ function graphFor(mod,path) {
     const node=add('INPUT',port.name,0,1,{outputNames:[port.name]});
     drivers.set(port.name,{node,pin:0});
   }
-  for(const port of outputs) add('OUTPUT',port.name,1,0,{inputNames:[port.name]});
   const gateTypes={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',buf:'BUF',dff:'DFF'};
-  for(const gate of mod.gates){
-    // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
-    const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
-    const output=pins[0],gateInputs=pins.slice(1);
-    const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
-    drivers.set(output,{node,pin:0});
-  }
-  for(const inst of mod.instances){
+  const orderedElements=mod.elements||[
+    ...mod.gates.map(value=>({kind:'gate',value})),
+    ...mod.instances.map(value=>({kind:'instance',value}))
+  ];
+  for(const element of orderedElements){
+    if(element.kind==='gate'){
+      const gate=element.value;
+      // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
+      const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
+      const output=pins[0],gateInputs=pins.slice(1);
+      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
+      drivers.set(output,{node,pin:0});
+      continue;
+    }
+    if(element.kind!=='instance') continue;
+    const inst=element.value;
     const definition=inst.definition,cell=inst.cell,ports=definition?.ports||cell?.pins||[];
     let inputPorts=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT');
     const outputPorts=ports.filter(p=>p.direction==='OUTPUT');
@@ -382,6 +389,7 @@ function graphFor(mod,path) {
     });
     inst.graphNodeId=node.id;inst._inputPorts=inputPorts;inst._outputPorts=outputPorts;
   }
+  for(const port of outputs) add('OUTPUT',port.name,1,0,{inputNames:[port.name]});
   for(const inst of mod.instances){
     const node=nodes.find(n=>n.id===inst.graphNodeId);
     inst._outputPorts.forEach((port,index)=>{const signal=portSignal(port,inst);if(signal)drivers.set(signal,{node,pin:index});});
