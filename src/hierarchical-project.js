@@ -419,14 +419,91 @@ function graphFor(mod,path) {
     const target=nodes.find(n=>n.type==='OUTPUT'&&n.name===port.name),source=drivers.get(port.name);
     if(source) wires.push({id:id++,from:source.node.id,fromPin:source.pin||0,to:target.id,toPin:0});
   }
-  const columns=new Map();
-  for(const node of nodes){
-    const column=node.type==='INPUT'?0:node.type==='OUTPUT'?1000:Math.max(1,Math.min(20,Math.floor(node.id/18)));
-    if(!columns.has(column))columns.set(column,[]);
-    columns.get(column).push(node);
+  // Use the same dependency-aware layered placement as the structural importer.
+  const nodeById=new Map(nodes.map(node=>[node.id,node]));
+  const outgoing=new Map(nodes.map(node=>[node.id,[]]));
+  const indegree=new Map(nodes.map(node=>[node.id,0]));
+  const level=new Map(nodes.map(node=>[node.id,0]));
+  for(const wire of wires){
+    if(outgoing.has(wire.from)&&indegree.has(wire.to)){
+      outgoing.get(wire.from).push(wire.to);
+      indegree.set(wire.to,indegree.get(wire.to)+1);
+    }
   }
-  const keys=[...columns.keys()].sort((a,b)=>a-b);
-  for(let ci=0;ci<keys.length;ci++) columns.get(keys[ci]).forEach((node,index)=>{node.x=40+ci*220;node.y=35+index*105;});
+  const queue=nodes.filter(node=>indegree.get(node.id)===0).map(node=>node.id);
+  const topo=[],processed=new Set();
+  for(let qi=0;qi<queue.length;qi++){
+    const current=queue[qi];topo.push(current);processed.add(current);
+    for(const target of outgoing.get(current)){
+      level.set(target,Math.max(level.get(target),level.get(current)+1));
+      indegree.set(target,indegree.get(target)-1);
+      if(indegree.get(target)===0)queue.push(target);
+    }
+  }
+  const residual=nodes.filter(node=>!processed.has(node.id));
+  if(residual.length){
+    const fallback=topo.reduce((max,nodeId)=>Math.max(max,level.get(nodeId)||0),0)+1;
+    for(const node of residual)level.set(node.id,fallback);
+  }
+  const layers=new Map();
+  for(const node of nodes){
+    const currentLevel=level.get(node.id)||0;
+    if(!layers.has(currentLevel))layers.set(currentLevel,[]);
+    layers.get(currentLevel).push(node.id);
+  }
+  const layerKeys=[...layers.keys()].sort((a,b)=>a-b),order=new Map();
+  for(const currentLevel of layerKeys)layers.get(currentLevel).forEach((nodeId,index)=>order.set(nodeId,index));
+  const neighbors=new Map(nodes.map(node=>[node.id,[]]));
+  for(const wire of wires){
+    if(neighbors.has(wire.from)&&neighbors.has(wire.to)){
+      neighbors.get(wire.from).push(wire.to);
+      neighbors.get(wire.to).push(wire.from);
+    }
+  }
+  for(let pass=0;pass<4;pass++){
+    const keys=pass%2===0?layerKeys:layerKeys.slice().reverse();
+    for(const currentLevel of keys){
+      const ids=layers.get(currentLevel);
+      if(ids.length<2)continue;
+      const score=nodeId=>{
+        const adjacent=neighbors.get(nodeId).filter(other=>level.get(other)!==currentLevel);
+        return adjacent.length
+          ? adjacent.reduce((sum,other)=>sum+(order.get(other)??0),0)/adjacent.length
+          : order.get(nodeId);
+      };
+      ids.sort((a,b)=>{
+        const difference=score(a)-score(b);
+        return Math.abs(difference)>1e-6?difference:a-b;
+      });
+      ids.forEach((nodeId,index)=>order.set(nodeId,index));
+    }
+  }
+  const columns=[],columnByNode=new Map(),maxNodesPerColumn=100;
+  for(const currentLevel of layerKeys){
+    const ids=layers.get(currentLevel);
+    for(let i=0;i<ids.length;i+=maxNodesPerColumn){
+      const chunk=ids.slice(i,i+maxNodesPerColumn),column=columns.length;
+      columns.push({ids:chunk,sourceKeys:new Set(),targetWires:0});
+      for(const nodeId of chunk)columnByNode.set(nodeId,column);
+    }
+  }
+  for(const wire of wires){
+    const sourceColumn=columnByNode.get(wire.from),targetColumn=columnByNode.get(wire.to);
+    if(sourceColumn!==undefined)columns[sourceColumn].sourceKeys.add(wire.from+':'+(wire.fromPin||0));
+    if(targetColumn!==undefined)columns[targetColumn].targetWires++;
+  }
+  let nextX=40;
+  for(let i=0;i<columns.length;i++){
+    const column=columns[i];column.x=nextX;
+    if(i<columns.length-1)nextX+=150+60+(column.sourceKeys.size+columns[i+1].targetWires)*3.2;
+  }
+  for(const column of columns){
+    let y=36;
+    for(const nodeId of column.ids){
+      const node=nodeById.get(nodeId);node.x=column.x;node.y=y;
+      y+=Math.max(76,50+Math.max(node.inputs,node.outputs)*22)+28;
+    }
+  }
   return {nodes,wires,nextId:id};
 }
 function renderModule(mod,path) {
