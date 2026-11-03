@@ -65,6 +65,7 @@ function reset(){nodes=[];wires=[];selected=null;pending=null;nextId=1;globalCha
 function spec(n){return {w:['INPUT','OUTPUT','VDD','GND'].includes(n.type)?112:150,h:Math.max(76,50+Math.max(n.inputs,n.outputs)*22),ins:n.inputs,outs:n.outputs}}
 function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:n.y+30+index*22}}
 function libertySymbolType(n){const names=n.inputNames||[],fn=n.cellFunctions?.[n.outputNames?.[0]]||Object.values(n.cellFunctions||{})[0];if(!fn||!names.length||names.length>8||typeof window.fpgaEvalLibertyFunction!=='function')return 'MODULE';const candidates=names.length===1?['NOT','BUF']:['AND','NAND','OR','NOR','XOR','XNOR'];for(const type of candidates){let match=true;for(let bits=0;bits<(1<<names.length);bits++){const env=Object.fromEntries(names.map((name,i)=>[name,(bits>>i)&1]));const actual=window.fpgaEvalLibertyFunction(fn,env),ones=names.reduce((sum,name)=>sum+env[name],0);const expected=type==='AND'?Number(ones===names.length):type==='NAND'?Number(ones!==names.length):type==='OR'?Number(ones>0):type==='NOR'?Number(ones===0):type==='XOR'?ones%2:type==='XNOR'?1-ones%2:type==='NOT'?1-env[names[0]]:env[names[0]];if(actual!==expected){match=false;break}}if(match)return type}return 'MODULE'}
+window.fpgaLibertySymbolType=libertySymbolType;
 function evalCircuit(updateSequential=true){
  const nodeById=new Map(nodes.map(n=>[n.id,n]));
  const inputsByNode=new Map(nodes.map(n=>[n.id,Array(n.inputs).fill(null)]));
@@ -464,7 +465,7 @@ for(const n of nodes){
     const face=right-9,rad=(bottom-top)/2;
     path('M '+left+' '+top+' L '+(face-rad)+' '+top+' A '+rad+' '+rad+' 0 0 1 '+(face-rad)+' '+bottom+' L '+left+' '+bottom+' Z');
     if(inverted)bubble(face+5,cy);
-  }else if(['OR','NOR','XOR','XNOR'].includes(n.type)){
+  }else if(['OR','NOR','XOR','XNOR'].includes(symbolType)){
     const face=right-9,extra=symbolType==='XOR'||symbolType==='XNOR';
     path('M '+left+' '+top+' Q '+(left+18)+' '+cy+' '+left+' '+bottom+' Q '+(left+34)+' '+(bottom-1)+' '+(face-18)+' '+cy+' Q '+(left+34)+' '+(top+1)+' '+left+' '+top+' Z');
     if(extra)path('M '+(left-7)+' '+top+' Q '+(left+11)+' '+cy+' '+(left-7)+' '+bottom,{fill:'none'});
