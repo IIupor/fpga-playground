@@ -494,8 +494,8 @@ for(const n of nodes){
   g.append(make('text',{x:s.w/2,y:labelY,'text-anchor':'middle',class:'nodetext'},n.name));
   if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-12,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+String(n.value)));
   g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
-  for(let i=0;i<s.ins;i++){const y=30+i*22;line(0,y,left,y,{stroke:'var(--site-primary)','stroke-width':2});}
-  for(let i=0;i<s.outs;i++){const y=30+i*22;line(right,y,s.w,y,{stroke:'var(--site-primary)','stroke-width':2});}
+  for(let i=0;i<s.ins;i++){const y=30+i*22;line(6,y,left,y,{stroke:'var(--site-primary)','stroke-width':2});}
+  for(let i=0;i<s.outs;i++){const y=30+i*22;line(right,y,s.w-6,y,{stroke:'var(--site-primary)','stroke-width':2});}
   for(let i=0;i<s.ins;i++){
     const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
     p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p);
@@ -762,7 +762,7 @@ window.fpgaLegacyImport=importVerilog;
       const h=Math.max(76,50+Math.max(n.inputs,n.outputs)*22);y+=h+yGap;
      }
     }
-    window.fpgaLoadCircuit(next,wires,id);if(window.fpgaFitView)window.fpgaFitView();area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
+    window.fpgaLoadCircuit(next,wires,id);if(window.fpgaFitView)window.fpgaFitView();area.value=source;window.fpgaLastImportedSource=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
   finally{window.fpgaSetImportProgress?.('')}
  },0);
