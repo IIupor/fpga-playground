@@ -571,18 +571,22 @@ function setupUI() {
   }
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
+    if(area.value.trim()===window.fpgaLastImportedSource){event.preventDefault();event.stopImmediatePropagation();verilogFile.click();return;}
     try{
       if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value))return;
-      event.preventDefault();event.stopImmediatePropagation();importProject(area.value);
-    } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;}
+      event.preventDefault();event.stopImmediatePropagation();
+      $('editorMessage').textContent='Importing Verilog and resolving libraries…';window.fpgaSetImportProgress?.('Importing Verilog and resolving libraries…');
+      const source=area.value;
+      setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{window.fpgaSetImportProgress?.('');}},0);
+    } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;window.fpgaSetImportProgress?.('');}
   },true);
   document.addEventListener('change',event=>{
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
-    selectedFile.text().then(source=>{
-      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source))importProject(source);
-      else {area.value=source;importButton.click();}
-    }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';});
+    window.fpgaSetImportProgress?.('Reading '+selectedFile.name+'…');selectedFile.text().then(source=>{
+      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>requestAnimationFrame(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}}));}
+      area.value=source;window.fpgaLastImportedSource='';importButton.click();
+    }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';window.fpgaSetImportProgress?.('');});
   },true);
   window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,graphFor,hasHierarchicalInstances,get state(){return state;},importProject};
 }
