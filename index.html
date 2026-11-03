@@ -498,7 +498,7 @@ for(const n of nodes){
   for(let i=0;i<s.ins;i++){const y=(s.h-(s.ins-1)*22)/2+i*22;line(6,y,left,y,{stroke:'var(--site-primary)','stroke-width':2});}
   for(let i=0;i<s.outs;i++){const y=(s.h-(s.outs-1)*22)/2+i*22;line(right,y,s.w-6,y,{stroke:'var(--site-primary)','stroke-width':2});}
   for(let i=0;i<s.ins;i++){const pin=n.inputNames?.[i],inverted=n.cellInputInversions?.includes(pin),y=(s.h-(s.ins-1)*22)/2+i*22;if(inverted)g.append(make('circle',{cx:13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
-  for(let i=0;i<s.outs;i++){const fn=n.cellFunctions?.[n.outputNames?.[i]],y=(s.h-(s.outs-1)*22)/2+i*22;if(fn&&/^\s*[!~]/.test(fn))g.append(make('circle',{cx:s.w-13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
+  for(let i=0;i<s.outs;i++){const fn=n.cellFunctions?.[n.outputNames?.[i]],y=(s.h-(s.outs-1)*22)/2+i*22;if(window.fpgaLibertyFunctionInvertsOutput?.(fn))g.append(make('circle',{cx:s.w-13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
   for(let i=0;i<s.ins;i++){
     const p=make('rect',{x:-5,y:25+i*22,width:10,height:10,rx:1,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
     p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p);
