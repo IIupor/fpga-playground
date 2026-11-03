@@ -161,5 +161,5 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   await expect(page.locator('#verilogText')).toHaveValue(/assign Y = U_AND2_X1_1_Y;/);
   await expect(cell.locator('circle.gate-symbol')).toHaveCount(0);
   const invertedCell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' });
-  await expect(invertedCell.locator('circle.gate-symbol')).toHaveCount(1);
+  await expect(invertedCell.locator('circle.inverted-pin-bubble')).toHaveCount(1);
 });
