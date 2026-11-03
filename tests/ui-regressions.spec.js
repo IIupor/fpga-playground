@@ -69,6 +69,10 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
     'endmodule'
   ].join('\n');
   await chooser.setFiles({ name: 'imported_test.v', mimeType: 'text/plain', buffer: Buffer.from(source) });
+  await page.waitForFunction(() => {
+    const progress = document.getElementById('importProgress');
+    return progress && !progress.hidden;
+  }, null, { timeout: 5000 });
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
