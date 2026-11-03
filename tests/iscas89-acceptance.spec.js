@@ -134,9 +134,13 @@ for (const name of circuits) {
         const wire = wireById.get(route.id), source = nodeById.get(route.from), target = nodeById.get(route.to);
         if (!wire || !source || !target) { wrongEndpoints++; continue; }
         const sourceWidth = ['INPUT', 'OUTPUT', 'VDD', 'GND'].includes(source.type) ? 112 : 150;
+        const pinY = (node, count, index) => {
+          const height = Math.max(76, 50 + Math.max(node.inputs, node.outputs) * 22);
+          return node.y + (height - (count - 1) * 22) / 2 + index * 22;
+        };
         const first = route.points[0], last = route.points[route.points.length - 1];
-        if (first.x !== source.x + sourceWidth || first.y !== source.y + 30 + (wire.fromPin || 0) * 22 ||
-            last.x !== target.x || last.y !== target.y + 30 + (wire.toPin || 0) * 22) wrongEndpoints++;
+        if (first.x !== source.x + sourceWidth || first.y !== pinY(source, source.outputs, wire.fromPin || 0) ||
+            last.x !== target.x || last.y !== pinY(target, target.inputs, wire.toPin || 0)) wrongEndpoints++;
         for (let i = 1; i < route.points.length; i++) {
           const a = route.points[i - 1], b = route.points[i];
           if (a.x !== b.x && a.y !== b.y) diagonalSegments++;
