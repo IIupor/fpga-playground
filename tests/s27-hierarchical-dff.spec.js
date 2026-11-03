@@ -55,11 +55,8 @@ async function expectS27DffModels(page) {
 
 test('s27 loads through the Benchmark Load benchmark button and resolves its local dff module', async ({ page }) => {
   await page.goto('/');
-  await page.locator('#benchmarkSelect').selectOption('s27');
-  await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
-  await expect(page.locator('#loadBenchmark')).toBeEnabled();
-
-  // Exercise the explicit button path as well as the select-change auto-load.
+  // Set the selection without firing change, so this specifically tests the button path.
+  await page.locator('#benchmarkSelect').evaluate(select => { select.value = 's27'; });
   await page.locator('#loadBenchmark').click();
   await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
   await expectS27DffModels(page);
