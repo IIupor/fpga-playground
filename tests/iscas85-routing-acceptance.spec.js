@@ -68,11 +68,15 @@ for (const [name, gateCount, baselineArea] of circuits) {
         if(!source||!target)wrongEndpoints++;
         else{
           const sourceWidth=['INPUT','OUTPUT','VDD','GND'].includes(source.type)?112:150;
-          const sourcePin=source.outputs?Number(wires.find(w=>w.id===route.id)?.fromPin||0):0;
-          const targetPin=Number(wires.find(w=>w.id===route.id)?.toPin||0);
+          const wire=wires.find(w=>w.id===route.id);
+          const sourcePin=Number(wire?.fromPin||0),targetPin=Number(wire?.toPin||0);
+          const pinY=(node,count,index)=>{
+            const height=Math.max(76,50+Math.max(node.inputs,node.outputs)*22);
+            return node.y+(height-(count-1)*22)/2+index*22;
+          };
           const first=route.points[0],last=route.points[route.points.length-1];
-          if(first.x!==source.x+sourceWidth||first.y!==source.y+30+sourcePin*22||
-             last.x!==target.x||last.y!==target.y+30+targetPin*22)wrongEndpoints++;
+          if(first.x!==source.x+sourceWidth||first.y!==pinY(source,source.outputs,sourcePin)||
+             last.x!==target.x||last.y!==pinY(target,target.inputs,targetPin))wrongEndpoints++;
         }
         for (let i=1;i<route.points.length;i++) {
           const a=route.points[i-1], b=route.points[i];

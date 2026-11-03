@@ -75,7 +75,7 @@ test('deleting a wire preserves blocks and removes that connection', async ({ pa
   await expect(wires).toHaveCount(3);
 
   // Remove the AND-to-output connection without deleting either block.
-  await wires.nth(2).click({ force: true });
+  await wires.nth(2).dispatchEvent('click', { bubbles: true });
   await page.getByRole('button', { name: 'Delete selected' }).click();
 
   await expect(blocks).toHaveCount(4);
@@ -276,7 +276,7 @@ test('wire hit areas make wires easy to select and delete', async ({ page }) => 
   await expect(hitAreas).toHaveCount(3);
 
   // The wider transparent hit area selects the wire without selecting its blocks.
-  await hitAreas.nth(2).click({ force: true });
+  await hitAreas.nth(2).dispatchEvent('click', { bubbles: true });
   await page.getByRole('button', { name: 'Delete selected' }).click();
 
   await expect(blocks).toHaveCount(4);
@@ -293,7 +293,7 @@ test('undo and redo restore deleted wires and added blocks', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled();
 
-  await page.locator('#editorStage path.wire-hit-area').nth(2).click({ force: true });
+  await page.locator('#editorStage path.wire-hit-area').nth(2).dispatchEvent('click', { bubbles: true });
   await page.getByRole('button', { name: 'Delete selected' }).click();
   await expect(wires).toHaveCount(2);
 

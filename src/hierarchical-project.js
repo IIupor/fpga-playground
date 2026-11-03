@@ -193,6 +193,40 @@ function libertyGroupEnd(source,openBrace,label) {
   }
   throw Error('Unterminated Liberty group in '+label);
 }
+function libertyHasTopLevelOperator(expression) {
+  let depth=0,quote=null,escaped=false;
+  for(let i=0;i<expression.length;i++){
+    const ch=expression[i];
+    if(quote){if(escaped){escaped=false;continue;}if(ch==='\\'){escaped=true;continue;}if(ch===quote)quote=null;continue;}
+    if(ch==='"'||ch==="'"){quote=ch;continue;}
+    if(ch==='('){depth++;continue;}if(ch===')'){depth=Math.max(0,depth-1);continue;}
+    if(depth===0&&/[&|^+*]/.test(ch))return true;
+  }
+  return false;
+}
+function libertyInputInversions(functions,inputPins) {
+  const result=new Set();
+  for(const fn of functions.filter(Boolean)){
+    const expression=String(fn).trim();
+    if(!libertyHasTopLevelOperator(expression))continue;
+    for(const pin of inputPins){
+      if(new RegExp('(?:!|~)\\s*\\(?\\s*'+pin.name+'\\s*\\)?\\b').test(expression))result.add(pin.name);
+    }
+  }
+  return [...result];
+}
+function libertyFunctionInvertsOutput(fn) {
+  const expression=String(fn||'').trim();
+  if(!/^[!~]/.test(expression))return false;
+  if(!expression.startsWith('!(')&&!expression.startsWith('~('))return !/[&|^+*]/.test(expression);
+  let depth=0;
+  for(let i=1;i<expression.length;i++){
+    if(expression[i]==='(')depth++;
+    else if(expression[i]===')'&&--depth===0)return !expression.slice(i+1).trim();
+  }
+  return false;
+}
+window.fpgaLibertyFunctionInvertsOutput=libertyFunctionInvertsOutput;
 function parseLiberty(source,label) {
   const cells=new Map(),masked=maskLibertyComments(source);let i=0;
   while((i=masked.indexOf('cell',i))>=0){
@@ -333,7 +367,9 @@ function graphFor(mod,path) {
     const node=add(nodeType,inst.name,inputPorts.length||Object.keys(inst.connections).filter(k=>k[0]==='$').length,outputPorts.length||1,{
       moduleType:definition?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),
       inputNames:inputPorts.map(p=>p.name),outputNames:outputPorts.map(p=>p.name),
-      cellFunctions:cell?Object.fromEntries(outputPorts.filter(p=>p.function).map(p=>[p.name,p.function])):null,cellSequential:cell?.sequential||null,
+      cellFunctions:cell?Object.fromEntries(outputPorts.filter(p=>p.function).map(p=>[p.name,p.function])):null,
+      cellInputInversions:cell?libertyInputInversions(outputPorts.map(p=>p.function),inputPorts):[],
+      cellSequential:cell?.sequential||null,
       isUnresolved:!!inst.unresolved
     });
     inst.graphNodeId=node.id;inst._inputPorts=inputPorts;inst._outputPorts=outputPorts;
@@ -472,6 +508,7 @@ function setupUI() {
     const node={id,type,name:nodeName,x,y,value:0,inputs:inputPins.length,outputs:outputPins.length,
       inputNames:inputPins.map(pin=>pin.name),outputNames:outputPins.map(pin=>pin.name),
       cellType:cell.name,cellFunctions:Object.fromEntries(outputPins.filter(pin=>pin.function).map(pin=>[pin.name,pin.function])),
+      cellInputInversions:libertyInputInversions(outputPins.map(pin=>pin.function),inputPins),
       cellSequential:cell.sequential||null,prevClock:0,state:0};
     window.fpgaLoadCircuit([...nodes,node],wires,id+1);
     window.fpgaFitView?.();
@@ -571,21 +608,30 @@ function setupUI() {
   }
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
-    if(area.value.trim()===window.fpgaLastImportedSource){event.preventDefault();event.stopImmediatePropagation();verilogFile.click();return;}
+    if(area.value.trim()===window.fpgaLastImportedSource){event.preventDefault();event.stopImmediatePropagation();verilogFile.value='';verilogFile.click();return;}
     try{
       if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();
       $('editorMessage').textContent='Importing Verilog and resolving libraries…';window.fpgaSetImportProgress?.('Importing Verilog and resolving libraries…');
       const source=area.value;
-      setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{window.fpgaSetImportProgress?.('');}},0);
+      setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{window.fpgaSetImportProgress?.('');}},50);
     } catch(error){event.preventDefault();event.stopImmediatePropagation();$('editorMessage').textContent='Import failed: '+error.message;window.fpgaSetImportProgress?.('');}
   },true);
   document.addEventListener('change',event=>{
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     window.fpgaSetImportProgress?.('Reading '+selectedFile.name+'…');selectedFile.text().then(source=>{
-      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>requestAnimationFrame(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}}));}
+      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}},50));}
       area.value=source;window.fpgaLastImportedSource='';importButton.click();
+      return new Promise(resolve=>{
+        const started=Date.now();
+        const waitForImport=()=>{
+          const status=$('editorMessage').textContent||'';
+          if(/^(Imported|Import failed)/.test(status)||Date.now()-started>180000)resolve();
+          else setTimeout(waitForImport,10);
+        };
+        waitForImport();
+      });
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';window.fpgaSetImportProgress?.('');});
   },true);
   window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,graphFor,hasHierarchicalInstances,get state(){return state;},importProject};
