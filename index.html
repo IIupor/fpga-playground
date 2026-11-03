@@ -497,13 +497,14 @@ for(const n of nodes){
   g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
   for(let i=0;i<s.ins;i++){const y=30+i*22;line(6,y,left,y,{stroke:'var(--site-primary)','stroke-width':2});}
   for(let i=0;i<s.outs;i++){const y=30+i*22;line(right,y,s.w-6,y,{stroke:'var(--site-primary)','stroke-width':2});}
-  for(let i=0;i<s.outs;i++){const fn=n.cellFunctions?.[n.outputNames?.[i]];if(fn&&/^\s*[!~]/.test(fn))g.append(make('circle',{cx:s.w+5,cy:30+i*22,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
+  for(let i=0;i<s.ins;i++){const pin=n.inputNames?.[i],inverted=n.cellInputInversions?.includes(pin);if(inverted)g.append(make('circle',{cx:13,cy:30+i*22,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
+  for(let i=0;i<s.outs;i++){const fn=n.cellFunctions?.[n.outputNames?.[i]];if(fn&&/^\s*[!~]/.test(fn))g.append(make('circle',{cx:s.w-13,cy:30+i*22,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
   for(let i=0;i<s.ins;i++){
-    const p=make('circle',{cx:0,cy:30+i*22,r:6,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
+    const p=make('rect',{x:-5,y:25+i*22,width:10,height:10,rx:1,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
     p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p);
   }
   for(let i=0;i<s.outs;i++){
-    const c=make('circle',{cx:s.w,cy:30+i*22,r:6,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});
+    const c=make('rect',{x:s.w-5,y:25+i*22,width:10,height:10,rx:1,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});
     c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent='Output port '+(i+1)+' of '+n.name+' selected — now click an input pin.';render()});g.append(c);
   }
   g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});
@@ -676,7 +677,8 @@ window.fpgaLegacyImport=importVerilog;
    if(!source||!/^\s*module\s+/m.test(source))throw Error('Benchmark '+name+' is empty or is not a Verilog module.');
    if(request!==activeRequest)return;
    area.value=source;
-   window.fpgaLastImportedSource='';document.getElementById('importVerilog').click();await new Promise(resolve=>setTimeout(resolve,0));
+   window.fpgaLastImportedSource='';document.getElementById('importVerilog').click();
+   const started=Date.now();while(Date.now()-started<180000&&/^(Loading |Importing |Reading )/.test(msg.textContent))await new Promise(resolve=>setTimeout(resolve,50));
    if(!/^Imported\b/.test(msg.textContent))throw Error(msg.textContent||'The Verilog importer did not report a successful import.');
    const counts=updateBenchmarkStats(name);
    msg.textContent='Loaded '+name+'.v · '+counts.gates+' gates · '+counts.inverters+' inverters · '+counts.dffs+' DFF · '+counts.latches+' latches.';
