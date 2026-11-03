@@ -139,12 +139,12 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
     pins: [...g.querySelectorAll('.nodepin')].map(p => [Number(p.getAttribute('x'))+5, Number(p.getAttribute('y'))+5]),
     leads: [...g.querySelectorAll('line.gate-symbol')].map(l => [Number(l.getAttribute('x1')),Number(l.getAttribute('y1')),Number(l.getAttribute('x2')),Number(l.getAttribute('y2'))])
   }));
-  expect(geometry.pins).toEqual([[0,30],[0,52],[150,30]]);
+  expect(geometry.pins).toEqual([[0,36],[0,58],[150,47]]);
   await expect(cell.locator('rect.nodepin')).toHaveCount(3);
   await expect(cell.locator('circle.nodepin')).toHaveCount(0);
-  expect(geometry.leads).toContainEqual([6,30,18,30]);
-  expect(geometry.leads).toContainEqual([6,52,18,52]);
-  expect(geometry.leads).toContainEqual([132,30,144,30]);
+  expect(geometry.leads).toContainEqual([6,36,18,36]);
+  expect(geometry.leads).toContainEqual([6,58,18,58]);
+  expect(geometry.leads).toContainEqual([132,47,144,47]);
   await expect(cell.locator('path.gate-symbol')).toHaveCount(1);
   await expect(cell.locator('rect.gate-symbol')).toHaveCount(0);
 
@@ -162,4 +162,29 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   await expect(page.locator('#verilogText')).toHaveValue(/AND2_X1 U_AND2_X1_1 \(/);
   await expect(page.locator('#verilogText')).toHaveValue(/assign Y = U_AND2_X1_1_Y;/);
   await expect(cell.locator('circle.gate-symbol')).toHaveCount(0);
+});
+
+test('Liberty input inversion is marked with a bubble distinct from square pins', async ({ page }) => {
+  await page.goto('/');
+  const liberty = [
+    'library(test_library) {',
+    '  cell(INV_INPUT_X1) {',
+    '    pin(A) { direction : input; }',
+    '    pin(B) { direction : input; }',
+    '    pin(Y) { direction : output; function : "!A & B"; }',
+    '  }',
+    '}'
+  ].join('\\n');
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.locator('#importLibraries').click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({ name: 'inverted_input.lib', mimeType: 'text/plain', buffer: Buffer.from(liberty) });
+  await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
+  await page.locator('#libraryBrowserButton').click();
+  await page.getByRole('button', { name: /INV_INPUT_X1/ }).click();
+  const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'INV_INPUT_X1' });
+  await expect(cell.locator('rect.nodepin')).toHaveCount(3);
+  await expect(cell.locator('circle.inverted-pin-bubble')).toHaveCount(1);
+  const inversions = await page.evaluate(() => window.fpgaNodes.find(n => n.cellType === 'INV_INPUT_X1').cellInputInversions);
+  expect(inversions).toEqual(['A']);
 });
