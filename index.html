@@ -701,6 +701,7 @@ window.fpgaLegacyImport=importVerilog;
   const inputs=decls.filter(m=>m[1].toLowerCase()==='input').map(m=>m[2]),outputs=decls.filter(m=>m[1].toLowerCase()==='output').map(m=>m[2]);
   const parsed=[...body.matchAll(/\b(and|or|xor|nand|nor|xnor|not|dff)\s+([A-Za-z_$][\w$]*)\s*\(([^;]+)\)\s*;/gi)].map(m=>{const kind=m[1].toLowerCase(),pins=m[3].split(',').map(s=>s.trim());if(kind==='dff'){if(pins.length!==3)throw Error(`DFF ${m[2]} must use positional ports (CK, Q, D).`);pins.splice(0,3,pins[1],pins[2],pins[0])}return {type:{and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',dff:'DFF'}[kind],name:m[2],pins}});
   if(!parsed.length)return;
+  e.preventDefault();e.stopImmediatePropagation();msg.textContent='Importing Verilog gates…';window.fpgaSetImportProgress?.('Importing Verilog gates…');setTimeout(()=>{
   const wide=parsed.some(g=>g.pins.length>5);
   if(parsed.some(g=>g.pins.length<2||g.pins.length>9||g.pins.some(p=>!valid(p)&&!/^1'b[01]$/i.test(p))||g.type==='NOT'&&g.pins.length!==2)){msg.textContent='Gates must have 1–8 inputs (NOT has exactly 1).';e.preventDefault();e.stopImmediatePropagation();return}
   e.preventDefault();e.stopImmediatePropagation();
@@ -763,6 +764,8 @@ window.fpgaLegacyImport=importVerilog;
     }
     window.fpgaLoadCircuit(next,wires,id);if(window.fpgaFitView)window.fpgaFitView();area.value=source;msg.textContent=`Imported ${next.length} blocks and ${wires.length} wires; arranged in ${layerKeys.length} logic levels${wide?' (wide gates kept intact)':''}.`;
   }catch(err){msg.textContent=`Import failed: ${err.message}`}
+  finally{window.fpgaSetImportProgress?.('')}
+ },0);
  },true);
 })();
 
