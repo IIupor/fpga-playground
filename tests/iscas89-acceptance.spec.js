@@ -225,7 +225,9 @@ for (const name of circuits) {
         if (!node) { error('Missing ' + gate.type + ' gate instance ' + gate.name); continue; }
         const pins = gate.type === 'DFF' && gate.pins.length === 3
           ? [gate.pins[1], gate.pins[2], gate.pins[0]] : gate.pins;
-        if (node.moduleType === 'dff' && gate.type === 'DFF') {\n          if (!(node.outputNames || []).includes('Q')) error('Hierarchical DFF ' + gate.name + ' must expose model output pin Q');\n        } else if (!(node.outputNames || []).includes(pins[0])) error('Wrong output net for ' + gate.name + ': expected ' + pins[0]);
+        if (node.moduleType === 'dff' && gate.type === 'DFF') {
+          if (!(node.outputNames || []).includes('Q')) error('Hierarchical DFF ' + gate.name + ' must expose model output pin Q');
+        } else if (!(node.outputNames || []).includes(pins[0])) error('Wrong output net for ' + gate.name + ': expected ' + pins[0]);
         if (drivers.has(pins[0])) error('Multiple drivers for net ' + pins[0]);
         else drivers.set(pins[0], node);
       }
