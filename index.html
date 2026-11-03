@@ -56,12 +56,12 @@ window.addEventListener('keydown',e=>{if((e.key==='Delete'||e.key==='Backspace')
  </script><script>
 (()=>{
 const svg=document.getElementById('editorStage'), msg=document.getElementById('editorMessage'), signalRows=document.getElementById('signalRows'), truthHead=document.getElementById('editorTruthHead'), truthBody=document.getElementById('editorTruthBody'), editorControls=document.getElementById('editorControls'), editorResults=document.getElementById('editorResults');
-let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const undoStack=[],redoStack=[];function historySnapshot(){return JSON.parse(JSON.stringify({nodes,wires,selected,nextId,globalChannelRouting}))}function saveHistory(){undoStack.push(historySnapshot());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function pushHistorySnapshot(snapshot){undoStack.push(snapshot);if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function updateHistoryButtons(){const u=document.getElementById("editorUndo"),r=document.getElementById("editorRedo");if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}function restoreHistory(snapshot){nodes=snapshot.nodes;wires=snapshot.wires;selected=snapshot.selected;nextId=snapshot.nextId;globalChannelRouting=!!snapshot.globalChannelRouting;pending=null;render();updateHistoryButtons()}function undo(){if(!undoStack.length)return;redoStack.push(historySnapshot());restoreHistory(undoStack.pop());msg.textContent="Last change undone."}function redo(){if(!redoStack.length)return;undoStack.push(historySnapshot());restoreHistory(redoStack.pop());msg.textContent="Change redone."}Object.defineProperty(window,'fpgaNodes',{get:()=>nodes});Object.defineProperty(window,'fpgaWires',{get:()=>wires});Object.defineProperty(window,'fpgaSelected',{get:()=>selected,set:v=>{selected=v}});window.fpgaRender=()=>render();window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;globalChannelRouting=true;render();updateHistoryButtons()};
+let nodes=[], wires=[], selected=null, pending=null, nextId=1, drag=null;const undoStack=[],redoStack=[];function historySnapshot(){return JSON.parse(JSON.stringify({nodes,wires,selected,nextId}))}function saveHistory(){undoStack.push(historySnapshot());if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function pushHistorySnapshot(snapshot){undoStack.push(snapshot);if(undoStack.length>50)undoStack.shift();redoStack.length=0;updateHistoryButtons()}function updateHistoryButtons(){const u=document.getElementById("editorUndo"),r=document.getElementById("editorRedo");if(u)u.disabled=!undoStack.length;if(r)r.disabled=!redoStack.length}function restoreHistory(snapshot){nodes=snapshot.nodes;wires=snapshot.wires;selected=snapshot.selected;nextId=snapshot.nextId;pending=null;render();updateHistoryButtons()}function undo(){if(!undoStack.length)return;redoStack.push(historySnapshot());restoreHistory(undoStack.pop());msg.textContent="Last change undone."}function redo(){if(!redoStack.length)return;undoStack.push(historySnapshot());restoreHistory(redoStack.pop());msg.textContent="Change redone."}Object.defineProperty(window,'fpgaNodes',{get:()=>nodes});Object.defineProperty(window,'fpgaWires',{get:()=>wires});Object.defineProperty(window,'fpgaSelected',{get:()=>selected,set:v=>{selected=v}});window.fpgaRender=()=>render();window.fpgaLoadCircuit=(next,nextWires,nextIdentifier)=>{saveHistory();nodes=next;wires=nextWires;nextId=nextIdentifier;selected=null;pending=null;render();updateHistoryButtons()};
 const NS='http://www.w3.org/2000/svg';
 window.fpgaDeleteNodes=(ids)=>{saveHistory();const doomed=new Set(ids);nodes=nodes.filter(n=>!doomed.has(n.id));wires=wires.filter(w=>!doomed.has(w.from)&&!doomed.has(w.to));if(selected?.kind==='node'&&doomed.has(selected.id))selected=null;pending=null;render()};
 const make=(tag,attrs={},text='')=>{const e=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(text)e.textContent=text;return e};
 function node(type,x,y,name){const n={id:nextId++,type,x,y,name:name||type,value:0,inputs:type==='INPUT'||type==='VDD'||type==='GND'?0:type==='NOT'||type==='OUTPUT'?1:2,outputs:type==='OUTPUT'?0:1,prevClock:0,state:0};nodes.push(n);return n}
-function reset(){nodes=[];wires=[];selected=null;pending=null;nextId=1;globalChannelRouting=false;const a=node('INPUT',55,85,'A'),b=node('INPUT',55,235,'B'),g=node('AND',330,155,'AND1'),o=node('OUTPUT',650,155,'Y');wires.push({id:nextId++,from:a.id,to:g.id,toPin:0},{id:nextId++,from:b.id,to:g.id,toPin:1},{id:nextId++,from:g.id,to:o.id,toPin:0});render();msg.textContent='Example restored: Y = A AND B.'}
+function reset(){nodes=[];wires=[];selected=null;pending=null;nextId=1;const a=node('INPUT',55,85,'A'),b=node('INPUT',55,235,'B'),g=node('AND',330,155,'AND1'),o=node('OUTPUT',650,155,'Y');wires.push({id:nextId++,from:a.id,to:g.id,toPin:0},{id:nextId++,from:b.id,to:g.id,toPin:1},{id:nextId++,from:g.id,to:o.id,toPin:0});render();msg.textContent='Example restored: Y = A AND B.'}
 function spec(n){return {w:['INPUT','OUTPUT','VDD','GND'].includes(n.type)?112:150,h:Math.max(76,50+Math.max(n.inputs,n.outputs)*22),ins:n.inputs,outs:n.outputs}}
 function pin(n,kind,index){const s=spec(n);return {x:n.x+(kind==='out'?s.w:0),y:n.y+30+index*22}}
 function evalCircuit(updateSequential=true){
@@ -146,122 +146,63 @@ function evalCircuit(updateSequential=true){
 }
 
 // Orthogonal obstacle-aware routing. Coordinates are in the SVG viewBox.
-let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map(),routePlanByWire=new Map(),globalChannelRouting=false;
-let routedSegments=[], routedSegmentBins=new Map(), nextRoutedSegmentId=1;
+let routeCache=new Map(),routeNodeById=new Map(),routeRects=[],routeColumns=new Map(),routeRows=new Map();
+let routeRejectConflicts=false;
+let routedSegments=[], routedSegmentBins=new Map(), routedHorizontalByY=new Map(), routedVerticalByX=new Map(), routedHorizontalYKeys=[], routedVerticalXKeys=[], nextRoutedSegmentId=1;
 const ROUTE_CELL=16,ROUTE_MAX_WIDTH=200,ROUTE_MAX_HEIGHT=300,ROUTE_WIRE_BIN=64;
 function indexRoutedSegment(segment){
  const id=nextRoutedSegmentId++;segment.indexId=id;routedSegments.push(segment);
+ if(segment.a.y===segment.b.y){const y=segment.a.y;if(!routedHorizontalByY.has(y)){routedHorizontalByY.set(y,[]);let lo=0,hi=routedHorizontalYKeys.length;while(lo<hi){const m=(lo+hi)>>1;if(routedHorizontalYKeys[m]<y)lo=m+1;else hi=m}routedHorizontalYKeys.splice(lo,0,y)}routedHorizontalByY.get(y).push(segment)}
+ else if(segment.a.x===segment.b.x){const x=segment.a.x;if(!routedVerticalByX.has(x)){routedVerticalByX.set(x,[]);let lo=0,hi=routedVerticalXKeys.length;while(lo<hi){const m=(lo+hi)>>1;if(routedVerticalXKeys[m]<x)lo=m+1;else hi=m}routedVerticalXKeys.splice(lo,0,x)}routedVerticalByX.get(x).push(segment)}
  const x1=Math.floor(Math.min(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(segment.a.x,segment.b.x)/ROUTE_WIRE_BIN);
  const y1=Math.floor(Math.min(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(segment.a.y,segment.b.y)/ROUTE_WIRE_BIN);
  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){const key=x+','+y;if(!routedSegmentBins.has(key))routedSegmentBins.set(key,[]);routedSegmentBins.get(key).push(segment)}
 }
 function routeCandidateWireCost(points,wire){
- let length=0,bends=Math.max(0,points.length-2),crossings=0,overlaps=0;
- // Bound crossing analysis on large circuits: inspect at most 128 nearby
- // segments per candidate segment. This keeps scoring useful without allowing
- // dense spatial bins to make routing quadratic.
- const MAX_CROSSING_CHECKS=128;
+ let length=0,bends=Math.max(0,points.length-2),conflicts=0;
+ // Exact checks against every already-routed segment in the spatial bins.
+ // Return Infinity rather than allowing the router to trade correctness for
+ // a shorter path.
  for(let i=1;i<points.length;i++){
   const a=points[i-1],b=points[i];length+=Math.abs(a.x-b.x)+Math.abs(a.y-b.y);
   const x1=Math.floor(Math.min(a.x,b.x)/ROUTE_WIRE_BIN),x2=Math.floor(Math.max(a.x,b.x)/ROUTE_WIRE_BIN);
   const y1=Math.floor(Math.min(a.y,b.y)/ROUTE_WIRE_BIN),y2=Math.floor(Math.max(a.y,b.y)/ROUTE_WIRE_BIN);
-  const nearby=new Map(),binKeys=[];
-  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++)binKeys.push(x+','+y);
-  // Sample bins across the entire candidate segment instead of consuming the
-  // first dense bin. Then sample each selected bin's segment list evenly too.
-  const MAX_SAMPLED_BINS=16,MAX_SEGMENTS_PER_BIN=8;
-  const binStep=Math.max(1,Math.ceil(binKeys.length/MAX_SAMPLED_BINS));
-  for(let bi=0;bi<binKeys.length&&nearby.size<MAX_CROSSING_CHECKS;bi+=binStep){
-   const list=routedSegmentBins.get(binKeys[bi])||[];
-   const segmentStep=Math.max(1,Math.ceil(list.length/MAX_SEGMENTS_PER_BIN));
-   for(let si=0;si<list.length&&nearby.size<MAX_CROSSING_CHECKS;si+=segmentStep){
-    const s=list[si];
-    if(!nearby.has(s.indexId))nearby.set(s.indexId,s);
-   }
+  const nearby=new Map();
+  for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){
+   const list=routedSegmentBins.get(x+','+y)||[];
+   for(const s of list)if(!nearby.has(s.indexId))nearby.set(s.indexId,s);
   }
   for(const s of nearby.values()){
-   if(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to)continue;
+   if(s.wire===wire.id||s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to)continue;
+   if(routeRejectConflicts){const ah=a.y===b.y,bh=s.a.y===s.b.y;if(ah!==bh){const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))return Infinity;}else if(ah&&s.a.y===a.y){if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))return Infinity;}else if(!ah&&s.a.x===a.x){if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))return Infinity;}}
    const ah=a.y===b.y,bh=s.a.y===s.b.y;
    if(ah!==bh){
     const h=ah?{a:a,b:b}:s,v=ah?s:{a:a,b:b},x=v.a.x,y=h.a.y;
-    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))crossings++;
+    if(x>Math.min(h.a.x,h.b.x)&&x<Math.max(h.a.x,h.b.x)&&y>Math.min(v.a.y,v.b.y)&&y<Math.max(v.a.y,v.b.y))conflicts++;
    }else if(ah&&s.a.y===a.y){
-    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))overlaps++;
+    if(Math.max(Math.min(a.x,b.x),Math.min(s.a.x,s.b.x))<Math.min(Math.max(a.x,b.x),Math.max(s.a.x,s.b.x)))conflicts++;
    }else if(!ah&&s.a.x===a.x){
-    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))overlaps++;
+    if(Math.max(Math.min(a.y,b.y),Math.min(s.a.y,s.b.y))<Math.min(Math.max(a.y,b.y),Math.max(s.a.y,s.b.y)))conflicts++;
    }
   }
  }
- // Keep crossing/overlap penalties moderate: heavier weights caused
- // large benchmark import/export tests to exceed their time budget.
- return length+crossings*120+overlaps*90+bends*8;
+ return length+bends*8+conflicts*1200;
 }
 function rememberRoutedWire(w,points){
  for(let i=1;i<points.length;i++)if(points[i-1].x!==points[i].x||points[i-1].y!==points[i].y)
   indexRoutedSegment({wire:w.id,from:w.from,to:w.to,a:points[i-1],b:points[i]});
 }
 function prepareRouteObstacleIndex(){
- routeNodeById=new Map(nodes.map(n=>[n.id,n]));routeRects=[];routeColumns=new Map();routeRows=new Map();routePlanByWire=new Map();
- let maxBottom=0;
- for(const n of nodes){const s=spec(n);routeRects.push({id:n.id,l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8});maxBottom=Math.max(maxBottom,n.y+s.h)}
+ routeNodeById=new Map(nodes.map(n=>[n.id,n]));routeRects=[];routeColumns=new Map();routeRows=new Map();
+ for(const n of nodes){const s=spec(n);routeRects.push({id:n.id,l:n.x-8,r:n.x+s.w+8,t:n.y-8,b:n.y+s.h+8})}
  for(const r of routeRects){
   for(let x=Math.floor(r.l/ROUTE_CELL);x<=Math.floor(r.r/ROUTE_CELL);x++){if(!routeColumns.has(x))routeColumns.set(x,[]);routeColumns.get(x).push(r)}
   for(let y=Math.floor(r.t/ROUTE_CELL);y<=Math.floor(r.b/ROUTE_CELL);y++){if(!routeRows.has(y))routeRows.set(y,[]);routeRows.get(y).push(r)}
  }
  for(const list of routeColumns.values())list.sort((a,b)=>a.t-b.t);
  for(const list of routeRows.values())list.sort((a,b)=>a.l-b.l);
- if(globalChannelRouting){
-  // Imported netlists use dedicated source/target escape lanes and one unique
-  // horizontal track per connection. This is a deterministic global channel
-  // router: vertical escapes stay outside their endpoint columns, and the
-  // horizontal tracks stay below every obstacle. Perpendicular crossings are
-  // intentional and remain electrically disconnected in the SVG model.
-  const sources=new Map(),targets=new Map(),sourceIndex=new Map(),targetIndex=new Map(),sourceGroups=new Map();
-  const group=(map,key)=>{if(!map.has(key))map.set(key,[]);return map.get(key)};
-  for(const w of wires){
-   const a=routeNodeById.get(w.from),b=routeNodeById.get(w.to);if(!a||!b)continue;
-   const sourceKey=`${a.id}:${w.fromPin||0}`;
-   group(sources,a.x).push({w,key:sourceKey});
-   group(targets,b.x).push(w);
-   if(!sourceGroups.has(sourceKey))sourceGroups.set(sourceKey,{a,wires:[]});
-   sourceGroups.get(sourceKey).wires.push(w);
-  }
-  for(const [x,list] of sources){
-   const unique=[...new Map(list.map(item=>[item.key,item])).values()].sort((a,b)=>a.w.id-b.w.id);
-   unique.forEach((item,i)=>{for(const w of sourceGroups.get(item.key).wires)sourceIndex.set(w.id,i)});
-  }
-  for(const [x,list] of targets){list.sort((a,b)=>a.id-b.id);list.forEach((w,i)=>targetIndex.set(w.id,i))}
-  const trackBase=maxBottom+32,trackGap=3.2,intervals=[];
-  for(const [key,source] of sourceGroups){
-   const sx=source.a.x+150+30+(sourceIndex.get(source.wires[0].id)||0)*trackGap;
-   const targetXs=source.wires.map(w=>{const b=routeNodeById.get(w.to);return b.x-30-(targetIndex.get(w.id)||0)*trackGap});
-   intervals.push({key,sx,start:Math.min(sx,...targetXs),end:Math.max(sx,...targetXs)});
-  }
-  intervals.sort((a,b)=>a.start-b.start||a.end-b.end||a.key.localeCompare(b.key));
-  const active=[],free=[];let nextTrack=0;
-  const pushActive=item=>{let i=active.length;active.push(item);while(i){const p=(i-1)>>1;if(active[p].end<=item.end)break;active[i]=active[p];i=p}active[i]=item};
-  const popActive=()=>{const root=active[0],last=active.pop();if(active.length){let i=0;while(true){let c=i*2+1;if(c>=active.length)break;if(c+1<active.length&&active[c+1].end<active[c].end)c++;if(active[c].end>=last.end)break;active[i]=active[c];i=c}active[i]=last}return root};
-  const trackBySource=new Map();
-  for(const item of intervals){
-   while(active.length&&active[0].end+trackGap<=item.start)free.push(popActive().track);
-   const track=free.length?free.pop():nextTrack++;
-   trackBySource.set(item.key,track);pushActive({end:item.end,track});
-  }
-  for(const [key,source] of sourceGroups){
-   const laneY=trackBase+trackBySource.get(key)*trackGap;
-   for(const w of source.wires){
-    const b=routeNodeById.get(w.to);
-    routePlanByWire.set(w.id,{
-     sourceLaneX:source.a.x+150+30+(sourceIndex.get(w.id)||0)*trackGap,
-     targetLaneX:b.x-30-(targetIndex.get(w.id)||0)*trackGap,
-     laneY
-    });
-   }
-  }
-  window.fpgaRoutingTrackCount=nextTrack;
- }
 }
-function routeFirstHit(u,v,skipFrom=null,skipTo=null){
+function routeFirstHit(u,v,skipFrom=null,skipTo=null,wire=null){
  if(u.x!==v.x&&u.y!==v.y)return {l:Math.min(u.x,v.x),r:Math.max(u.x,v.x),t:Math.min(u.y,v.y),b:Math.max(u.y,v.y),id:null};
  if(u.x===v.x){
   const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y),list=routeColumns.get(Math.floor(x/ROUTE_CELL))||[];
@@ -274,6 +215,26 @@ function routeFirstHit(u,v,skipFrom=null,skipTo=null){
   while(lo<hi){const m=(lo+hi)>>1;if(list[m].l<threshold)lo=m+1;else hi=m}
   for(let i=lo;i<list.length&&list[i].l<maxX;i++){const r=list[i];if(r.id===skipFrom||r.id===skipTo)continue;if(y>r.t&&y<r.b&&r.r>minX&&Math.max(minX,r.l)<Math.min(maxX,r.r))return r}
  }
+ // Previously routed wires are hard obstacles too. Coordinate-indexed
+ // rows/columns avoid scanning every segment in dense ISCAS spatial bins.
+ const ignore=s=>wire&&(s.from===wire.from||s.from===wire.to||s.to===wire.from||s.to===wire.to);
+ if(u.x===v.x){
+  const x=u.x,minY=Math.min(u.y,v.y),maxY=Math.max(u.y,v.y);
+  let rowLo=0,rowHi=routedHorizontalYKeys.length;while(rowLo<rowHi){const m=(rowLo+rowHi)>>1;if(routedHorizontalYKeys[m]<=minY)rowLo=m+1;else rowHi=m}
+  for(let ri=rowLo;ri<routedHorizontalYKeys.length&&routedHorizontalYKeys[ri]<maxY;ri++){const y=routedHorizontalYKeys[ri],list=routedHorizontalByY.get(y)||[];for(const s of list){if(ignore(s))continue;const lo=Math.min(s.a.x,s.b.x),hi=Math.max(s.a.x,s.b.x);if(x>lo&&x<hi)return {l:lo,r:hi,t:y-1,b:y+1,id:null,wire:true}}}
+  for(const s of routedVerticalByX.get(x)||[]){
+   if(ignore(s))continue;const lo=Math.max(minY,Math.min(s.a.y,s.b.y)),hi=Math.min(maxY,Math.max(s.a.y,s.b.y));
+   if(lo<hi)return {l:x-1,r:x+1,t:lo,b:hi,id:null,wire:true};
+  }
+ }else{
+  const y=u.y,minX=Math.min(u.x,v.x),maxX=Math.max(u.x,v.x);
+  let colLo=0,colHi=routedVerticalXKeys.length;while(colLo<colHi){const m=(colLo+colHi)>>1;if(routedVerticalXKeys[m]<=minX)colLo=m+1;else colHi=m}
+  for(let ci=colLo;ci<routedVerticalXKeys.length&&routedVerticalXKeys[ci]<maxX;ci++){const x=routedVerticalXKeys[ci],list=routedVerticalByX.get(x)||[];for(const s of list){if(ignore(s))continue;const lo=Math.min(s.a.y,s.b.y),hi=Math.max(s.a.y,s.b.y);if(y>lo&&y<hi)return {l:x-1,r:x+1,t:lo,b:hi,id:null,wire:true}}}
+  for(const s of routedHorizontalByY.get(y)||[]){
+   if(ignore(s))continue;const lo=Math.max(minX,Math.min(s.a.x,s.b.x)),hi=Math.min(maxX,Math.max(s.a.x,s.b.x));
+   if(lo<hi)return {l:lo,r:hi,t:y-1,b:y+1,id:null,wire:true};
+  }
+ }
  return null;
 }
 function routePointsFast(w,a,b,p,q){
@@ -283,20 +244,29 @@ function routePointsFast(w,a,b,p,q){
  const sourceLane0=Math.floor((p.x+8)/ROUTE_CELL+1)*ROUTE_CELL+1;
  const targetLane=q.x-9;
  const targetSpec=spec(b);
- const rowLanes=[b.y-9,b.y+targetSpec.h+9];
+ const midY=(p.y+q.y)/2;
+ const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
+ const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ const rowLanes=[p.y,q.y,b.y-9,b.y+targetSpec.h+9,topLane,bottomLane,
+  ...Array.from({length:3},(_,i)=>Math.round(midY)+(i-1)*ROUTE_CELL)]
+  .filter((y,i,arr)=>arr.indexOf(y)===i)
+  .sort((u,v)=>Math.abs(u-midY)-Math.abs(v-midY));
+ const targetLanes=Array.from({length:2},(_,i)=>targetLane-i*ROUTE_CELL);
  let bestCandidate=null,bestScore=Infinity;
  for(const laneY of rowLanes){
-  for(let step=0;step<12;step++){
+  for(let step=0;step<4;step++){
    const laneX=sourceLane0+step*ROUTE_CELL;
-   const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetLane,y:laneY},{x:targetLane,y:q.y},q];
+   for(const targetX of targetLanes){
+   const candidate=[p,{x:laneX,y:p.y},{x:laneX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q];
    let blocked=false;
    for(let i=1;i<candidate.length;i++){
-    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){blocked=true;break}
+    if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){blocked=true;break}
    }
    if(blocked)continue;
    const simplified=candidate.filter((pt,i,arr)=>i===0||pt.x!==arr[i-1].x||pt.y!==arr[i-1].y);
-   const score=routeCandidateWireCost(simplified,w);
-   if(score<bestScore){bestScore=score;bestCandidate=simplified}
+   const score=simplified.slice(1).reduce((sum,pt,i)=>sum+Math.abs(pt.x-simplified[i].x)+Math.abs(pt.y-simplified[i].y),0)+Math.max(0,simplified.length-2)*8;
+   if(Number.isFinite(score)&&score<bestScore){bestScore=score;bestCandidate=simplified}
+   }
   }
  }
  if(bestCandidate)return bestCandidate;
@@ -307,15 +277,15 @@ function routePointsFast(w,a,b,p,q){
   let changed=false;
   for(let i=1;i<path.length;i++){
    const u=path[i-1],v=path[i],skipFrom=i===1?a.id:null,skipTo=i===path.length-1?b.id:null;
-   const hit=routeFirstHit(u,v,skipFrom,skipTo);
+   const hit=routeFirstHit(u,v,skipFrom,skipTo,w);
    if(!hit)continue;
    let candidates;
    if(u.x===v.x){
     const lanes=[Math.floor(hit.l/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.r/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y})?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
+    candidates=lanes.map(x=>({points:[{x,y:u.y},{x,y:v.y}],score:(routeFirstHit(u,{x,y:u.y},skipFrom,null,w)?4:0)+(routeFirstHit({x,y:u.y},{x,y:v.y},null,null,w)?8:0)+(routeFirstHit({x,y:v.y},v,null,skipTo,w)?4:0)+Math.abs(x-(u.x+v.x)/2)*0.001}));
    }else{
     const lanes=[Math.floor(hit.t/ROUTE_CELL)*ROUTE_CELL-1,Math.floor(hit.b/ROUTE_CELL+1)*ROUTE_CELL+1];
-    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y})?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
+    candidates=lanes.map(y=>({points:[{x:u.x,y},{x:v.x,y}],score:(routeFirstHit(u,{x:u.x,y},skipFrom,null,w)?4:0)+(routeFirstHit({x:u.x,y},{x:v.x,y},null,null,w)?8:0)+(routeFirstHit({x:v.x,y},v,null,skipTo,w)?4:0)+Math.abs(y-(u.y+v.y)/2)*0.001}));
    }
    candidates.sort((x,y)=>x.score-y.score);
    path.splice(i,0,...candidates[0].points);changed=true;break;
@@ -323,48 +293,46 @@ function routePointsFast(w,a,b,p,q){
   if(!changed){
    const simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null))break;
-   return simplified;
+   let valid=true;
+   for(let i=1;i<simplified.length;i++)if(routeFirstHit(simplified[i-1],simplified[i],i===1?a.id:null,i===simplified.length-1?b.id:null,w)){valid=false;break}
+   if(valid)return simplified;
+   break;
   }
  }
  // If local detours cannot resolve a dense obstacle cluster within the iteration
  // budget, use a perimeter corridor outside every block's keep-out rectangle.
  // The source leaves to the right and the target is approached from the left,
  // so the long vertical legs stay outside the endpoint columns.
- const topLane=Math.min(...routeRects.map(r=>r.t))-ROUTE_CELL*2-1;
- const bottomLane=Math.max(...routeRects.map(r=>r.b))+ROUTE_CELL*2+1;
+ // Reuse topLane and bottomLane computed above; redeclaring these consts
+ // would prevent the entire editor script from parsing.
  const simplify=points=>{
   const out=[];
   for(const pt of points){while(out.length>=2){const u=out[out.length-2],v=out[out.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))out.pop();else break}if(!out.length||out[out.length-1].x!==pt.x||out[out.length-1].y!==pt.y)out.push({x:pt.x,y:pt.y})}
   return out;
  };
- for(const laneY of [topLane,bottomLane]){
-  const candidate=simplify([p,{x:p.x+9,y:p.y},{x:p.x+9,y:laneY},{x:q.x-9,y:laneY},{x:q.x-9,y:q.y},q]);
+ const outerLanes=[];
+ for(let step=0;step<6;step++){outerLanes.push(topLane-step*ROUTE_CELL,bottomLane+step*ROUTE_CELL)}
+ for(const laneY of outerLanes)for(let sx=0;sx<4;sx++)for(let tx=0;tx<4;tx++){
+  const sourceX=p.x+9+sx*ROUTE_CELL,targetX=q.x-9-tx*ROUTE_CELL;
+  const candidate=simplify([p,{x:sourceX,y:p.y},{x:sourceX,y:laneY},{x:targetX,y:laneY},{x:targetX,y:q.y},q]);
   let clear=true;
   for(let i=1;i<candidate.length;i++){
-   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null)){clear=false;break}
+   if(routeFirstHit(candidate[i-1],candidate[i],i===1?a.id:null,i===candidate.length-1?b.id:null,w)){clear=false;break}
   }
   if(clear)return candidate;
  }
- // Preserve geometry only as a last resort if even the outer corridor is blocked.
- const partial=simplify(path);
- return partial;
+ // Never silently return a route that still crosses another net.
+ return [];
 }
 function routePoints(w){
  if(routeCache.has(w.id))return routeCache.get(w.id);
  const a=routeNodeById.get(w.from)||nodes.find(n=>n.id===w.from),b=routeNodeById.get(w.to)||nodes.find(n=>n.id===w.to);
  if(!a||!b)return [];
  const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin);
- let result;
- if(globalChannelRouting){
-  const plan=routePlanByWire.get(w.id);
-  if(!plan)result=[];
-  else{
-   const raw=[p,{x:plan.sourceLaneX,y:p.y},{x:plan.sourceLaneX,y:plan.laneY},{x:plan.targetLaneX,y:plan.laneY},{x:plan.targetLaneX,y:q.y},q];
-   result=[];
-   for(const pt of raw){while(result.length>=2){const u=result[result.length-2],v=result[result.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))result.pop();else break}if(!result.length||result[result.length-1].x!==pt.x||result[result.length-1].y!==pt.y)result.push(pt)}
-  }
- }else result=routePointsGraph(w,a,b,p,q);
+ let result=nodes.length>100?routePointsFast(w,a,b,p,q):routePointsGraph(w,a,b,p,q);
+ // The bounded fast router can fail in dense obstacle clusters. Retry with
+ // the visibility-graph router instead of rendering a wire with an empty path.
+ if(!result.length&&nodes.length>100)result=routePointsGraph(w,a,b,p,q);
  routeCache.set(w.id,result);return result;
 }
 function routePointsGraph(w,a,b,p,q){
@@ -423,7 +391,9 @@ function routePointsGraph(w,a,b,p,q){
    const cur=pop();if(cur.cost!==dist[cur.v][cur.dir])continue;
    if(cur.v===ti){finish=cur;break}
    for(const edge of adj[cur.v]){
-    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd;
+    const segmentCost=routeCandidateWireCost([vertices[cur.v],vertices[edge.to]],w);
+    const crossingPenalty=Math.max(0,segmentCost-edge.d);
+    const nd=edge.d+(cur.dir&&cur.dir!==edge.dir?24:0),cost=cur.cost+nd+crossingPenalty;
     if(cost<dist[edge.to][edge.dir]){dist[edge.to][edge.dir]=cost;prev[edge.to][edge.dir]=[cur.v,cur.dir];push({v:edge.to,dir:edge.dir,cost})}
    }
   }
@@ -432,23 +402,31 @@ function routePointsGraph(w,a,b,p,q){
    while(v>=0){reversed.push(vertices[v]);const back=prev[v][dir];if(!back)break;[v,dir]=back}
    const path=reversed.reverse(),simplified=[];
    for(const pt of path){while(simplified.length>=2){const u=simplified[simplified.length-2],v=simplified[simplified.length-1];if((u.x===v.x&&v.x===pt.x)||(u.y===v.y&&v.y===pt.y))simplified.pop();else break}simplified.push({x:pt.x,y:pt.y})}
-   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))){routeCache.set(w.id,simplified);return simplified}
+   if(simplified.length>=2&&simplified[0].x===p.x&&simplified[0].y===p.y&&simplified[simplified.length-1].x===q.x&&simplified[simplified.length-1].y===q.y&&simplified.slice(1).every((pt,i)=>clear(simplified[i],pt,allRects))&&Number.isFinite(routeCandidateWireCost(simplified,w))){routeCache.set(w.id,simplified);return simplified}
   }
  }
  routeCache.set(w.id,[]);return [];
 }
 function routePointsSimple(w){const a=nodes.find(n=>n.id===w.from),b=nodes.find(n=>n.id===w.to);if(!a||!b)return [];const p=pin(a,'out',w.fromPin||0),q=pin(b,'in',w.toPin),m=(p.x+q.x)/2;return [p,{x:m,y:p.y},{x:m,y:q.y},q]}
 function wirePath(w){const pts=routePoints(w);return pts.length?'M'+pts.map(p=>p.x+' '+p.y).join(' L'):''}
-function updateEditorCanvasSize(){const padding=40;let width=900,height=390,maxBottom=0;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding);maxBottom=Math.max(maxBottom,n.y+s.h)}if(globalChannelRouting)height=Math.max(height,maxBottom+32+(window.fpgaRoutingTrackCount||wires.length)*4+padding);width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
-function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();nextRoutedSegmentId=1;evalCircuit();prepareRouteObstacleIndex();updateEditorCanvasSize();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();for(const w of wires){const points=routePoints(w);if(!globalChannelRouting)rememberRoutedWire(w,points);const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(routeNodeById.get(w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
-if(globalChannelRouting){
- const fanout=new Map();
- for(const w of wires){const key=`${w.from}:${w.fromPin||0}`;if(!fanout.has(key))fanout.set(key,[]);fanout.get(key).push(w)}
- for(const list of fanout.values())if(list.length>1){
-  const high=!!routeNodeById.get(list[0].from)?.value;
-  for(const w of list){const plan=routePlanByWire.get(w.id);if(plan)svg.append(make('circle',{cx:plan.targetLaneX,cy:plan.laneY,r:3.5,class:'wire-junction'+(high?' high':'')}))}
- }
+function updateEditorCanvasSize(){const padding=40;let width=900,height=390;for(const n of nodes){const s=spec(n);width=Math.max(width,n.x+s.w+padding);height=Math.max(height,n.y+s.h+padding)}width=Math.ceil(width);height=Math.ceil(height);const zoom=window.fpgaZoom||1;svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.style.width=`${width*zoom}px`;svg.style.height=`${height*zoom}px`;svg.dataset.canvasWidth=String(width);svg.dataset.canvasHeight=String(height);svg.dataset.zoom=String(zoom)}
+function render(){routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();routedHorizontalByY=new Map();routedVerticalByX=new Map();routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;evalCircuit();updateEditorCanvasSize();prepareRouteObstacleIndex();svg.classList.toggle('connection-active',!!pending);svg.replaceChildren();
+// Pathfinder-style negotiated routing: reroute all nets in alternating orders.
+// Congested crossings carry a high cost, so each pass can choose alternate corridors.
+const resetRoutedWireIndex=()=>{
+ routeCache=new Map();routedSegments=[];routedSegmentBins=new Map();
+ routedHorizontalByY=new Map();routedVerticalByX=new Map();
+ routedHorizontalYKeys=[];routedVerticalXKeys=[];nextRoutedSegmentId=1;
+};
+const routeOrder=[...wires];
+for(let pass=0;pass<4;pass++){
+ resetRoutedWireIndex();
+ const order=pass===1||pass===3?[...routeOrder].reverse():routeOrder;
+ routeRejectConflicts=pass===3;
+ for(const w of order){const points=routePoints(w);rememberRoutedWire(w,points)}
 }
+routeRejectConflicts=false;
+for(const w of routeOrder){const points=routeCache.get(w.id)||[];const d=points.length?'M'+points.map(p=>p.x+' '+p.y).join(' L'):'';const hit=make('path',{d,class:'wire-hit-area','data-wire':w.id});hit.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(hit);const p=make('path',{d,class:'editor-wire'+(nodes.find(n=>n.id===w.from)?.value?' high':'')+(selected?.kind==='wire'&&selected.id===w.id?' pending':''),'data-wire':w.id,'data-from':w.from,'data-to':w.to});p.addEventListener('click',e=>{e.stopPropagation();selected={kind:'wire',id:w.id};render()});svg.append(p)}
 for(const n of nodes){
   const s=spec(n),g=make('g',{transform:'translate('+n.x+' '+n.y+')','data-node':n.id});
   if(selected?.kind==='node'&&selected.id===n.id)g.setAttribute('data-selected','true');
