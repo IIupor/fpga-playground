@@ -95,9 +95,9 @@ function parseVerilog(source,label) {
       const s=statement.trim(); if(!s) continue;
       const assign=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
-      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\\s+(?:\\w+\\s*)?\\(([^()]*)\\)$/i);
+      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\\s+(?:([A-Za-z_$][\\w$]*)\\s*)?\\(([^()]*)\\)$/i);
       // A declared module named dff is a real hierarchical definition, not the legacy ISCAS primitive.
-      if(gate&&!modules.has(gate[1])){mod.gates.push({kind:gate[1].toLowerCase(),pins:splitComma(gate[2])});continue;}
+      if(gate&&!modules.has(gate[1])){mod.gates.push({kind:gate[1].toLowerCase(),name:gate[2]||null,pins:splitComma(gate[3])});continue;}
       const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
       if(instance){
         const connections={};let positional=0;
@@ -351,7 +351,7 @@ function graphFor(mod,path) {
     // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
     const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
     const output=pins[0],gateInputs=pins.slice(1);
-    const node=add(gateTypes[gate.kind],gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
+    const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
     drivers.set(output,{node,pin:0});
   }
   for(const inst of mod.instances){
