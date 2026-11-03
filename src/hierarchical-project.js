@@ -334,7 +334,7 @@ function graphFor(mod,path) {
       moduleType:definition?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),
       inputNames:inputPorts.map(p=>p.name),outputNames:outputPorts.map(p=>p.name),
       cellFunctions:cell?Object.fromEntries(outputPorts.filter(p=>p.function).map(p=>[p.name,p.function])):null,
-      cellInputInversions:cell?[...new Set(outputPorts.flatMap(p=>inputPorts.filter(input=>p.function&&new RegExp('(?:!|~)\\\\s*'+input.name.replace(/[.*+?^$\\\\{}()|[\\\\]\\\\]/g,'\\\\cellFunctions:cell?Object.fromEntries(outputPorts.filter(p=>p.function).map(p=>[p.name,p.function])):null,cellSequential:cell?.sequential||null,')+'\\\\b').test(p.function)).map(input=>input.name)))]:[],
+      cellInputInversions:cell?[...new Set(outputPorts.flatMap(p=>inputPorts.filter(input=>p.function&&new RegExp('(?:!|~)\\s*'+input.name+'\\b').test(p.function)).map(input=>input.name)))]:[],
       cellSequential:cell?.sequential||null,
       isUnresolved:!!inst.unresolved
     });
@@ -474,7 +474,7 @@ function setupUI() {
     const node={id,type,name:nodeName,x,y,value:0,inputs:inputPins.length,outputs:outputPins.length,
       inputNames:inputPins.map(pin=>pin.name),outputNames:outputPins.map(pin=>pin.name),
       cellType:cell.name,cellFunctions:Object.fromEntries(outputPins.filter(pin=>pin.function).map(pin=>[pin.name,pin.function])),
-      cellInputInversions:[...new Set(outputPins.flatMap(pin=>inputPins.filter(input=>pin.function&&new RegExp('(?:!|~)\\\\s*'+input.name.replace(/[.*+?^$\\\\{}()|[\\\\]\\\\]/g,'\\\\cellFunctions:Object.fromEntries(outputPins.filter(pin=>pin.function).map(pin=>[pin.name,pin.function])),
+      cellInputInversions:[...new Set(outputPins.flatMap(pin=>inputPins.filter(input=>pin.function&&new RegExp('(?:!|~)\\s*'+input.name+'\\b').test(pin.function)).map(input=>input.name)))],
       cellSequential:cell.sequential||null,prevClock:0,state:0};')+'\\\\b').test(pin.function)).map(input=>input.name)))],
       cellSequential:cell.sequential||null,prevClock:0,state:0};
     window.fpgaLoadCircuit([...nodes,node],wires,id+1);
