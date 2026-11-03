@@ -188,3 +188,27 @@ test('Liberty input inversion is marked with a bubble distinct from square pins'
   const inversions = await page.evaluate(() => window.fpgaNodes.find(n => n.cellType === 'INV_INPUT_X1').cellInputInversions);
   expect(inversions).toEqual(['A']);
 });
+
+test('Sky130 Liberty library exposes real cell pins and allows placing a cell', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#libraryFiles').setInputFiles('libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz');
+  await expect(page.locator('#libraryStatus')).toContainText(/Liberty cells/, { timeout: 120000 });
+  const summary = await page.locator('#libraryStatus').textContent();
+  expect(summary).toMatch(/[1-9]\d* Liberty cells/);
+  await page.locator('#libraryBrowserButton').click();
+  await page.locator('#libraryCellSearch').fill('sky130_fd_sc_hd__and2_1');
+  const cellButton = page.getByRole('button', { name: /sky130_fd_sc_hd__and2_1/ });
+  await expect(cellButton).toBeVisible({ timeout: 30000 });
+  await expect(cellButton).toContainText('2 inputs · 1 outputs');
+  await cellButton.click();
+  const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'sky130_fd_sc_hd__and2_1' });
+  await expect(cell).toHaveCount(1);
+  const pins = await page.evaluate(() => {
+    const node = window.fpgaNodes.find(item => item.cellType === 'sky130_fd_sc_hd__and2_1');
+    return { inputs: node?.inputs, outputs: node?.outputs, inputNames: node?.inputNames, outputNames: node?.outputNames };
+  });
+  expect(pins.inputs).toBe(2);
+  expect(pins.outputs).toBe(1);
+  expect(pins.inputNames).toHaveLength(2);
+  expect(pins.outputNames).toHaveLength(1);
+});
