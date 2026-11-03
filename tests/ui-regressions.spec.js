@@ -95,8 +95,8 @@ test('logic gates render standard symbols and input/output terminals are mirrore
     const groups = [...document.querySelectorAll('#editorStage g[data-node]')];
     const input = groups.filter(g => [...g.querySelectorAll('.nodemeta')].some(t => t.textContent === 'INPUT')).at(-1);
     const output = groups.filter(g => [...g.querySelectorAll('.nodemeta')].some(t => t.textContent === 'OUTPUT')).at(-1);
-    return { inputPinX: Number(input.querySelector('.nodepin').getAttribute('cx')),
-      outputPinX: Number(output.querySelector('.nodepin').getAttribute('cx')),
+    return { inputPinX: Number(input.querySelector('.nodepin').getAttribute('x'))+5,
+      outputPinX: Number(output.querySelector('.nodepin').getAttribute('x'))+5,
       inputPath: input.querySelector('path.gate-symbol').getAttribute('d'),
       outputPath: output.querySelector('path.gate-symbol').getAttribute('d') };
   });
@@ -136,10 +136,12 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
     type: 'MODULE', cellType: 'AND2_X1', inputs: 2, outputs: 1, functions: { Y: 'A & B' }
   });
   const geometry = await cell.evaluate(g => ({
-    pins: [...g.querySelectorAll('.nodepin')].map(p => [Number(p.getAttribute('cx')), Number(p.getAttribute('cy'))]),
+    pins: [...g.querySelectorAll('.nodepin')].map(p => [Number(p.getAttribute('x'))+5, Number(p.getAttribute('y'))+5]),
     leads: [...g.querySelectorAll('line.gate-symbol')].map(l => [Number(l.getAttribute('x1')),Number(l.getAttribute('y1')),Number(l.getAttribute('x2')),Number(l.getAttribute('y2'))])
   }));
   expect(geometry.pins).toEqual([[0,30],[0,52],[150,30]]);
+  await expect(cell.locator('rect.nodepin')).toHaveCount(3);
+  await expect(cell.locator('circle.nodepin')).toHaveCount(0);
   expect(geometry.leads).toContainEqual([6,30,18,30]);
   expect(geometry.leads).toContainEqual([6,52,18,52]);
   expect(geometry.leads).toContainEqual([132,30,144,30]);
