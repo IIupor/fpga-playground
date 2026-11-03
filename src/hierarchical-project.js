@@ -623,6 +623,15 @@ function setupUI() {
     window.fpgaSetImportProgress?.('Reading '+selectedFile.name+'…');selectedFile.text().then(source=>{
       if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}},50));}
       area.value=source;window.fpgaLastImportedSource='';importButton.click();
+      return new Promise(resolve=>{
+        const started=Date.now();
+        const waitForImport=()=>{
+          const status=$('editorMessage').textContent||'';
+          if(/^(Imported|Import failed)/.test(status)||Date.now()-started>180000)resolve();
+          else setTimeout(waitForImport,10);
+        };
+        waitForImport();
+      });
     }).catch(error=>{$('editorMessage').textContent='Import failed: '+error.message;}).finally(()=>{verilogFile.value='';window.fpgaSetImportProgress?.('');});
   },true);
   window.fpgaVerilogProject={parseVerilog,parseLiberty,projectFrom,graphFor,hasHierarchicalInstances,get state(){return state;},importProject};
