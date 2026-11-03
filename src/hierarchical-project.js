@@ -226,6 +226,7 @@ function libertyFunctionInvertsOutput(fn) {
   }
   return false;
 }
+window.fpgaLibertyFunctionInvertsOutput=libertyFunctionInvertsOutput;
 function parseLiberty(source,label) {
   const cells=new Map(),masked=maskLibertyComments(source);let i=0;
   while((i=masked.indexOf('cell',i))>=0){
