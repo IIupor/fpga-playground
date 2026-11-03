@@ -500,11 +500,11 @@ for(const n of nodes){
   for(let i=0;i<s.ins;i++){const pin=n.inputNames?.[i],inverted=n.cellInputInversions?.includes(pin),y=(s.h-(s.ins-1)*22)/2+i*22;if(inverted)g.append(make('circle',{cx:13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
   for(let i=0;i<s.outs;i++){const fn=n.cellFunctions?.[n.outputNames?.[i]],y=(s.h-(s.outs-1)*22)/2+i*22;if(window.fpgaLibertyFunctionInvertsOutput?.(fn))g.append(make('circle',{cx:s.w-13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
   for(let i=0;i<s.ins;i++){
-    const p=make('rect',{x:-5,y:25+i*22,width:10,height:10,rx:1,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
+    const y=(s.h-(s.ins-1)*22)/2+i*22,p=make('rect',{x:-5,y:y-5,width:10,height:10,rx:1,class:'nodepin'+(pending&&pending.source!==n.id?' available':'')+(pending&&pending.target===n.id&&pending.pin===i?' pending':'')});
     p.addEventListener('pointerdown',e=>e.stopPropagation());p.addEventListener('click',e=>{e.stopPropagation();connectInput(n,i)});g.append(p);
   }
   for(let i=0;i<s.outs;i++){
-    const c=make('rect',{x:s.w-5,y:25+i*22,width:10,height:10,rx:1,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});
+    const y=(s.h-(s.outs-1)*22)/2+i*22,c=make('rect',{x:s.w-5,y:y-5,width:10,height:10,rx:1,class:'nodepin'+(n.value?' high':'')+(pending?.source===n.id?' pending':'')});
     c.addEventListener('pointerdown',e=>e.stopPropagation());c.addEventListener('click',e=>{e.stopPropagation();pending={source:n.id,sourcePin:i};selected={kind:'node',id:n.id};msg.textContent='Output port '+(i+1)+' of '+n.name+' selected — now click an input pin.';render()});g.append(c);
   }
   g.addEventListener('pointerdown',e=>{if(e.target.classList.contains('nodepin'))return;selected={kind:'node',id:n.id};drag={id:n.id,startX:e.clientX,startY:e.clientY,x:n.x,y:n.y,moved:false,before:historySnapshot()};svg.setPointerCapture(e.pointerId);e.stopPropagation()});
