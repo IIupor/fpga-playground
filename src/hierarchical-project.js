@@ -95,7 +95,7 @@ function parseVerilog(source,label) {
       const s=statement.trim(); if(!s) continue;
       const assign=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
-      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\\s+(?:([A-Za-z_$][\\w$]*)\\s*)?\\(([^()]*)\\)$/i);
+      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\s+(?:([A-Za-z_$][\w$]*)\s*)?\(([^()]*)\)$/i);
       // A declared module named dff is a real hierarchical definition, not the legacy ISCAS primitive.
       if(gate&&!modules.has(gate[1])){mod.gates.push({kind:gate[1].toLowerCase(),name:gate[2]||null,pins:splitComma(gate[3])});continue;}
       const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
