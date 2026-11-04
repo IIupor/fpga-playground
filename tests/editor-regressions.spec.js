@@ -133,5 +133,7 @@ test('built-in Verilog primitives use the IEEE positional terminal order and rea
     { name: 'U_BUF', type: 'BUF', inputs: ['A'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A'], visibleOutputs: ['Y'] },
     { name: 'U_NOT', type: 'NOT', inputs: ['A'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A'], visibleOutputs: ['Y'] },
     { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] }
-  ]);
+  ]);  await page.locator('#exportVerilog').click();
+  const exported = await page.locator('#verilogText').inputValue();
+  expect(exported).toContain('buf U_BUF_MULTI (U_BUF_MULTI_out1, U_BUF_MULTI_out2, U_AND_out);');
 });
