@@ -355,11 +355,17 @@ function graphFor(mod,path) {
       const gate=element.value;
       // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
       const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
-      const output=pins[0],gateInputs=pins.slice(1);
-      // IEEE 1364/1800 gate primitives use positional terminals, not named ports.
-      // Display conventional function labels while retaining the net name in outputNames.
-      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],outputPinLabels:['Y'],inputNames:gateInputs.map((_,i)=>String.fromCharCode(65+i)),gateInputSignals:gateInputs});
-      drivers.set(output,{node,pin:0});
+      // IEEE 1364/1800 n_output gates (buf/not) place all outputs first
+      // and their single input last. n_input gates place one output first.
+      const outputList=['buf','not'].includes(gate.kind),outputs=outputList?pins.slice(0,-1):pins.slice(0,1);
+      const gateInputs=outputList?pins.slice(-1):pins.slice(1);
+      if(!outputs.length||!gateInputs.length)throw Error('Invalid terminal list for '+gate.kind+' primitive '+(gate.name||''));
+      // Primitive terminals are positional, not named ports. Show conventional labels.
+      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,outputs.length,{
+        outputNames:outputs,outputPinLabels:outputs.map((_,i)=>outputs.length===1?'Y':'Y'+(i+1)),
+        inputNames:gate.kind==='dff'?['D','CK']:gateInputs.map((_,i)=>String.fromCharCode(65+i)),gateInputSignals:gateInputs
+      });
+      outputs.forEach((signal,index)=>drivers.set(signal,{node,pin:index}));
       continue;
     }
     if(element.kind!=='instance') continue;
