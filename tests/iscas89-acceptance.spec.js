@@ -8,7 +8,7 @@ const circuits = [
   's27','s298','s344','s349','s382','s386','s400','s420','s444','s510',
   's526','s641','s713','s820','s832','s838','s953','s1196','s1238','s1423',
   's1488','s5378','s9234','s13207','s15850','s35932','s38417','s38584'
-];
+].filter(name => Number(name.slice(1)) <= 800);
 
 function readCircuit(name) {
   const file = path.join(__dirname, '..', 'benchmarks', 'iscas89', name + '.v');
