@@ -298,16 +298,20 @@ test('undo and redo restore deleted wires and added blocks', async ({ page }) =>
   await page.getByRole('button', { name: 'Delete selected' }).click();
   await expect(wires).toHaveCount(2);
 
-  await page.getByRole('button', { name: 'Undo' }).click();
+  await page.locator('[data-menu="edit"]').click();
+  await page.locator('#menuUndo').click();
   await expect(wires).toHaveCount(3);
-  await page.getByRole('button', { name: 'Redo' }).click();
+  await page.locator('[data-menu="edit"]').click();
+  await page.locator('#menuRedo').click();
   await expect(wires).toHaveCount(2);
 
   await page.getByRole('button', { name: 'OR', exact: true }).click();
   await expect(blocks).toHaveCount(5);
-  await page.getByRole('button', { name: 'Undo' }).click();
+  await page.locator('[data-menu="edit"]').click();
+  await page.locator('#menuUndo').click();
   await expect(blocks).toHaveCount(4);
-  await page.getByRole('button', { name: 'Redo' }).click();
+  await page.locator('[data-menu="edit"]').click();
+  await page.locator('#menuRedo').click();
   await expect(blocks).toHaveCount(5);
 });
 
