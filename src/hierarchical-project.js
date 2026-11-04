@@ -355,9 +355,17 @@ function graphFor(mod,path) {
       const gate=element.value;
       // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
       const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
-      const output=pins[0],gateInputs=pins.slice(1);
-      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
-      drivers.set(output,{node,pin:0});
+      // IEEE 1364/1800 n_output gates (buf/not) place all outputs first
+      // and their single input last. n_input gates place one output first.
+      const outputList=['buf','not'].includes(gate.kind),outputs=outputList?pins.slice(0,-1):pins.slice(0,1);
+      const gateInputs=outputList?pins.slice(-1):pins.slice(1);
+      if(!outputs.length||!gateInputs.length)throw Error('Invalid terminal list for '+gate.kind+' primitive '+(gate.name||''));
+      // Primitive terminals are positional, not named ports. Show conventional labels.
+      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,outputs.length,{
+        outputNames:outputs,outputPinLabels:outputs.map((_,i)=>outputs.length===1?'Y':'Y'+(i+1)),
+        inputNames:gate.kind==='dff'?['D','CK']:gateInputs.map((_,i)=>String.fromCharCode(65+i)),gateInputSignals:gateInputs
+      });
+      outputs.forEach((signal,index)=>drivers.set(signal,{node,pin:index}));
       continue;
     }
     if(element.kind!=='instance') continue;
@@ -678,6 +686,11 @@ function setupUI() {
     }
     return false;
   }
+  function hasSupportedPrimitiveInstances(source){
+    const clean=stripComments(source);
+    return /\bbuf\s+[A-Za-z_$][\w$]*\s*\(/i.test(clean) ||
+      /\bnot\s+[A-Za-z_$][\w$]*\s*\([^,]+,[^,]+,/i.test(clean);
+  }
   function hasLoadedLibraryInstances(source){
     if(!state.libraries.length)return false;
     const clean=stripComments(source),instanceTypes=new Set();
@@ -701,9 +714,8 @@ function setupUI() {
   }
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
-    if(area.value.trim()===window.fpgaLastImportedSource){event.preventDefault();event.stopImmediatePropagation();verilogFile.value='';verilogFile.click();return;}
     try{
-      if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value))return;
+      if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value)&&!hasSupportedPrimitiveInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();
       $('editorMessage').textContent='Importing Verilog and resolving libraries…';window.fpgaSetImportProgress?.('Importing Verilog and resolving libraries…');
       const source=area.value;
@@ -714,7 +726,7 @@ function setupUI() {
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     window.fpgaSetImportProgress?.('Reading '+selectedFile.name+'…');selectedFile.text().then(source=>{
-      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}},50));}
+      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)||hasSupportedPrimitiveInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}},50));}
       area.value=source;window.fpgaLastImportedSource='';importButton.click();
       return new Promise(resolve=>{
         const started=Date.now();

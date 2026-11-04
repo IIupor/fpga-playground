@@ -76,11 +76,12 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
-  const secondChooserPromise = page.waitForEvent('filechooser');
+  // The first import leaves the source in the editor; clicking Import again
+  // imports that text directly instead of opening the file picker a second time.
   await page.locator('#importVerilog').click();
-  const secondChooser = await secondChooserPromise;
-  await secondChooser.setFiles({ name: 'imported_test.v', mimeType: 'text/plain', buffer: Buffer.from(source) });
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
 });
 
 test('logic gates render standard symbols and input/output terminals are mirrored', async ({ page }) => {
@@ -146,9 +147,9 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   expect(geometry.pins).toEqual([[0,36],[0,58],[150,47]]);
   await expect(cell.locator('rect.nodepin')).toHaveCount(3);
   await expect(cell.locator('circle.nodepin')).toHaveCount(0);
-  expect(geometry.leads).toContainEqual([6,36,18,36]);
-  expect(geometry.leads).toContainEqual([6,58,18,58]);
-  expect(geometry.leads).toContainEqual([132,47,144,47]);
+  expect(geometry.leads).toContainEqual([0,36,18,36]);
+  expect(geometry.leads).toContainEqual([0,58,18,58]);
+  expect(geometry.leads).toContainEqual([123,47,150,47]);
   await expect(cell.locator('path.gate-symbol')).toHaveCount(1);
   await expect(cell.locator('rect.gate-symbol')).toHaveCount(0);
 

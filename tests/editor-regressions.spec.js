@@ -1,0 +1,198 @@
+const { test, expect } = require('@playwright/test');
+
+async function loadS27(page) {
+  await page.goto('/');
+  await page.locator('#benchmarkSelect').evaluate(select => { select.value = 's27'; });
+  await page.locator('#loadBenchmark').click();
+  await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
+}
+
+test('s27 benchmark button loads directly and preserves expected signal and symbol geometry', async ({ page }) => {
+  await loadS27(page);
+  const report = await page.evaluate(() => {
+    const nodes = window.fpgaNodes;
+    const wires = window.fpgaWires;
+    const inverter = nodes.find(node => node.name === 'NOT_0');
+    const dff = nodes.find(node => node.name === 'DFF_0');
+    const group = id => document.querySelector(`#editorStage g[data-node="${id}"]`);
+    const inverterGroup = group(inverter.id);
+    const dffGroup = group(dff.id);
+    const leadLines = [...inverterGroup.querySelectorAll('line.gate-symbol')].map(line => ({
+      x1: Number(line.getAttribute('x1')), x2: Number(line.getAttribute('x2'))
+    }));
+    const outputLeadStarts = Object.fromEntries(['AND2_0', 'OR2_0', 'NAND2_0', 'NOR2_0', 'NOT_0'].map(name => {
+      const node = nodes.find(item => item.name === name), g = group(node.id);
+      return [name, [...g.querySelectorAll('line.gate-symbol')]
+        .filter(line => Number(line.getAttribute('x2')) === 150)
+        .map(line => Number(line.getAttribute('x1')))];
+    }));
+    const orInputLeadEnds = [...group(nodes.find(item => item.name === 'OR2_0').id).querySelectorAll('line.gate-symbol')]
+      .filter(line => Number(line.getAttribute('x1')) === 0).map(line => ({ x: Number(line.getAttribute('x2')), y: Number(line.getAttribute('y1')) }));
+    const marker = [...dffGroup.querySelectorAll('path.gate-symbol')]
+      .map(path => path.getAttribute('d'))
+      .find(d => /^M\s*18\s*[-\d.]+\s*l\s*7\s*5\s*-7\s*5$/.test(d || ''));
+    const markerMatch = marker && /^M\s*18\s*([\d.-]+)\s*l\s*7\s*([\d.-]+)/.exec(marker);
+    const dffHeight = Math.max(76, 50 + Math.max(dff.inputs, dff.outputs) * 22);
+    const expectedClockY = (dffHeight - (dff.inputs - 1) * 22) / 2 + (dff.inputs > 1 ? 22 : 0);
+    return {
+      inverterValue: inverter.value,
+      inverterOutput: inverter.outputNames?.[0],
+      highOutgoingWires: wires.filter(wire => wire.from === inverter.id)
+        .map(wire => document.querySelector(`path.editor-wire[data-wire="${wire.id}"]`)?.classList.contains('high')),
+      leadLines,
+      outputLeadStarts,
+      orInputLeadEnds,
+      markerCenterY: markerMatch ? Number(markerMatch[1]) + Number(markerMatch[2]) : null,
+      expectedClockY
+    };
+  });
+
+  // G14 is !G0. With the benchmark's initial G0=0, green correctly means logic 1.
+  expect(report.inverterOutput).toBe('G14');
+  expect(report.inverterValue).toBe(1);
+  expect(report.highOutgoingWires.every(Boolean)).toBe(true);
+  expect(report.leadLines).toContainEqual({ x1: 0, x2: 18 });
+  expect(report.outputLeadStarts).toEqual({
+    AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [132]
+  });
+  expect(report.orInputLeadEnds).toHaveLength(2);
+  // The OR symbol's left edge is quadratic. Check that both leads terminate
+  // on that curve at their own pin Y coordinates, rather than a rounded constant.
+  const expectedCurveX = y => {
+    const top = 13, bottom = 94 - 10;
+    const t = (y - top) / (bottom - top);
+    return 18 + 36 * t * (1 - t);
+  };
+  for (const lead of report.orInputLeadEnds) expect(lead.x).toBeCloseTo(expectedCurveX(lead.y), 5);
+  expect(report.markerCenterY).toBe(report.expectedClockY);
+});
+
+test('clicking a block, its input pin, or a wire gives visible whole-object selection', async ({ page }) => {
+  await loadS27(page);
+  const nodeId = await page.evaluate(() => window.fpgaNodes.find(node => node.name === 'NOT_0').id);
+  const group = page.locator(`#editorStage g[data-node="${nodeId}"]`);
+  await group.evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+  await expect(group).toHaveAttribute('data-selected', 'true');
+  await expect.poll(() => group.locator('.gate-symbol').first().evaluate(el => getComputedStyle(el).stroke))
+    .toBe('rgb(214, 139, 41)');
+
+  await group.locator('.nodepin').first().evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+  await expect(page.locator(`#editorStage g[data-node="${nodeId}"]`)).toHaveAttribute('data-selected', 'true');
+  await expect.poll(() => page.locator(`#editorStage g[data-node="${nodeId}"] .nodepin`).first()
+    .evaluate(el => getComputedStyle(el).fill)).toBe('rgb(214, 139, 41)');
+
+  const target = await page.evaluate(() => {
+    const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
+    const parse = path => [...(path.getAttribute('d') || '').matchAll(/[ML]\s*(-?[\d.eE+]+)[,\s]+(-?[\d.eE+]+)/g)]
+      .map(match => ({ x: Number(match[1]), y: Number(match[2]) }));
+    const crosses = (a, b, c, d) =>
+      (a.y === b.y && c.x === d.x && c.x > Math.min(a.x, b.x) && c.x < Math.max(a.x, b.x) &&
+        a.y > Math.min(c.y, d.y) && a.y < Math.max(c.y, d.y)) ||
+      (a.x === b.x && c.y === d.y && a.x > Math.min(c.x, d.x) && a.x < Math.max(c.x, d.x) &&
+        c.y > Math.min(a.y, b.y) && c.y < Math.max(a.y, b.y));
+    for (const path of paths) {
+      const points = parse(path);
+      let crossings = 0;
+      for (const other of paths) if (other !== path) {
+        const otherPoints = parse(other);
+        for (let i = 1; i < points.length; i++) for (let j = 1; j < otherPoints.length; j++)
+          if (crosses(points[i - 1], points[i], otherPoints[j - 1], otherPoints[j])) crossings++;
+      }
+      if (crossings) return { id: path.dataset.wire, d: path.getAttribute('d'), crossings };
+    }
+    return null;
+  });
+  expect(target, 'the benchmark should provide a wire that crosses another net').not.toBeNull();
+  expect(target.crossings).toBeGreaterThan(0);
+  await page.locator(`#editorStage path.editor-wire[data-wire="${target.id}"]`)
+    .evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+  const selected = page.locator(`#editorStage path.editor-wire.selected[data-wire="${target.id}"]`);
+  await expect(selected).toHaveCount(1);
+  await expect(selected).toHaveAttribute('d', target.d);
+  const order = await selected.evaluate(el => [...el.parentNode.querySelectorAll('path.editor-wire')].at(-1) === el);
+  expect(order, 'the selected route must be rendered above crossing wires').toBe(true);
+
+  const fanout = await page.evaluate(() => {
+    const groups = new Map();
+    for (const wire of window.fpgaWires) {
+      const key = `${wire.from}:${wire.fromPin || 0}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(wire.id);
+    }
+    const group = [...groups.values()].find(ids => ids.length > 1);
+    return group || null;
+  });
+  expect(fanout, 's27 should contain at least one source with multiple receivers').not.toBeNull();
+  await page.locator(`#editorStage path.editor-wire[data-wire="${fanout[0]}"]`)
+    .evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+  const selectedBranches = page.locator('#editorStage path.editor-wire.selected');
+  await expect(selectedBranches).toHaveCount(fanout.length);
+  const selectedIds = await selectedBranches.evaluateAll(els => els.map(el => el.dataset.wire));
+  expect(new Set(selectedIds)).toEqual(new Set(fanout.map(String)));
+  const allSelectedAtEnd = await page.locator('#editorStage').evaluate(svg => {
+    const paths = [...svg.querySelectorAll('path.editor-wire')];
+    const firstSelected = paths.findIndex(path => path.classList.contains('selected'));
+    return firstSelected >= 0 && paths.slice(firstSelected).every(path => path.classList.contains('selected'));
+  });
+  expect(allSelectedAtEnd, 'all branches of the selected net must be drawn above unrelated wires').toBe(true);
+});
+
+test('Import Verilog can re-import the same editor text without opening the file picker', async ({ page }) => {
+  const source = `module repeat_import(A, Y); input A; output Y; buf U1(Y, A); endmodule`;
+  await page.goto('/');
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+  const firstCount = await page.evaluate(() => window.fpgaNodes.length);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+  await expect.poll(() => page.evaluate(() => window.fpgaNodes.length)).toBe(firstCount);
+  await expect(page.locator('#verilogFile')).toHaveJSProperty('value', '');
+});
+
+test('built-in Verilog primitives use the IEEE positional terminal order and readable display labels', async ({ page }) => {
+  const source = `
+    module primitive_labels(A, B, Y, Z, W, V);
+      input A;
+      input B;
+      output Y;
+      output Z;
+      output W;
+      output V;
+      wire N, N2, N3;
+      and U_AND(N, A, B);
+      xor U_XOR(N2, A, B);
+      xnor U_XNOR(N3, A, B);
+      buf U_BUF(Y, N);
+      not U_NOT(Z, B);
+      buf U_BUF_MULTI(W, V, N);
+    endmodule
+  `;
+  await page.goto('/');
+  await page.locator('#verilogFile').setInputFiles({
+    name: 'primitive-labels.v',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(source)
+  });
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+  const report = await page.evaluate(() => window.fpgaNodes
+    .filter(node => ['U_AND', 'U_BUF', 'U_NOT', 'U_BUF_MULTI', 'U_XOR', 'U_XNOR'].includes(node.name))
+    .map(node => ({
+      name: node.name, type: node.type, inputs: node.inputNames,
+      outputs: node.outputPinLabels, outputCount: node.outputs,
+      inputLeadEnds: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] line.gate-symbol`)]
+        .filter(line => Number(line.getAttribute('x1')) === 0).map(line => Number(line.getAttribute('x2'))),
+      visibleInputs: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] .custom-pin-label[data-side="in"]`)].map(el => el.textContent),
+      visibleOutputs: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] .custom-pin-label[data-side="out"]`)].map(el => el.textContent)
+    })));
+  expect(report).toEqual([
+    { name: 'U_AND', type: 'AND', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18, 18], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_XOR', type: 'XOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18.884149970244, 19.355485022812935], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_XNOR', type: 'XNOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18.884149970244, 19.355485022812935], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_BUF', type: 'BUF', inputs: ['A'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y'] },
+    { name: 'U_NOT', type: 'NOT', inputs: ['A'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y'] },
+    { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] }
+  ]);  await page.locator('#exportVerilog').click();
+  const exported = await page.locator('#verilogText').inputValue();
+  expect(exported).toContain('buf U_BUF_MULTI (U_BUF_MULTI_out1, U_BUF_MULTI_out2, U_AND_out);');
+});
