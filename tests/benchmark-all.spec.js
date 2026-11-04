@@ -58,13 +58,15 @@ for (const name of names) {
     await page.goto('/');
     const source=fs.readFileSync(path.join(__dirname,'..','benchmarks','iscas85',name+'.v'),'utf8');
     await page.locator('#verilogText').fill(source);
-    await page.locator('#importVerilog').click();
+    await page.locator('[data-menu="file"]').click();
+    await page.locator('#importFile').click();
     await expect(page.locator('#editorMessage')).toContainText('Imported');
     const firstBlocks=await page.locator('#editorStage g[data-node]').count();
     const firstWires=await page.locator('#editorStage path.editor-wire').count();
     expect(firstBlocks).toBeGreaterThan(0);
     expect(firstWires).toBeGreaterThan(0);
-    await page.locator('#exportVerilog').click();
+    await page.locator('[data-menu="file"]').click();
+    await page.locator('#exportFile').click();
     await expect(page.locator('#verilogText')).toHaveValue(/module fpga_playground/);
     const exported=await page.locator('#verilogText').inputValue();
 
@@ -102,7 +104,8 @@ for (const name of names) {
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     }, exported);
-    await page.locator('#importVerilog').click();
+    await page.locator('[data-menu="file"]').click();
+    await page.locator('#importFile').click();
     await expect(page.locator('#editorMessage')).toContainText('Imported');
     await expect(page.locator('#editorStage g[data-node]')).toHaveCount(firstBlocks);
     await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(firstWires);
