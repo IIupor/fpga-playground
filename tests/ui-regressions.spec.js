@@ -217,7 +217,8 @@ test('Sky130 Liberty library exposes real cell pins and allows placing a cell', 
   await expect(page.locator('#libraryStatus')).toContainText(/Liberty cells/, { timeout: 120000 });
   const summary = await page.locator('#libraryStatus').textContent();
   expect(summary).toMatch(/[1-9]\d* Liberty cells/);
-  await page.keyboard.press('i');
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuStandardPrimitives').click();
   await page.locator('#libraryBrowserSources button').filter({ hasText: 'sky130_fd_sc_hd__tt_025C_1v80.lib' }).click();
   await page.locator('#libraryCellSearch').fill('sky130_fd_sc_hd__and2_1');
   const cellButton = page.getByRole('button', { name: /sky130_fd_sc_hd__and2_1/ });
