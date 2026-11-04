@@ -9,7 +9,7 @@
 
   const bar = document.createElement('div');
   bar.id = 'editorMenus'; bar.className = 'editor-menus';
-  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importFile">Import file</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+I)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
+  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importFile">Import file</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
   toolbar.prepend(bar);
 
   const panel = $('libraryBrowser');
@@ -90,7 +90,7 @@
     const t=e.target;if(t?.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName||''))return;
     if(e.ctrlKey||e.metaKey||e.altKey)return;
     if(e.key.toLowerCase()==='u'&&!e.shiftKey){e.preventDefault();$('editorUndo')?.click();}
-    else if(e.key.toLowerCase()==='i'&&e.shiftKey){e.preventDefault();$('editorRedo')?.click();}
+    else if(e.key.toLowerCase()==='u'&&e.shiftKey){e.preventDefault();$('editorRedo')?.click();}
     else if(e.key.toLowerCase()==='i'&&!e.shiftKey){e.preventDefault();toggleBrowser();closeMenus();}
     else if(e.key.toLowerCase()==='q'&&!e.shiftKey){e.preventDefault();showInfo();}
     else if(e.key==='Escape')closeMenus();
