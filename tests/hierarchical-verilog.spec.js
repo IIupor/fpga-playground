@@ -49,7 +49,8 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await expect(page.locator('#libraryStatus')).toContainText('5 library file(s)');
   await expect(page.locator('#libraryStatus')).toContainText('4 Liberty cells');
   await page.keyboard.press('i');
-  await expect(page.locator('#libraryCellList button').filter({ hasText: 'SKY_DECAP_X1' })).toHaveCount(0);
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'sky_inv.lib' }).click();
+  await expect(page.locator('#libraryBrowserItems button').filter({ hasText: 'SKY_DECAP_X1' })).toHaveCount(0);
   await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
   const netlist = ['module mapped_top(input wire a, input wire b, input wire clk, output wire y, output wire z, output wire w, output wire v, output wire q, output wire qn);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));',' SKY_DFF_X1 u_dff (.CLK(clk), .D(a), .Q(q), .Q_N(qn));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(netlist);
