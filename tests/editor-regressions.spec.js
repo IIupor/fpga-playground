@@ -20,6 +20,12 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
     const leadLines = [...inverterGroup.querySelectorAll('line.gate-symbol')].map(line => ({
       x1: Number(line.getAttribute('x1')), x2: Number(line.getAttribute('x2'))
     }));
+    const outputLeadStarts = Object.fromEntries(['AND2_0', 'OR2_0', 'NAND2_0', 'NOR2_0', 'NOT_0'].map(name => {
+      const node = nodes.find(item => item.name === name), g = group(node.id);
+      return [name, [...g.querySelectorAll('line.gate-symbol')]
+        .filter(line => Number(line.getAttribute('x2')) === 150)
+        .map(line => Number(line.getAttribute('x1')))];
+    }));
     const marker = [...dffGroup.querySelectorAll('path.gate-symbol')]
       .map(path => path.getAttribute('d'))
       .find(d => /^M\s*18\s*[-\d.]+\s*l\s*7\s*5\s*-7\s*5$/.test(d || ''));
@@ -32,6 +38,7 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
       highOutgoingWires: wires.filter(wire => wire.from === inverter.id)
         .map(wire => document.querySelector(`path.editor-wire[data-wire="${wire.id}"]`)?.classList.contains('high')),
       leadLines,
+      outputLeadStarts,
       markerCenterY: markerMatch ? Number(markerMatch[1]) + Number(markerMatch[2]) : null,
       expectedClockY
     };
@@ -42,7 +49,9 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
   expect(report.inverterValue).toBe(1);
   expect(report.highOutgoingWires.every(Boolean)).toBe(true);
   expect(report.leadLines).toContainEqual({ x1: 0, x2: 18 });
-  expect(report.leadLines).toContainEqual({ x1: 132, x2: 150 });
+  expect(report.outputLeadStarts).toEqual({
+    AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [133]
+  });
   expect(report.markerCenterY).toBe(report.expectedClockY);
 });
 
