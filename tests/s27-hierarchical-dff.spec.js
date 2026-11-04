@@ -84,5 +84,5 @@ test('selecting s27 loads the embedded sequential benchmark without a network fe
   await page.locator('#benchmarkSelect').selectOption('s27');
   await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
   await expectS27DffModels(page);
-  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(18);
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(19);
 });
