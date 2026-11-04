@@ -77,3 +77,11 @@ test('Import Verilog resolves the dff model declared in the same s27 file and ke
   expect(exported).toContain('always @(posedge ');
   expect(exported).toContain('DFF_0_Q_reg');
 });
+
+test('selecting s27 in the benchmark dropdown automatically loads the sequential circuit', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#benchmarkSelect').selectOption('s27');
+  await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
+  await expectS27DffModels(page);
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(16);
+});
