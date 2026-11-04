@@ -69,8 +69,20 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
       if (a.y === b.y) return Math.abs(point.y - a.y) + Math.max(0, Math.min(a.x, b.x) - point.x, point.x - Math.max(a.x, b.x));
       return Math.abs(point.x - a.x) + Math.max(0, Math.min(a.y, b.y) - point.y, point.y - Math.max(a.y, b.y));
     };
+    const crosses = (a, b, c, d) =>
+      (a.y === b.y && c.x === d.x && c.x > Math.min(a.x, b.x) && c.x < Math.max(a.x, b.x) &&
+        a.y > Math.min(c.y, d.y) && a.y < Math.max(c.y, d.y)) ||
+      (a.x === b.x && c.y === d.y && a.x > Math.min(c.x, d.x) && a.x < Math.max(c.x, d.x) &&
+        c.y > Math.min(a.y, b.y) && c.y < Math.max(a.y, b.y));
     for (const path of paths) {
       const points = parse(path);
+      let crossingCount = 0;
+      for (const other of paths) if (other !== path) {
+        const otherPoints = parse(other);
+        for (let i = 1; i < points.length; i++) for (let j = 1; j < otherPoints.length; j++)
+          if (crosses(points[i - 1], points[i], otherPoints[j - 1], otherPoints[j])) crossingCount++;
+      }
+      if (!crossingCount) continue;
       for (let i = 1; i < points.length; i++) {
         const a = points[i - 1], b = points[i];
         if (a.x === b.x && a.y === b.y) continue;
@@ -83,12 +95,13 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
         if (!clear) continue;
         const screen = svg.createSVGPoint(); screen.x = point.x; screen.y = point.y;
         const transformed = screen.matrixTransform(path.getScreenCTM());
-        return { id: path.dataset.wire, d: path.getAttribute('d'), x: transformed.x, y: transformed.y };
+        return { id: path.dataset.wire, d: path.getAttribute('d'), x: transformed.x, y: transformed.y, crossings: crossingCount };
       }
     }
     return null;
   });
-  expect(target, 'the benchmark should provide a selectable wire segment').not.toBeNull();
+  expect(target, 'the benchmark should provide a wire that crosses another net').not.toBeNull();
+  expect(target.crossings).toBeGreaterThan(0);
   await page.mouse.click(target.x, target.y);
   const selected = page.locator(`#editorStage path.editor-wire.selected[data-wire="${target.id}"]`);
   await expect(selected).toHaveCount(1);
