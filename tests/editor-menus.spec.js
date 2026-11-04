@@ -12,7 +12,7 @@ test('top-level menus replace the old file and history buttons', async ({ page }
   await expect(page.getByRole('button', { name: 'Export file' })).toBeVisible();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Undo (U)' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Redo (Shift+I)' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Redo (Shift+U)' })).toBeVisible();
 });
 
 test('I opens the two-pane Standard Primitives browser and Q shows selected cell details', async ({ page }) => {
@@ -31,7 +31,7 @@ test('I opens the two-pane Standard Primitives browser and Q shows selected cell
   await expect(page.locator('#selectedCellInfo')).toContainText('Function');
 });
 
-test('U and Shift+I perform Undo and Redo', async ({ page }) => {
+test('U performs Undo and Shift+U performs Redo, while Shift+I does not', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('i');
   await page.locator('#libraryBrowserItems button').filter({ hasText: /^OR$/ }).click();
@@ -39,6 +39,8 @@ test('U and Shift+I perform Undo and Redo', async ({ page }) => {
   await page.keyboard.press('u');
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
   await page.keyboard.press('Shift+i');
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
+  await page.keyboard.press('Shift+u');
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
 });
 
