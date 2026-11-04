@@ -141,10 +141,12 @@ test('Import Verilog can re-import the same editor text without opening the file
   const source = `module repeat_import(A, Y); input A; output Y; buf U1(Y, A); endmodule`;
   await page.goto('/');
   await page.locator('#verilogText').fill(source);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+    await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   const firstCount = await page.evaluate(() => window.fpgaNodes.length);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+    await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   await expect.poll(() => page.evaluate(() => window.fpgaNodes.length)).toBe(firstCount);
   await expect(page.locator('#verilogFile')).toHaveJSProperty('value', '');
@@ -192,7 +194,8 @@ test('built-in Verilog primitives use the IEEE positional terminal order and rea
     { name: 'U_BUF', type: 'BUF', inputs: ['A'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y'] },
     { name: 'U_NOT', type: 'NOT', inputs: ['A'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y'] },
     { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] }
-  ]);  await page.locator('#exportVerilog').click();
+  ]);  await page.locator('[data-menu="file"]').click();
+    await page.locator('#exportFile').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain('buf U_BUF_MULTI (U_BUF_MULTI_out1, U_BUF_MULTI_out2, U_AND_out);');
 });

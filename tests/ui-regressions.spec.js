@@ -57,7 +57,8 @@ test('every ISCAS89 benchmark option shows DFF, inverter and gate counts', async
 test('Import Verilog opens a file chooser and imports the selected source', async ({ page }) => {
   await page.goto('/');
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   const chooser = await chooserPromise;
   const source = [
     'module imported_test(A, B, Y);',
@@ -86,7 +87,8 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
     'endmodule'
   ].join('\n');
   await page.locator('#verilogText').fill(secondSource);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
@@ -95,6 +97,7 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
 
 test('logic gates render standard symbols and input/output terminals are mirrored', async ({ page }) => {
   await page.goto('/');
+  await page.keyboard.press('i');
   for (const type of ['OR', 'XOR', 'NAND', 'NOR', 'XNOR', 'NOT']) {
     await page.locator('[data-add="' + type + '"]').click();
     const gate = page.locator('#editorStage g[data-node]').last();
@@ -131,11 +134,13 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
     '}'
   ].join('\n');
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   const chooser = await chooserPromise;
   await chooser.setFiles({ name: 'test.lib.gz', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from(liberty)) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
-  await page.locator('#libraryBrowserButton').click();
+  await page.keyboard.press('i');
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'test.lib' }).click();
   const cellButton = page.getByRole('button', { name: /AND2_X1/ });
   await expect(cellButton).toBeVisible();
   await cellButton.click();
@@ -172,7 +177,8 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   await page.locator('#editorControls button').nth(0).click();
   await page.locator('#editorControls button').nth(1).click();
   await expect(page.locator('#editorResults')).toContainText('= 1');
-  await page.locator('#exportVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#exportFile').click();
   await expect(page.locator('#verilogText')).toHaveValue(/AND2_X1 U_AND2_X1_1 \(/);
   await expect(page.locator('#verilogText')).toHaveValue(/assign Y = U_AND2_X1_1_Y;/);
   await expect(cell.locator('circle.gate-symbol')).toHaveCount(0);
@@ -190,11 +196,13 @@ test('Liberty input inversion is marked with a bubble distinct from square pins'
     '}'
   ].join('\n');
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   const chooser = await chooserPromise;
   await chooser.setFiles({ name: 'inverted_input.lib', mimeType: 'text/plain', buffer: Buffer.from(liberty) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
-  await page.locator('#libraryBrowserButton').click();
+  await page.keyboard.press('i');
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'inverted_input.lib' }).click();
   await page.getByRole('button', { name: /INV_INPUT_X1/ }).click();
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'INV_INPUT_X1' });
   await expect(cell.locator('rect.nodepin')).toHaveCount(3);
@@ -209,7 +217,9 @@ test('Sky130 Liberty library exposes real cell pins and allows placing a cell', 
   await expect(page.locator('#libraryStatus')).toContainText(/Liberty cells/, { timeout: 120000 });
   const summary = await page.locator('#libraryStatus').textContent();
   expect(summary).toMatch(/[1-9]\d* Liberty cells/);
-  await page.locator('#libraryBrowserButton').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuStandardPrimitives').click();
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'sky130_fd_sc_hd__tt_025C_1v80.lib' }).click();
   await page.locator('#libraryCellSearch').fill('sky130_fd_sc_hd__and2_1');
   const cellButton = page.getByRole('button', { name: /sky130_fd_sc_hd__and2_1/ });
   await expect(cellButton).toBeVisible({ timeout: 30000 });

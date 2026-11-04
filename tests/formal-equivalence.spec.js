@@ -9,10 +9,12 @@ test('c17: Yosys formally proves Verilog export equivalent', async ({ page }) =>
   const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c17.v'), 'utf8');
 
   await page.locator('#verilogText').fill(source);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+    await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported');
 
-  await page.locator('#exportVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+    await page.locator('#exportFile').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain('module fpga_playground');
 

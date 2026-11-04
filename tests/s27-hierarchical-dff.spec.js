@@ -72,7 +72,8 @@ test('Import Verilog resolves the dff model declared in the same s27 file and ke
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   await expectS27DffModels(page);
 
-  await page.locator('#exportVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+    await page.locator('#exportFile').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain('always @(posedge ');
   expect(exported).toContain('DFF_0_Q_reg');
