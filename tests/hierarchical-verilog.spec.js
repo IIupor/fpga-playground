@@ -9,7 +9,8 @@ test('imports a multi-module Verilog project and navigates down and up the hiera
   const source = ['module leaf(input wire [1:0] a, output wire y);','  and g1 (y, a[1], a[0]);','endmodule','module middle(input wire [1:0] a, output wire y);','  leaf u_leaf (.a(a), .y(y));','endmodule','module top(input wire [1:0] a, output wire y);','  middle u_middle (.a(a), .y(y));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(source);
   expect(await page.evaluate(text => window.fpgaVerilogProject.hasHierarchicalInstances(text), source)).toBe(true);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#hierarchyStatus')).toContainText('top');
   const instance = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_middle' });
@@ -36,7 +37,8 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   const libertyFF = 'library(test_ff) { cell(SKY_DFF_X1) { ff(IQ, IQ_N) { next_state : "D"; clocked_on : "CLK"; } pin(CLK) { direction : \"input\"; } pin(D) { direction : \"input\"; } pin(Q) { direction : \"output\"; function : "IQ"; } pin(Q_N) { direction : \"output\"; function : "!IQ"; } } }';
   const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
   const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   await page.locator('#libraryFiles').setInputFiles([
     { name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) },
     { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },
@@ -46,7 +48,7 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   ]);
   await expect(page.locator('#libraryStatus')).toContainText('5 library file(s)');
   await expect(page.locator('#libraryStatus')).toContainText('4 Liberty cells');
-  await page.locator('#libraryBrowserButton').click();
+  await page.keyboard.press('i');
   await expect(page.locator('#libraryCellList button').filter({ hasText: 'SKY_DECAP_X1' })).toHaveCount(0);
   await expect(page.locator('#libraryStatus')).toContainText('2 Verilog modules');
   const netlist = ['module mapped_top(input wire a, input wire b, input wire clk, output wire y, output wire z, output wire w, output wire v, output wire q, output wire qn);',' SKY_AND2_X1 u_and (.A(a), .B(b), .Y(y));',' SKY_INV_X1 u_inv (.A(y), .Y(z));',' CUSTOM_BUF u_buf (.A(y), .Y(w));',' CUSTOM_INV u_custom_inv (.A(z), .Y(v));',' SKY_DFF_X1 u_dff (.CLK(clk), .D(a), .Q(q), .Q_N(qn));','endmodule'].join('\n');
