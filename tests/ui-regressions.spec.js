@@ -87,7 +87,8 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
     'endmodule'
   ].join('\n');
   await page.locator('#verilogText').fill(secondSource);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
@@ -214,7 +215,7 @@ test('Sky130 Liberty library exposes real cell pins and allows placing a cell', 
   await expect(page.locator('#libraryStatus')).toContainText(/Liberty cells/, { timeout: 120000 });
   const summary = await page.locator('#libraryStatus').textContent();
   expect(summary).toMatch(/[1-9]\d* Liberty cells/);
-  await page.locator('#libraryBrowserButton').click();
+  await page.keyboard.press('i');
   await page.keyboard.press('i');
   await page.locator('#libraryCellSearch').fill('sky130_fd_sc_hd__and2_1');
   const cellButton = page.getByRole('button', { name: /sky130_fd_sc_hd__and2_1/ });
