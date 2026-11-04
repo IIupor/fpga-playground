@@ -714,7 +714,6 @@ function setupUI() {
   }
   document.addEventListener('click',event=>{
     if(event.target!==importButton||!area.value.trim())return;
-    if(area.value.trim()===window.fpgaLastImportedSource){event.preventDefault();event.stopImmediatePropagation();verilogFile.value='';verilogFile.click();return;}
     try{
       if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value)&&!hasSupportedPrimitiveInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();
