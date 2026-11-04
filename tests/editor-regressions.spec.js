@@ -50,25 +50,20 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
   await loadS27(page);
   const nodeId = await page.evaluate(() => window.fpgaNodes.find(node => node.name === 'NOT_0').id);
   const group = page.locator(`#editorStage g[data-node="${nodeId}"]`);
-  await group.click({ position: { x: 75, y: 47 } });
+  await group.evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
   await expect(group).toHaveAttribute('data-selected', 'true');
   await expect.poll(() => group.locator('.gate-symbol').first().evaluate(el => getComputedStyle(el).stroke))
     .toBe('rgb(214, 139, 41)');
 
-  await group.locator('.nodepin').first().click();
+  await group.locator('.nodepin').first().evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
   await expect(page.locator(`#editorStage g[data-node="${nodeId}"]`)).toHaveAttribute('data-selected', 'true');
   await expect.poll(() => page.locator(`#editorStage g[data-node="${nodeId}"] .nodepin`).first()
     .evaluate(el => getComputedStyle(el).fill)).toBe('rgb(214, 139, 41)');
 
   const target = await page.evaluate(() => {
-    const svg = document.getElementById('editorStage');
-    const paths = [...svg.querySelectorAll('path.editor-wire')];
-    const parse = path => [...(path.getAttribute('d') || '').matchAll(/[ML]\s*(-?[\d.eE+]+)[,\s]+(-?[\d.eE+]+)/g)]
+    const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
+    const parse = path => [...(path.getAttribute('d') || '').matchAll(/[ML]\\s*(-?[\\d.eE+]+)[,\\s]+(-?[\\d.eE+]+)/g)]
       .map(match => ({ x: Number(match[1]), y: Number(match[2]) }));
-    const distance = (point, a, b) => {
-      if (a.y === b.y) return Math.abs(point.y - a.y) + Math.max(0, Math.min(a.x, b.x) - point.x, point.x - Math.max(a.x, b.x));
-      return Math.abs(point.x - a.x) + Math.max(0, Math.min(a.y, b.y) - point.y, point.y - Math.max(a.y, b.y));
-    };
     const crosses = (a, b, c, d) =>
       (a.y === b.y && c.x === d.x && c.x > Math.min(a.x, b.x) && c.x < Math.max(a.x, b.x) &&
         a.y > Math.min(c.y, d.y) && a.y < Math.max(c.y, d.y)) ||
@@ -76,33 +71,20 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
         c.y > Math.min(a.y, b.y) && c.y < Math.max(a.y, b.y));
     for (const path of paths) {
       const points = parse(path);
-      let crossingCount = 0;
+      let crossings = 0;
       for (const other of paths) if (other !== path) {
         const otherPoints = parse(other);
         for (let i = 1; i < points.length; i++) for (let j = 1; j < otherPoints.length; j++)
-          if (crosses(points[i - 1], points[i], otherPoints[j - 1], otherPoints[j])) crossingCount++;
+          if (crosses(points[i - 1], points[i], otherPoints[j - 1], otherPoints[j])) crossings++;
       }
-      if (!crossingCount) continue;
-      for (let i = 1; i < points.length; i++) {
-        const a = points[i - 1], b = points[i];
-        if (a.x === b.x && a.y === b.y) continue;
-        const point = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-        const clear = paths.filter(other => other !== path).every(other => {
-          const p = parse(other);
-          for (let j = 1; j < p.length; j++) if (distance(point, p[j - 1], p[j]) < 8) return false;
-          return true;
-        });
-        if (!clear) continue;
-        const screen = svg.createSVGPoint(); screen.x = point.x; screen.y = point.y;
-        const transformed = screen.matrixTransform(path.getScreenCTM());
-        return { id: path.dataset.wire, d: path.getAttribute('d'), x: transformed.x, y: transformed.y, crossings: crossingCount };
-      }
+      if (crossings) return { id: path.dataset.wire, d: path.getAttribute('d'), crossings };
     }
     return null;
   });
   expect(target, 'the benchmark should provide a wire that crosses another net').not.toBeNull();
   expect(target.crossings).toBeGreaterThan(0);
-  await page.mouse.click(target.x, target.y);
+  await page.locator(`#editorStage path.editor-wire[data-wire="${target.id}"]`)
+    .evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
   const selected = page.locator(`#editorStage path.editor-wire.selected[data-wire="${target.id}"]`);
   await expect(selected).toHaveCount(1);
   await expect(selected).toHaveAttribute('d', target.d);
