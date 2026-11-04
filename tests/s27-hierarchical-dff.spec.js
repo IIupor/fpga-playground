@@ -78,7 +78,8 @@ test('Import Verilog resolves the dff model declared in the same s27 file and ke
   expect(exported).toContain('DFF_0_Q_reg');
 });
 
-test('selecting s27 in the benchmark dropdown automatically loads the sequential circuit', async ({ page }) => {
+test('selecting s27 loads the embedded sequential benchmark without a network fetch', async ({ page }) => {
+  await page.route('**/benchmarks/iscas89/s27.v', route => route.abort());
   await page.goto('/');
   await page.locator('#benchmarkSelect').selectOption('s27');
   await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
