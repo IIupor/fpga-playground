@@ -140,6 +140,7 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   await chooser.setFiles({ name: 'test.lib.gz', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from(liberty)) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
   await page.keyboard.press('i');
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'test.lib' }).click();
   const cellButton = page.getByRole('button', { name: /AND2_X1/ });
   await expect(cellButton).toBeVisible();
   await cellButton.click();
@@ -201,6 +202,7 @@ test('Liberty input inversion is marked with a bubble distinct from square pins'
   await chooser.setFiles({ name: 'inverted_input.lib', mimeType: 'text/plain', buffer: Buffer.from(liberty) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
   await page.keyboard.press('i');
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'inverted_input.lib' }).click();
   await page.getByRole('button', { name: /INV_INPUT_X1/ }).click();
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'INV_INPUT_X1' });
   await expect(cell.locator('rect.nodepin')).toHaveCount(3);
@@ -216,7 +218,7 @@ test('Sky130 Liberty library exposes real cell pins and allows placing a cell', 
   const summary = await page.locator('#libraryStatus').textContent();
   expect(summary).toMatch(/[1-9]\d* Liberty cells/);
   await page.keyboard.press('i');
-  await page.keyboard.press('i');
+  await page.locator('#libraryBrowserSources button').filter({ hasText: 'sky130_fd_sc_hd__tt_025C_1v80.lib' }).click();
   await page.locator('#libraryCellSearch').fill('sky130_fd_sc_hd__and2_1');
   const cellButton = page.getByRole('button', { name: /sky130_fd_sc_hd__and2_1/ });
   await expect(cellButton).toBeVisible({ timeout: 30000 });
