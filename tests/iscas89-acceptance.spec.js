@@ -304,7 +304,8 @@ for (const name of circuits) {
       expect(liveState.output, 's27 browser simulator must propagate the updated register state').toBe(1);
     }
 
-    await page.locator('#exportVerilog').click({ timeout: 180000 });
+    await page.locator('[data-menu="file"]').click();
+    await page.locator('#exportFile').click({ timeout: 180000 });
     const exported = await page.locator('#verilogText').inputValue();
     expect(exported).toContain('module fpga_playground');
     verifySequentialEquivalence(name, circuit, exported);
