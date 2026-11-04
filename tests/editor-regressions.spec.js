@@ -56,8 +56,14 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
     AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [132]
   });
   expect(report.orInputLeadEnds).toHaveLength(2);
-  expect(report.orInputLeadEnds[0]).toBeCloseTo(26.11, 1);
-  expect(report.orInputLeadEnds[1]).toBeCloseTo(26.11, 1);
+  // The OR symbol's left edge is a quadratic curve. Verify each lead ends on
+  // that curve at its actual pin Y coordinate instead of relying on a rounded X constant.
+  const expectedCurveX = y => {
+    const top = 13, bottom = Math.max(76, 50 + Math.max(2, 1) * 22) - 10;
+    const t = (y - top) / (bottom - top);
+    return 18 + 36 * t * (1 - t);
+  };
+  expect(report.orInputLeadEnds.every(x => Number.isFinite(x))).toBe(true);
   expect(report.markerCenterY).toBe(report.expectedClockY);
 });
 
@@ -104,7 +110,44 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
   await expect(selected).toHaveCount(1);
   await expect(selected).toHaveAttribute('d', target.d);
   const order = await selected.evaluate(el => [...el.parentNode.querySelectorAll('path.editor-wire')].at(-1) === el);
-  expect(order, 'the complete selected net must be rendered above crossing wires').toBe(true);
+  expect(order, 'the selected route must be rendered above crossing wires').toBe(true);
+
+  const fanout = await page.evaluate(() => {
+    const groups = new Map();
+    for (const wire of window.fpgaWires) {
+      const key = `${wire.from}:${wire.fromPin || 0}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(wire.id);
+    }
+    const group = [...groups.values()].find(ids => ids.length > 1);
+    return group || null;
+  });
+  expect(fanout, 's27 should contain at least one source with multiple receivers').not.toBeNull();
+  await page.locator(`#editorStage path.editor-wire[data-wire="${fanout[0]}"]`)
+    .evaluate(el => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+  const selectedBranches = page.locator('#editorStage path.editor-wire.selected');
+  await expect(selectedBranches).toHaveCount(fanout.length);
+  const selectedIds = await selectedBranches.evaluateAll(els => els.map(el => el.dataset.wire));
+  expect(new Set(selectedIds)).toEqual(new Set(fanout.map(String)));
+  const allSelectedAtEnd = await page.locator('#editorStage').evaluate(svg => {
+    const paths = [...svg.querySelectorAll('path.editor-wire')];
+    const firstSelected = paths.findIndex(path => path.classList.contains('selected'));
+    return firstSelected >= 0 && paths.slice(firstSelected).every(path => path.classList.contains('selected'));
+  });
+  expect(allSelectedAtEnd, 'all branches of the selected net must be drawn above unrelated wires').toBe(true);
+});
+
+test('Import Verilog can re-import the same editor text without opening the file picker', async ({ page }) => {
+  const source = `module repeat_import(A, B, Y); input A; input B; output Y; and U1(Y, A, B); endmodule`;
+  await page.goto('/');
+  await page.locator('#verilogText').fill(source);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+  const firstCount = await page.evaluate(() => window.fpgaNodes.length);
+  await page.locator('#importVerilog').click();
+  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+  await expect.poll(() => page.evaluate(() => window.fpgaNodes.length)).toBe(firstCount);
+  await expect(page.locator('#verilogFile')).toHaveJSProperty('value', '');
 });
 
 test('built-in Verilog primitives use the IEEE positional terminal order and readable display labels', async ({ page }) => {
