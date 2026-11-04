@@ -688,7 +688,8 @@ function setupUI() {
   }
   function hasSupportedPrimitiveInstances(source){
     const clean=stripComments(source);
-    return /\b(and|nand|or|nor|xor|xnor|not|buf|dff)\s+[A-Za-z_$][\w$]*\s*\(/i.test(clean);
+    return /\bbuf\s+[A-Za-z_$][\w$]*\s*\(/i.test(clean) ||
+      /\bnot\s+[A-Za-z_$][\w$]*\s*\([^,]+,[^,]+,/i.test(clean);
   }
   function hasLoadedLibraryInstances(source){
     if(!state.libraries.length)return false;
