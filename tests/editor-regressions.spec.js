@@ -27,7 +27,7 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
         .map(line => Number(line.getAttribute('x1')))];
     }));
     const orInputLeadEnds = [...group(nodes.find(item => item.name === 'OR2_0').id).querySelectorAll('line.gate-symbol')]
-      .filter(line => Number(line.getAttribute('x1')) === 0).map(line => Number(line.getAttribute('x2')));
+      .filter(line => Number(line.getAttribute('x1')) === 0).map(line => ({ x: Number(line.getAttribute('x2')), y: Number(line.getAttribute('y1')) }));
     const marker = [...dffGroup.querySelectorAll('path.gate-symbol')]
       .map(path => path.getAttribute('d'))
       .find(d => /^M\s*18\s*[-\d.]+\s*l\s*7\s*5\s*-7\s*5$/.test(d || ''));
@@ -56,14 +56,14 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
     AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [132]
   });
   expect(report.orInputLeadEnds).toHaveLength(2);
-  // The OR symbol's left edge is a quadratic curve. Verify each lead ends on
-  // that curve at its actual pin Y coordinate instead of relying on a rounded X constant.
+  // The OR symbol's left edge is quadratic. Check that both leads terminate
+  // on that curve at their own pin Y coordinates, rather than a rounded constant.
   const expectedCurveX = y => {
-    const top = 13, bottom = Math.max(76, 50 + Math.max(2, 1) * 22) - 10;
+    const top = 13, bottom = 94 - 10;
     const t = (y - top) / (bottom - top);
     return 18 + 36 * t * (1 - t);
   };
-  expect(report.orInputLeadEnds.every(x => Number.isFinite(x))).toBe(true);
+  for (const lead of report.orInputLeadEnds) expect(lead.x).toBeCloseTo(expectedCurveX(lead.y), 5);
   expect(report.markerCenterY).toBe(report.expectedClockY);
 });
 
