@@ -35,7 +35,7 @@
   const allCells=()=>window.fpgaLibraryBrowser?.cells||[];
   function updateStatus(){
     const status=$('libraryStatus');if(!status)return;
-    const moduleCount=files().filter(f=>!/\.lib$/i.test(f.name)).reduce((sum,file)=>{try{return sum+(window.fpgaVerilogProject?.parseVerilog(file.text,file.name).size||0);}catch(_){return sum;}},0);status.textContent=files().length?files().length+' library file(s) · '+allCells().length+' Liberty cells · '+moduleCount+' Verilog modules':'No libraries loaded';
+    const moduleCount=files().filter(f=>!/\.lib$/i.test(f.name)).reduce((sum,file)=>{try{return sum+(window.fpgaVerilogProject?.parseVerilog(file.text,file.name).size||0);}catch(_){return sum;}},0);const next=files().length?files().length+' library file(s) · '+allCells().length+' Liberty cells · '+moduleCount+' Verilog modules':'No libraries loaded';if(status.textContent!==next)status.textContent=next;
   }
   function selectLibrary(name){activeLibrary=name;$('libraryBrowser').hidden=false;closeMenus();renderSources();renderItems();}
   function renderSources(){
