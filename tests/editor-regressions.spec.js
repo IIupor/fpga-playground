@@ -97,27 +97,41 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
   expect(order, 'the complete selected net must be rendered above crossing wires').toBe(true);
 });
 
-test('built-in Verilog logic primitives display conventional positional terminal labels', async ({ page }) => {
+test('built-in Verilog primitives use the IEEE positional terminal order and readable display labels', async ({ page }) => {
+  const source = `
+    module primitive_labels(A, B, Y, Z, W, V);
+      input A;
+      input B;
+      output Y;
+      output Z;
+      output W;
+      output V;
+      wire N;
+      and U_AND(N, A, B);
+      buf U_BUF(Y, N);
+      not U_NOT(Z, B);
+      buf U_BUF_MULTI(W, V, N);
+    endmodule
+  `;
   await page.goto('/');
-  const report = await page.evaluate(() => {
-    const source = `
-      module primitive_labels(A, B, Y, Z);
-        input A, B;
-        output Y, Z;
-        wire N;
-        and U_AND(N, A, B);
-        buf U_BUF(Y, N);
-        not U_NOT(Z, B);
-      endmodule
-    `;
-    const module = window.fpgaVerilogProject.parseVerilog(source, 'primitive-labels.v').get('primitive_labels');
-    const graph = window.fpgaVerilogProject.graphFor(module, []);
-    return graph.nodes.filter(node => ['U_AND', 'U_BUF', 'U_NOT'].includes(node.name))
-      .map(node => ({ name: node.name, inputs: node.inputNames, outputs: node.outputPinLabels }));
+  await page.locator('#verilogFile').setInputFiles({
+    name: 'primitive-labels.v',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(source)
   });
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
+  const report = await page.evaluate(() => window.fpgaNodes
+    .filter(node => ['U_AND', 'U_BUF', 'U_NOT', 'U_BUF_MULTI'].includes(node.name))
+    .map(node => ({
+      name: node.name, type: node.type, inputs: node.inputNames,
+      outputs: node.outputPinLabels, outputCount: node.outputs,
+      visibleInputs: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] .custom-pin-label[data-side="in"]`)].map(el => el.textContent),
+      visibleOutputs: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] .custom-pin-label[data-side="out"]`)].map(el => el.textContent)
+    })));
   expect(report).toEqual([
-    { name: 'U_AND', inputs: ['A', 'B'], outputs: ['Y'] },
-    { name: 'U_BUF', inputs: ['A'], outputs: ['Y'] },
-    { name: 'U_NOT', inputs: ['A'], outputs: ['Y'] }
+    { name: 'U_AND', type: 'AND', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_BUF', type: 'BUF', inputs: ['A'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A'], visibleOutputs: ['Y'] },
+    { name: 'U_NOT', type: 'NOT', inputs: ['A'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A'], visibleOutputs: ['Y'] },
+    { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] }
   ]);
 });
