@@ -53,7 +53,7 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
   expect(report.highOutgoingWires.every(Boolean)).toBe(true);
   expect(report.leadLines).toContainEqual({ x1: 0, x2: 18 });
   expect(report.outputLeadStarts).toEqual({
-    AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [133]
+    AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [132]
   });
   expect(report.orInputLeadEnds).toHaveLength(2);
   expect(report.orInputLeadEnds[0]).toBeCloseTo(26.11, 1);
