@@ -62,7 +62,7 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
 
   const target = await page.evaluate(() => {
     const paths = [...document.querySelectorAll('#editorStage path.editor-wire')];
-    const parse = path => [...(path.getAttribute('d') || '').matchAll(/[ML]\\s*(-?[\\d.eE+]+)[,\\s]+(-?[\\d.eE+]+)/g)]
+    const parse = path => [...(path.getAttribute('d') || '').matchAll(/[ML]\s*(-?[\d.eE+]+)[,\s]+(-?[\d.eE+]+)/g)]
       .map(match => ({ x: Number(match[1]), y: Number(match[2]) }));
     const crosses = (a, b, c, d) =>
       (a.y === b.y && c.x === d.x && c.x > Math.min(a.x, b.x) && c.x < Math.max(a.x, b.x) &&
