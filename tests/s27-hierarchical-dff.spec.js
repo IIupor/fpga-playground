@@ -83,5 +83,5 @@ test('selecting s27 in the benchmark dropdown automatically loads the sequential
   await page.locator('#benchmarkSelect').selectOption('s27');
   await expect(page.locator('#editorMessage')).toContainText('Loaded s27.v', { timeout: 30000 });
   await expectS27DffModels(page);
-  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(16);
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(18);
 });
