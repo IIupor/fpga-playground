@@ -187,11 +187,11 @@ test('built-in Verilog primitives use the IEEE positional terminal order and rea
     })));
   expect(report).toEqual([
     { name: 'U_AND', type: 'AND', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18, 18], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_XOR', type: 'XOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18.884149970244, 19.355485022812935], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_XNOR', type: 'XNOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18.884149970244, 19.355485022812935], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
     { name: 'U_BUF', type: 'BUF', inputs: ['A'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y'] },
     { name: 'U_NOT', type: 'NOT', inputs: ['A'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y'] },
-    { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] },
-    { name: 'U_XOR', type: 'XOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [19.111020408163265, 19.111020408163265], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
-    { name: 'U_XNOR', type: 'XNOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [19.111020408163265, 19.111020408163265], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] }
+    { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] }
   ]);  await page.locator('#exportVerilog').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain('buf U_BUF_MULTI (U_BUF_MULTI_out1, U_BUF_MULTI_out2, U_AND_out);');
