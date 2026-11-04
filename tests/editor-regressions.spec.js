@@ -138,14 +138,14 @@ test('clicking a block, its input pin, or a wire gives visible whole-object sele
 });
 
 test('Import Verilog can re-import the same editor text without opening the file picker', async ({ page }) => {
-  const source = `module repeat_import(A, B, Y); input A; input B; output Y; and U1(Y, A, B); endmodule`;
+  const source = `module repeat_import(A, Y); input A; output Y; buf U1(Y, A); endmodule`;
   await page.goto('/');
   await page.locator('#verilogText').fill(source);
   await page.locator('#importVerilog').click();
-  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   const firstCount = await page.evaluate(() => window.fpgaNodes.length);
   await page.locator('#importVerilog').click();
-  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+  await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   await expect.poll(() => page.evaluate(() => window.fpgaNodes.length)).toBe(firstCount);
   await expect(page.locator('#verilogFile')).toHaveJSProperty('value', '');
 });
