@@ -473,7 +473,7 @@ for(const n of nodes){
     if(inverted)bubble(face+5,cy);
   }else if(symbolType==='NOT'||symbolType==='BUF'){
     const tip=right-10;path('M '+left+' '+top+' L '+tip+' '+cy+' L '+left+' '+bottom+' Z');
-    if(symbolType==='NOT')bubble(tip+6,cy);
+    if(symbolType==='NOT')bubble(tip+5,cy);
   }else if(n.type==='DFF'||n.type==='LATCH'){
     g.append(make('rect',{x:left,y:top,width:right-left,height:bottom-top,rx:1,class:'gate-symbol',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));
     
@@ -497,7 +497,7 @@ for(const n of nodes){
   if(!['INPUT','OUTPUT','VDD','GND'].includes(n.type))g.append(make('text',{x:s.w/2,y:s.h-12,'text-anchor':'middle',class:'nodemeta'},'VALUE: '+String(n.value)));
   g.append(make('text',{x:12,y:11,class:'nodemeta'},n.type==='VDD'?'vdd!':n.type==='GND'?'gnd!':(n.cellType||n.moduleType||n.type)));
   for(let i=0;i<s.ins;i++){const y=(s.h-(s.ins-1)*22)/2+i*22,pin=n.inputNames?.[i],inverted=n.cellInputInversions?.includes(pin),curved=['OR','NOR','XOR','XNOR'].includes(symbolType),t=(y-top)/(bottom-top),curveOffset=symbolType==='XOR'||symbolType==='XNOR'?-7:0,curveEnd=left+curveOffset+36*t*(1-t),endX=inverted?8:(n.type==='OUTPUT'?12:curved?curveEnd:left);line(0,y,endX,y,{stroke:'var(--site-primary)','stroke-width':2});}
-  for(let i=0;i<s.outs;i++){const y=(s.h-(s.outs-1)*22)/2+i*22,fn=n.cellFunctions?.[n.outputNames?.[i]],cellInverted=window.fpgaLibertyFunctionInvertsOutput?.(fn);let startX=right;if(['AND','OR','XOR'].includes(symbolType))startX=right-9;if(['NAND','NOR','XNOR','NOT'].includes(symbolType))startX=right+1;if(symbolType==='BUF')startX=right-10;if(cellInverted)startX=s.w-8;line(startX,y,s.w,y,{stroke:'var(--site-primary)','stroke-width':2});}
+  for(let i=0;i<s.outs;i++){const y=(s.h-(s.outs-1)*22)/2+i*22,fn=n.cellFunctions?.[n.outputNames?.[i]],cellInverted=window.fpgaLibertyFunctionInvertsOutput?.(fn);let startX=right;if(['AND','OR','XOR'].includes(symbolType))startX=right-9;if(['NAND','NOR','XNOR'].includes(symbolType))startX=right+1;if(symbolType==='BUF')startX=right-10;if(cellInverted)startX=s.w-8;line(startX,y,s.w,y,{stroke:'var(--site-primary)','stroke-width':2});}
   for(let i=0;i<s.ins;i++){const pin=n.inputNames?.[i],inverted=n.cellInputInversions?.includes(pin),y=(s.h-(s.ins-1)*22)/2+i*22;if(inverted)g.append(make('circle',{cx:13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
   for(let i=0;i<s.outs;i++){const fn=n.cellFunctions?.[n.outputNames?.[i]],y=(s.h-(s.outs-1)*22)/2+i*22;if(window.fpgaLibertyFunctionInvertsOutput?.(fn))g.append(make('circle',{cx:s.w-13,cy:y,r:5,class:'inverted-pin-bubble',fill:'var(--surface)',stroke:'var(--site-primary)','stroke-width':2.5}));}
   for(let i=0;i<s.ins;i++){
