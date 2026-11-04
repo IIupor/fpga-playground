@@ -57,7 +57,8 @@ test('every ISCAS89 benchmark option shows DFF, inverter and gate counts', async
 test('Import Verilog opens a file chooser and imports the selected source', async ({ page }) => {
   await page.goto('/');
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   const chooser = await chooserPromise;
   const source = [
     'module imported_test(A, B, Y);',
@@ -193,11 +194,12 @@ test('Liberty input inversion is marked with a bubble distinct from square pins'
     '}'
   ].join('\n');
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   const chooser = await chooserPromise;
   await chooser.setFiles({ name: 'inverted_input.lib', mimeType: 'text/plain', buffer: Buffer.from(liberty) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
-  await page.locator('#libraryBrowserButton').click();
+  await page.keyboard.press('i');
   await page.getByRole('button', { name: /INV_INPUT_X1/ }).click();
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'INV_INPUT_X1' });
   await expect(cell.locator('rect.nodepin')).toHaveCount(3);
