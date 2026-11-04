@@ -26,6 +26,8 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
         .filter(line => Number(line.getAttribute('x2')) === 150)
         .map(line => Number(line.getAttribute('x1')))];
     }));
+    const orInputLeadEnds = [...group(nodes.find(item => item.name === 'OR2_0').id).querySelectorAll('line.gate-symbol')]
+      .filter(line => Number(line.getAttribute('x1')) === 0).map(line => Number(line.getAttribute('x2')));
     const marker = [...dffGroup.querySelectorAll('path.gate-symbol')]
       .map(path => path.getAttribute('d'))
       .find(d => /^M\s*18\s*[-\d.]+\s*l\s*7\s*5\s*-7\s*5$/.test(d || ''));
@@ -39,6 +41,7 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
         .map(wire => document.querySelector(`path.editor-wire[data-wire="${wire.id}"]`)?.classList.contains('high')),
       leadLines,
       outputLeadStarts,
+      orInputLeadEnds,
       markerCenterY: markerMatch ? Number(markerMatch[1]) + Number(markerMatch[2]) : null,
       expectedClockY
     };
@@ -52,6 +55,9 @@ test('s27 benchmark button loads directly and preserves expected signal and symb
   expect(report.outputLeadStarts).toEqual({
     AND2_0: [123], OR2_0: [123], NAND2_0: [133], NOR2_0: [133], NOT_0: [133]
   });
+  expect(report.orInputLeadEnds).toHaveLength(2);
+  expect(report.orInputLeadEnds[0]).toBeCloseTo(26.11, 1);
+  expect(report.orInputLeadEnds[1]).toBeCloseTo(26.11, 1);
   expect(report.markerCenterY).toBe(report.expectedClockY);
 });
 
@@ -110,8 +116,10 @@ test('built-in Verilog primitives use the IEEE positional terminal order and rea
       output Z;
       output W;
       output V;
-      wire N;
+      wire N, N2, N3;
       and U_AND(N, A, B);
+      xor U_XOR(N2, A, B);
+      xnor U_XNOR(N3, A, B);
       buf U_BUF(Y, N);
       not U_NOT(Z, B);
       buf U_BUF_MULTI(W, V, N);
@@ -125,10 +133,12 @@ test('built-in Verilog primitives use the IEEE positional terminal order and rea
   });
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project', { timeout: 30000 });
   const report = await page.evaluate(() => window.fpgaNodes
-    .filter(node => ['U_AND', 'U_BUF', 'U_NOT', 'U_BUF_MULTI'].includes(node.name))
+    .filter(node => ['U_AND', 'U_BUF', 'U_NOT', 'U_BUF_MULTI', 'U_XOR', 'U_XNOR'].includes(node.name))
     .map(node => ({
       name: node.name, type: node.type, inputs: node.inputNames,
       outputs: node.outputPinLabels, outputCount: node.outputs,
+      inputLeadEnds: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] line.gate-symbol`)]
+        .filter(line => Number(line.getAttribute('x1')) === 0).map(line => Number(line.getAttribute('x2'))),
       visibleInputs: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] .custom-pin-label[data-side="in"]`)].map(el => el.textContent),
       visibleOutputs: [...document.querySelectorAll(`#editorStage g[data-node="${node.id}"] .custom-pin-label[data-side="out"]`)].map(el => el.textContent)
     })));
@@ -136,7 +146,9 @@ test('built-in Verilog primitives use the IEEE positional terminal order and rea
     { name: 'U_AND', type: 'AND', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
     { name: 'U_BUF', type: 'BUF', inputs: ['A'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A'], visibleOutputs: ['Y'] },
     { name: 'U_NOT', type: 'NOT', inputs: ['A'], outputs: ['Y'], outputCount: 1, visibleInputs: ['A'], visibleOutputs: ['Y'] },
-    { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] }
+    { name: 'U_BUF_MULTI', type: 'BUF', inputs: ['A'], outputs: ['Y1', 'Y2'], outputCount: 2, inputLeadEnds: [18], visibleInputs: ['A'], visibleOutputs: ['Y1', 'Y2'] },
+    { name: 'U_XOR', type: 'XOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [19.111020408163265, 19.111020408163265], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] },
+    { name: 'U_XNOR', type: 'XNOR', inputs: ['A', 'B'], outputs: ['Y'], outputCount: 1, inputLeadEnds: [19.111020408163265, 19.111020408163265], visibleInputs: ['A', 'B'], visibleOutputs: ['Y'] }
   ]);  await page.locator('#exportVerilog').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain('buf U_BUF_MULTI (U_BUF_MULTI_out1, U_BUF_MULTI_out2, U_AND_out);');
