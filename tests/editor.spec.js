@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await page.keyboard.press('i');
 });
 
 test('loads the example AND circuit and its truth table', async ({ page }) => {
@@ -290,8 +291,8 @@ test('undo and redo restore deleted wires and added blocks', async ({ page }) =>
 
   await expect(blocks).toHaveCount(4);
   await expect(wires).toHaveCount(3);
-  await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled();
+  await expect(page.locator('#editorUndo')).toBeDisabled();
+  await expect(page.locator('#editorRedo')).toBeDisabled();
 
   await page.locator('#editorStage path.wire-hit-area').nth(2).dispatchEvent('click', { bubbles: true });
   await page.getByRole('button', { name: 'Delete selected' }).click();
