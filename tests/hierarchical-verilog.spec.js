@@ -66,7 +66,8 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
     };
   }, netlist);
   console.log('MAPPED_PORT_REPORT ' + JSON.stringify(parsedPortReport));
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported hierarchical project');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' })).toContainText('SKY_AND2_X1');
   const cell = page.locator('#editorStage g[data-node]').filter({ hasText: 'u_and' });
@@ -97,7 +98,8 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   await page.locator('#editorControls button').nth(2).click();
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_dff' })).toContainText('VALUE: 1');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'u_inv' }).locator('circle.inverted-pin-bubble')).toHaveCount(1);
-  await page.locator('#exportVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#exportFile').click();
   await expect(page.locator('#verilogText')).toHaveValue(/SKY_AND2_X1 u_and \(/);
   await expect(page.locator('#verilogText')).toHaveValue(/\.A\(a\), \.B\(b\), \.Y\(u_and_Y\)/);
   await expect(page.locator('#verilogText')).toHaveValue(/assign y = u_and_Y;/);
@@ -108,10 +110,12 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
 
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
   const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : \"input\"; } } }';
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'duplicate.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1');
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
@@ -129,7 +133,8 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     { name: 'sky130_fd_sc_hd__tt_025C_1v80.lib', mimeType: 'text/plain', buffer: liberty },
     ...libraryFiles.map(name => ({ name, mimeType: 'text/plain', buffer: fs.readFileSync(path.join(verilogDir, name)) }))
   ];
-  await page.locator('#importLibraries').click();
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
   await expect.poll(async () => {
     const status = await page.locator('#libraryStatus').textContent();
