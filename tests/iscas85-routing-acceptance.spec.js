@@ -167,11 +167,13 @@ test('imported routing mode survives undo and redo', async ({ page }) => {
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(13);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(14);
 
-  await page.locator('#editorUndo').click();
+  await page.locator('[data-menu="edit"]').click();
+  await page.locator('#menuUndo').click();
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
 
-  await page.locator('#editorRedo').click();
+  await page.locator('[data-menu="edit"]').click();
+  await page.locator('#menuRedo').click();
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(13);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(14);
   const routes=await page.locator('#editorStage path.editor-wire').evaluateAll(paths =>
