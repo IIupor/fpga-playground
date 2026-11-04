@@ -686,6 +686,10 @@ function setupUI() {
     }
     return false;
   }
+  function hasSupportedPrimitiveInstances(source){
+    const clean=stripComments(source);
+    return /\\b(and|nand|or|nor|xor|xnor|not|buf|dff)\\s+[A-Za-z_$][\\w$]*\\s*\\(/i.test(clean);
+  }
   function hasLoadedLibraryInstances(source){
     if(!state.libraries.length)return false;
     const clean=stripComments(source),instanceTypes=new Set();
@@ -711,7 +715,7 @@ function setupUI() {
     if(event.target!==importButton||!area.value.trim())return;
     if(area.value.trim()===window.fpgaLastImportedSource){event.preventDefault();event.stopImmediatePropagation();verilogFile.value='';verilogFile.click();return;}
     try{
-      if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value))return;
+      if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value)&&!hasSupportedPrimitiveInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();
       $('editorMessage').textContent='Importing Verilog and resolving libraries…';window.fpgaSetImportProgress?.('Importing Verilog and resolving libraries…');
       const source=area.value;
@@ -722,7 +726,7 @@ function setupUI() {
     if(event.target!==verilogFile||!verilogFile.files?.[0])return;
     const selectedFile=verilogFile.files[0];event.stopImmediatePropagation();
     window.fpgaSetImportProgress?.('Reading '+selectedFile.name+'…');selectedFile.text().then(source=>{
-      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}},50));}
+      if(hasHierarchicalInstances(source)||hasLoadedLibraryInstances(source)||hasSupportedPrimitiveInstances(source)){area.value=source;$('editorMessage').textContent='Importing Verilog and resolving libraries…';return new Promise(resolve=>setTimeout(()=>{try{importProject(source);window.fpgaLastImportedSource=source;}catch(error){$('editorMessage').textContent='Import failed: '+error.message;}finally{resolve();}},50));}
       area.value=source;window.fpgaLastImportedSource='';importButton.click();
       return new Promise(resolve=>{
         const started=Date.now();
