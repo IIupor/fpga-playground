@@ -87,7 +87,7 @@ function parseVerilog(source,label) {
     if(semicolon<0||end<0)throw Error('Malformed Verilog module '+name+' in '+label);
     if(modules.has(name))throw Error('Duplicate Verilog module '+name+' in '+label);
     const body=clean.slice(semicolon+1,end);
-    modules.set(name,{name,header,body,ports:parsePorts(header,body),instances:[],gates:[],assigns:[],source:label});
+    modules.set(name,{name,header,body,ports:parsePorts(header,body),instances:[],gates:[],elements:[],assigns:[],source:label});
     declarations.lastIndex=end+'endmodule'.length;
   }
   for(const mod of modules.values()){
@@ -95,8 +95,9 @@ function parseVerilog(source,label) {
       const s=statement.trim(); if(!s) continue;
       const assign=s.match(/^assign\s+([A-Za-z_$][\w$]*(?:\s*\[[^\]]+\])?)\s*=\s*([^;]+)$/i);
       if(assign){mod.assigns.push({to:assign[1].trim(),from:assign[2].trim()});continue;}
-      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\s+(?:\w+\s*)?\(([^()]*)\)$/i);
-      if(gate){mod.gates.push({kind:gate[1].toLowerCase(),pins:splitComma(gate[2])});continue;}
+      const gate=s.match(/^(and|or|xor|nand|nor|xnor|not|buf|dff)\s+(?:([A-Za-z_$][\w$]*)\s*)?\(([^()]*)\)$/i);
+      // A declared module named dff is a real hierarchical definition, not the legacy ISCAS primitive.
+      if(gate&&!modules.has(gate[1])){const item={kind:gate[1].toLowerCase(),name:gate[2]||null,pins:splitComma(gate[3])};mod.gates.push(item);mod.elements.push({kind:'gate',value:item});continue;}
       const instance=s.match(/^([A-Za-z_$][\w$]*)\s*(?:#\s*\([\s\S]*?\)\s*)?([A-Za-z_$][\w$]*)\s*\(([\s\S]*)\)$/);
       if(instance){
         const connections={};let positional=0;
@@ -105,7 +106,7 @@ function parseVerilog(source,label) {
           if(named) connections[named[1]]=named[2].trim();
           else connections['$'+(positional++)]=p.trim();
         }
-        mod.instances.push({type:instance[1],name:instance[2],connections});
+        const item={type:instance[1],name:instance[2],connections};mod.instances.push(item);mod.elements.push({kind:'instance',value:item});
       }
     }
   }
@@ -344,26 +345,40 @@ function graphFor(mod,path) {
     const node=add('INPUT',port.name,0,1,{outputNames:[port.name]});
     drivers.set(port.name,{node,pin:0});
   }
-  for(const port of outputs) add('OUTPUT',port.name,1,0,{inputNames:[port.name]});
   const gateTypes={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',buf:'BUF',dff:'DFF'};
-  for(const gate of mod.gates){
-    // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
-    const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
-    const output=pins[0],gateInputs=pins.slice(1);
-    const node=add(gateTypes[gate.kind],gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
-    drivers.set(output,{node,pin:0});
-  }
-  for(const inst of mod.instances){
+  const orderedElements=mod.elements||[
+    ...mod.gates.map(value=>({kind:'gate',value})),
+    ...mod.instances.map(value=>({kind:'instance',value}))
+  ];
+  for(const element of orderedElements){
+    if(element.kind==='gate'){
+      const gate=element.value;
+      // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
+      const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
+      const output=pins[0],gateInputs=pins.slice(1);
+      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
+      drivers.set(output,{node,pin:0});
+      continue;
+    }
+    if(element.kind!=='instance') continue;
+    const inst=element.value;
     const definition=inst.definition,cell=inst.cell,ports=definition?.ports||cell?.pins||[];
     let inputPorts=ports.filter(p=>p.direction==='INPUT'||p.direction==='INOUT');
     const outputPorts=ports.filter(p=>p.direction==='OUTPUT');
+    // The editor's DFF state machine expects data first and clock second.
+    // Keep model port names while mapping positional CK,Q,D instances correctly.
+    if(definition?.name.toLowerCase()==='dff') {
+      const data=inputPorts.find(p=>/^D$/i.test(p.name));
+      const clock=inputPorts.find(p=>/^(CK|CLK)$/i.test(p.name));
+      if(data&&clock) inputPorts=[data,clock,...inputPorts.filter(p=>p!==data&&p!==clock)];
+    }
     if(cell?.sequential){
       const seq=cell.sequential,dataExpr=seq.kind==='ff'?seq.nextState:seq.dataIn,clockExpr=seq.kind==='ff'?seq.clockedOn:seq.enable;
       const pick=expr=>{const names=String(expr||'').match(/[A-Za-z_$][\w$]*/g)||[];return inputPorts.find(p=>names.includes(p.name));};
       const dataPin=pick(dataExpr),clockPin=pick(clockExpr);
       inputPorts=[...new Set([dataPin,clockPin,...inputPorts].filter(Boolean))];
     }
-    const nodeType=cell?.sequential?.kind==='ff'?'DFF':cell?.sequential?.kind==='latch'?'LATCH':'MODULE';
+    const nodeType=definition?.name.toLowerCase()==='dff'?'DFF':cell?.sequential?.kind==='ff'?'DFF':cell?.sequential?.kind==='latch'?'LATCH':'MODULE';
     const node=add(nodeType,inst.name,inputPorts.length||Object.keys(inst.connections).filter(k=>k[0]==='$').length,outputPorts.length||1,{
       moduleType:definition?.name||null,cellType:cell?.name||null,instancePath:path.concat(inst.name),
       inputNames:inputPorts.map(p=>p.name),outputNames:outputPorts.map(p=>p.name),
@@ -374,6 +389,7 @@ function graphFor(mod,path) {
     });
     inst.graphNodeId=node.id;inst._inputPorts=inputPorts;inst._outputPorts=outputPorts;
   }
+  for(const port of outputs) add('OUTPUT',port.name,1,0,{inputNames:[port.name]});
   for(const inst of mod.instances){
     const node=nodes.find(n=>n.id===inst.graphNodeId);
     inst._outputPorts.forEach((port,index)=>{const signal=portSignal(port,inst);if(signal)drivers.set(signal,{node,pin:index});});
@@ -403,14 +419,91 @@ function graphFor(mod,path) {
     const target=nodes.find(n=>n.type==='OUTPUT'&&n.name===port.name),source=drivers.get(port.name);
     if(source) wires.push({id:id++,from:source.node.id,fromPin:source.pin||0,to:target.id,toPin:0});
   }
-  const columns=new Map();
-  for(const node of nodes){
-    const column=node.type==='INPUT'?0:node.type==='OUTPUT'?1000:Math.max(1,Math.min(20,Math.floor(node.id/18)));
-    if(!columns.has(column))columns.set(column,[]);
-    columns.get(column).push(node);
+  // Use the same dependency-aware layered placement as the structural importer.
+  const nodeById=new Map(nodes.map(node=>[node.id,node]));
+  const outgoing=new Map(nodes.map(node=>[node.id,[]]));
+  const indegree=new Map(nodes.map(node=>[node.id,0]));
+  const level=new Map(nodes.map(node=>[node.id,0]));
+  for(const wire of wires){
+    if(outgoing.has(wire.from)&&indegree.has(wire.to)){
+      outgoing.get(wire.from).push(wire.to);
+      indegree.set(wire.to,indegree.get(wire.to)+1);
+    }
   }
-  const keys=[...columns.keys()].sort((a,b)=>a-b);
-  for(let ci=0;ci<keys.length;ci++) columns.get(keys[ci]).forEach((node,index)=>{node.x=40+ci*220;node.y=35+index*105;});
+  const queue=nodes.filter(node=>indegree.get(node.id)===0).map(node=>node.id);
+  const topo=[],processed=new Set();
+  for(let qi=0;qi<queue.length;qi++){
+    const current=queue[qi];topo.push(current);processed.add(current);
+    for(const target of outgoing.get(current)){
+      level.set(target,Math.max(level.get(target),level.get(current)+1));
+      indegree.set(target,indegree.get(target)-1);
+      if(indegree.get(target)===0)queue.push(target);
+    }
+  }
+  const residual=nodes.filter(node=>!processed.has(node.id));
+  if(residual.length){
+    const fallback=topo.reduce((max,nodeId)=>Math.max(max,level.get(nodeId)||0),0)+1;
+    for(const node of residual)level.set(node.id,fallback);
+  }
+  const layers=new Map();
+  for(const node of nodes){
+    const currentLevel=level.get(node.id)||0;
+    if(!layers.has(currentLevel))layers.set(currentLevel,[]);
+    layers.get(currentLevel).push(node.id);
+  }
+  const layerKeys=[...layers.keys()].sort((a,b)=>a-b),order=new Map();
+  for(const currentLevel of layerKeys)layers.get(currentLevel).forEach((nodeId,index)=>order.set(nodeId,index));
+  const neighbors=new Map(nodes.map(node=>[node.id,[]]));
+  for(const wire of wires){
+    if(neighbors.has(wire.from)&&neighbors.has(wire.to)){
+      neighbors.get(wire.from).push(wire.to);
+      neighbors.get(wire.to).push(wire.from);
+    }
+  }
+  for(let pass=0;pass<4;pass++){
+    const keys=pass%2===0?layerKeys:layerKeys.slice().reverse();
+    for(const currentLevel of keys){
+      const ids=layers.get(currentLevel);
+      if(ids.length<2)continue;
+      const score=nodeId=>{
+        const adjacent=neighbors.get(nodeId).filter(other=>level.get(other)!==currentLevel);
+        return adjacent.length
+          ? adjacent.reduce((sum,other)=>sum+(order.get(other)??0),0)/adjacent.length
+          : order.get(nodeId);
+      };
+      ids.sort((a,b)=>{
+        const difference=score(a)-score(b);
+        return Math.abs(difference)>1e-6?difference:a-b;
+      });
+      ids.forEach((nodeId,index)=>order.set(nodeId,index));
+    }
+  }
+  const columns=[],columnByNode=new Map(),maxNodesPerColumn=100;
+  for(const currentLevel of layerKeys){
+    const ids=layers.get(currentLevel);
+    for(let i=0;i<ids.length;i+=maxNodesPerColumn){
+      const chunk=ids.slice(i,i+maxNodesPerColumn),column=columns.length;
+      columns.push({ids:chunk,sourceKeys:new Set(),targetWires:0});
+      for(const nodeId of chunk)columnByNode.set(nodeId,column);
+    }
+  }
+  for(const wire of wires){
+    const sourceColumn=columnByNode.get(wire.from),targetColumn=columnByNode.get(wire.to);
+    if(sourceColumn!==undefined)columns[sourceColumn].sourceKeys.add(wire.from+':'+(wire.fromPin||0));
+    if(targetColumn!==undefined)columns[targetColumn].targetWires++;
+  }
+  let nextX=40;
+  for(let i=0;i<columns.length;i++){
+    const column=columns[i];column.x=nextX;
+    if(i<columns.length-1)nextX+=150+60+(column.sourceKeys.size+columns[i+1].targetWires)*3.2;
+  }
+  for(const column of columns){
+    let y=36;
+    for(const nodeId of column.ids){
+      const node=nodeById.get(nodeId);node.x=column.x;node.y=y;
+      y+=Math.max(76,50+Math.max(node.inputs,node.outputs)*22)+28;
+    }
+  }
   return {nodes,wires,nextId:id};
 }
 function renderModule(mod,path) {
@@ -581,7 +674,7 @@ function setupUI() {
     let match;
     while((match=instances.exec(clean))){
       const type=match[1].toLowerCase();
-      if(declared.has(type)&&type!=='dff')return true;
+      if(declared.has(type))return true;
     }
     return false;
   }
