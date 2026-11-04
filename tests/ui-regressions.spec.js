@@ -146,9 +146,9 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   expect(geometry.pins).toEqual([[0,36],[0,58],[150,47]]);
   await expect(cell.locator('rect.nodepin')).toHaveCount(3);
   await expect(cell.locator('circle.nodepin')).toHaveCount(0);
-  expect(geometry.leads).toContainEqual([6,36,18,36]);
-  expect(geometry.leads).toContainEqual([6,58,18,58]);
-  expect(geometry.leads).toContainEqual([132,47,144,47]);
+  expect(geometry.leads).toContainEqual([0,36,18,36]);
+  expect(geometry.leads).toContainEqual([0,58,18,58]);
+  expect(geometry.leads).toContainEqual([123,47,150,47]);
   await expect(cell.locator('path.gate-symbol')).toHaveCount(1);
   await expect(cell.locator('rect.gate-symbol')).toHaveCount(0);
 
