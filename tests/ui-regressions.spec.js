@@ -76,12 +76,21 @@ test('Import Verilog opens a file chooser and imports the selected source', asyn
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
   await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
-  // The first import leaves the source in the editor; clicking Import again
-  // imports that text directly instead of opening the file picker a second time.
+  // After the first import, replace the editor source with a different design.
+  // Import Verilog must read the current editor contents, not stale file state.
+  const secondSource = [
+    'module second_import(A, B, Y);',
+    'input A, B;',
+    'output Y;',
+    'and U1(Y, A, B);',
+    'endmodule'
+  ].join('\n');
+  await page.locator('#verilogText').fill(secondSource);
   await page.locator('#importVerilog').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
-  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(5);
-  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(4);
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+  await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'U1' })).toHaveCount(1);
 });
 
 test('logic gates render standard symbols and input/output terminals are mirrored', async ({ page }) => {
