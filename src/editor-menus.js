@@ -55,8 +55,7 @@
     const list=$('libraryBrowserItems');if(!list)return;list.replaceChildren();
     $('libraryBrowserItemsHeading').textContent=activeLibrary==='standard'?'Standard Primitives':activeLibrary;
     if(activeLibrary==='standard'){
-      const descriptions={INPUT:'Input terminal',VDD:'Logic 1 source',GND:'Logic 0 source',AND:'AND gate',OR:'OR gate',XOR:'XOR gate',NOT:'Inverter',NAND:'NAND gate',NOR:'NOR gate',XNOR:'XNOR gate',DFF:'D flip-flop',LATCH:'D latch',OUTPUT:'Output terminal'};
-      addButtons.forEach(original=>{const b=document.createElement('button');b.className='toolbtn';b.textContent=original.textContent.trim()+' — '+descriptions[original.dataset.add];b.onclick=()=>{original.click();$('editorMessage').textContent='Added '+descriptions[original.dataset.add]+'.';};list.append(b);});
+      addButtons.forEach(original=>{original.hidden=false;original.style.width='100%';list.append(original);});
       return;
     }
     const file=files().find(f=>f.name===activeLibrary);
