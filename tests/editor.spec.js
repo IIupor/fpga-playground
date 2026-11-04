@@ -411,7 +411,8 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
   await page.locator('#editorStage g[data-node="4"] .nodepin').click();
   await expect(page.locator('#editorResults')).toContainText('= 0');
 
-  await page.locator('#exportVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#exportFile').click();
   const exported = await page.locator('#verilogText').inputValue();
   expect(exported).toContain("1'b1");
   expect(exported).toContain("1'b0");
@@ -421,7 +422,8 @@ test('VDD and GND survive Verilog export and re-import', async ({ page }) => {
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }, exported);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported');
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'VDD' })).toHaveCount(1);
   await expect(page.locator('#editorStage g[data-node]').filter({ hasText: 'GND' })).toHaveCount(1);
@@ -434,7 +436,8 @@ test('large benchmark auto-fits and remains scrollable and editable at 100 perce
   const path = require('node:path');
   const source = fs.readFileSync(path.join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
   await page.locator('#verilogText').fill(source);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported');
   // Imported benchmarks are fitted automatically; reset to 100% to verify
   // that the full-resolution workspace remains scrollable and editable.
@@ -492,7 +495,8 @@ test('workspace zoom controls scale the circuit and reset to 100 percent', async
 test('fit to view scales the complete circuit to the visible workspace', async ({ page }) => {
   const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
   await page.locator('#verilogText').fill(source);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported');
 
   const viewport = page.locator('#editorViewport');
@@ -515,7 +519,8 @@ test('fit to view scales the complete circuit to the visible workspace', async (
 test('holding Space and dragging pans the circuit workspace', async ({ page }) => {
   const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'benchmarks', 'iscas85', 'c432.v'), 'utf8');
   await page.locator('#verilogText').fill(source);
-  await page.locator('#importVerilog').click();
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importFile').click();
   await expect(page.locator('#editorMessage')).toContainText('Imported');
 
   const viewport = page.locator('#editorViewport');
