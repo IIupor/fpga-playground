@@ -356,7 +356,9 @@ function graphFor(mod,path) {
       // Legacy ISCAS DFF primitive positional order is (CK, Q, D).
       const pins=gate.kind==='dff'&&gate.pins.length===3?[gate.pins[1],gate.pins[2],gate.pins[0]]:gate.pins;
       const output=pins[0],gateInputs=pins.slice(1);
-      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],inputNames:gateInputs.map((_,i)=>'IN'+(i+1)),gateInputSignals:gateInputs});
+      // IEEE 1364/1800 gate primitives use positional terminals, not named ports.
+      // Display conventional function labels while retaining the net name in outputNames.
+      const node=add(gateTypes[gate.kind],gate.name||gate.kind.toUpperCase()+'_'+id,gateInputs.length,1,{outputNames:[output],outputPinLabels:['Y'],inputNames:gateInputs.map((_,i)=>String.fromCharCode(65+i)),gateInputSignals:gateInputs});
       drivers.set(output,{node,pin:0});
       continue;
     }
