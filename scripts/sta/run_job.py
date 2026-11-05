@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Yosys/ABC synthesis followed by OpenSTA for one browser-submitted design."""
+"""Run Yosys/ABC synthesis followed by OpenSTA for one submitted design."""
 
 import argparse
 import json
@@ -8,19 +8,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 IDENTIFIER = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
 
 def run(command, *, cwd, log_path, timeout=300):
     completed = subprocess.run(
-        command,
-        cwd=cwd,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        timeout=timeout,
-        check=False,
+        command, cwd=cwd, text=True, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, timeout=timeout, check=False,
     )
     log_path.write_text(completed.stdout, encoding="utf-8")
     if completed.returncode:
@@ -38,12 +32,8 @@ def parse_paths(report, path_type):
         end = starts[index + 1].start() if index + 1 < len(starts) else len(report)
         block = report[match.start():end]
         endpoint = re.search(r"^Endpoint:\s*(.+)$", block, re.MULTILINE)
-        slack = re.search(
-            r"(-?\d+(?:\.\d+)?)\s+slack\s+\((VIOLATED|MET)\)",
-            block,
-        )
-        nets = []
-        cells = []
+        slack = re.search(r"(-?\d+(?:\.\d+)?)\s+slack\s+\((VIOLATED|MET)\)", block)
+        nets, cells = [], []
         for line in block.splitlines():
             net = re.search(r"\s([A-Za-z_$][A-Za-z0-9_$]*(?:\[[^]]+\])?)\s+\(net\)\s*$", line)
             if net and net.group(1) not in nets:
@@ -78,20 +68,24 @@ def main():
 
     args.out.mkdir(parents=True, exist_ok=True)
     request = json.loads(args.request.read_text(encoding="utf-8"))
-    source = request.get("verilog")
-    top = request.get("top")
-    sdc = request.get("sdc")
+    source, top, sdc = request.get("verilog"), request.get("top"), request.get("sdc")
     if not isinstance(source, str) or not source.strip():
         raise ValueError("The request does not contain Verilog source.")
     if not isinstance(top, str) or not IDENTIFIER.fullmatch(top):
         raise ValueError("The top module name is invalid.")
     if not isinstance(sdc, str) or not sdc.strip():
         raise ValueError("The request does not contain SDC constraints.")
+
     sources = request.get("sources", [])
+    if not isinstance(sources, list):
+        raise ValueError("Supplementary sources must be an array.")
     analysis = request.get("analysis", "both")
     if analysis not in ("setup", "hold", "both"):
         analysis = "both"
-    if len(source) + sum(len(item.get("text", "")) for item in sources if isinstance(item, dict)) > 5_000_000 or len(sdc) > 64_000:
+    combined_size = len(source) + sum(
+        len(item.get("text", "")) for item in sources if isinstance(item, dict)
+    )
+    if combined_size > 5_000_000 or len(sdc) > 64_000:
         raise ValueError("The submitted design or SDC exceeds the supported size.")
 
     design = args.out / "design.v"
@@ -101,11 +95,22 @@ def main():
     design.write_text(source, encoding="utf-8")
     constraints.write_text(sdc, encoding="utf-8")
 
+    read_commands = [f'read_liberty -lib "{args.liberty.resolve()}"']
+    for index, item in enumerate(sources):
+        if not isinstance(item, dict) or not isinstance(item.get("text"), str):
+            raise ValueError(f"Supplementary source {index} is malformed.")
+        if not item["text"].strip():
+            continue
+        library_source = args.out / f"library_{index}.v"
+        library_source.write_text(item["text"], encoding="utf-8")
+        read_commands.append(f'read_verilog -sv "{library_source.resolve()}"')
+    read_commands.append(f'read_verilog -sv "{design.resolve()}"')
+
     yosys_script = args.out / "synthesis.ys"
     yosys_script.write_text("\n".join([
-        f'read_verilog -sv "{design.resolve()}"',
-        f'hierarchy -check -top {top}',
-        f'synth -top {top}',
+        *read_commands,
+        f"hierarchy -check -top {top}",
+        f"synth -top {top}",
         f'dfflibmap -liberty "{args.liberty.resolve()}"',
         f'abc -liberty "{args.liberty.resolve()}"',
         "clean",
@@ -113,38 +118,50 @@ def main():
         f'write_json "{netlist_json.resolve()}"',
         "",
     ]), encoding="utf-8")
-
     run(["yosys", "-Q", "-s", str(yosys_script)], cwd=Path.cwd(),
         log_path=args.out / "yosys.log", timeout=600)
 
-    sta_script = args.out / "analysis.tcl"
-    sta_script.write_text("\n".join([
+    sta_lines = [
         f'read_liberty "{args.liberty.resolve()}"',
         f'read_verilog "{netlist.resolve()}"',
         f"link_design {top}",
         f'read_sdc "{constraints.resolve()}"',
-        "puts \"=== SETUP PATHS ===\"",
-        "report_checks -path_delay max -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
-        "puts \"=== HOLD PATHS ===\"",
-        "report_checks -path_delay min -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
-        "puts \"=== WORST NEGATIVE SLACK ===\"",
+    ]
+    if analysis in ("setup", "both"):
+        sta_lines += [
+            'puts "=== SETUP PATHS ==="',
+            "report_checks -path_delay max -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
+        ]
+    if analysis in ("hold", "both"):
+        sta_lines += [
+            'puts "=== HOLD PATHS ==="',
+            "report_checks -path_delay min -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
+        ]
+    sta_lines += [
+        'puts "=== WORST NEGATIVE SLACK ==="',
         "report_wns",
-        "puts \"=== TOTAL NEGATIVE SLACK ===\"",
+        'puts "=== TOTAL NEGATIVE SLACK ==="',
         "report_tns",
         "exit",
         "",
-    ]), encoding="utf-8")
-
+    ]
+    sta_script = args.out / "analysis.tcl"
+    sta_script.write_text("\n".join(sta_lines), encoding="utf-8")
     sta_report = run(["sta", "-exit", str(sta_script)], cwd=Path.cwd(),
                      log_path=args.out / "opensta.log", timeout=300)
     if "Error:" in sta_report or "Startpoint:" not in sta_report:
         raise RuntimeError("OpenSTA did not produce valid timing paths. See opensta.log.")
 
-    setup_section = sta_report.split("=== SETUP PATHS ===", 1)[-1].split("=== HOLD PATHS ===", 1)[0] if "=== SETUP PATHS ===" in sta_report else ""
-    hold_section = sta_report.split("=== HOLD PATHS ===", 1)[-1].split("=== WORST NEGATIVE SLACK ===", 1)[0] if "=== HOLD PATHS ===" in sta_report else ""
+    setup_section = (
+        sta_report.split("=== SETUP PATHS ===", 1)[-1].split("=== HOLD PATHS ===", 1)[0]
+        if "=== SETUP PATHS ===" in sta_report else ""
+    )
+    hold_section = (
+        sta_report.split("=== HOLD PATHS ===", 1)[-1].split("=== WORST NEGATIVE SLACK ===", 1)[0]
+        if "=== HOLD PATHS ===" in sta_report else ""
+    )
     setup_paths = parse_paths(setup_section, "setup")
     hold_paths = parse_paths(hold_section, "hold")
-
     result = {
         "status": "completed",
         "top": top,
