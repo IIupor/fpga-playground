@@ -1,3 +1,11 @@
+module fpga_node_3(input wire A, input wire B, output wire Y);
+    and gate_and (Y, A, B);
+endmodule
+
+module fpga_node_4(input wire A, input wire B, output wire Y);
+    or gate_or (Y, A, B);
+endmodule
+
 module fpga_playground (
     input wire A,
     input wire B,
@@ -6,7 +14,7 @@ module fpga_playground (
 );
     (* keep = 1 *) wire AND1_out;
     (* keep = 1 *) wire OR1_out;
-    and AND1 (AND1_out, A, B);
-    or OR1 (OR1_out, AND1_out, C);
+    fpga_node_3 node3 (.A(A), .B(B), .Y(AND1_out));
+    fpga_node_4 node4 (.A(AND1_out), .B(C), .Y(OR1_out));
     assign Y = OR1_out;
 endmodule
