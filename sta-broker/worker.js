@@ -100,7 +100,9 @@ async function handle(request, env) {
 
     const user = await github("/user", tokenData.access_token);
     const repository = await github("/repos/" + env.GITHUB_REPOSITORY, tokenData.access_token);
-    if (!repository.permissions?.push) {
+    const hasPushAccess = repository.permissions?.push
+      || user.login.toLowerCase() === repository.owner?.login?.toLowerCase();
+    if (!hasPushAccess) {
       return new Response("This GitHub account does not have write access to " + env.GITHUB_REPOSITORY + ".", { status: 403 });
     }
 
