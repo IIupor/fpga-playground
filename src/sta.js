@@ -94,7 +94,7 @@
         <button class="toolbtn primary" id="staRun" type="button">Run STA</button>
         <button class="toolbtn" id="staClear" type="button">Clear results</button>
       </div>
-      <div class="sta-status" id="staStatus" aria-live="polite">Ready. Analysis uses the Sky130 HD TT timing library.</div>
+      <div class="sta-status" id="staStatus" aria-live="polite">Ready. Pre-layout STA uses Sky130 HD TT cell timing; interconnect parasitics are not extracted yet.</div>
       <div class="sta-metrics" id="staMetrics"></div>
       <div><strong style="font-size:13px">Critical paths</strong><div class="sta-paths" id="staPaths"></div></div>
       <details><summary>OpenSTA report</summary><pre id="staReport" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;font-size:11px"></pre></details>
