@@ -13,6 +13,9 @@ The browser receives only a short-lived broker session identifier. The user's Gi
 
 This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty cell timing, but does not yet extract routed interconnect parasitics from SPEF.
 
+The runner accepts only the editor-generated SDC subset: `create_clock`, `set_input_delay`, `set_input_transition`, `set_output_delay` and `set_load`. Arbitrary Tcl commands are rejected before OpenSTA starts. The Actions workflow uses read-only repository permissions and disables persisted checkout credentials; the broker secret is exposed only to the steps that fetch a job or return its result.
+
+
 ## One-time setup
 
 1. Create a free Cloudflare account.
