@@ -150,7 +150,7 @@ def main():
     sta_report = run(["sta", "-exit", str(sta_script)], cwd=Path.cwd(),
                      log_path=args.out / "opensta.log", timeout=300)
     if "Error:" in sta_report or "Startpoint:" not in sta_report:
-        raise RuntimeError("OpenSTA did not produce valid timing paths. See opensta.log.")
+        raise RuntimeError("OpenSTA did not produce valid timing paths.\n" + sta_report[-12000:])
 
     setup_section = (
         sta_report.split("=== SETUP PATHS ===", 1)[-1].split("=== HOLD PATHS ===", 1)[0]
