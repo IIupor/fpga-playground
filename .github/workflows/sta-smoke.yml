@@ -32,12 +32,15 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Validate STA scripts
         run: |
           node --input-type=module --check < sta-broker/worker.js
           node scripts/sta/test_worker_crypto.mjs
           python3 -m py_compile scripts/sta/run_job.py
+          python3 -m unittest discover -s scripts/sta -p 'test_*.py'
 
       - name: Install Yosys and OpenSTA
         run: |
