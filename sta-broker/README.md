@@ -19,7 +19,7 @@ This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty ce
 2. In Cloudflare, create a KV namespace named `STA_KV`.
 3. Create a GitHub App under **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**:
    - Homepage URL: `https://iiupor.github.io/fpga-playground/`
-   - Callback URL / user authorization callback URL: `https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/auth/callback`
+   - Enable user authorization (OAuth) and set the callback URL to `https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/auth/callback`.
    - Repository permissions: **Contents → Read and write**.
    - Install the app on **IIupor/fpga-playground only**.
    - Generate a private key and keep the downloaded PEM file private.
