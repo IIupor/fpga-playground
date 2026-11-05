@@ -128,7 +128,13 @@ const internalGuard = new StaGuard({
 }, {});
 env.STA_GUARD = {
   idFromName() { return "internal-test-guard"; },
-  get() { return internalGuard; }
+  get() {
+    return {
+      fetch(input, init) {
+        return internalGuard.fetch(input instanceof Request ? input : new Request(input, init));
+      }
+    };
+  }
 };
 const internalReservation = await internalGuard.fetch(new Request("https://guard.internal/action", {
   method: "POST",
