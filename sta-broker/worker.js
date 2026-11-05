@@ -401,7 +401,7 @@ async function handle(request, env) {
 
   if (path === "/api/jobs" && request.method === "POST") {
     if (request.headers.get("Origin") !== env.APP_ORIGIN) return json({ error: "Origin not allowed." }, 403, env);
-    if (!/^application\\/json(?:\\s*;|$)/i.test(request.headers.get("Content-Type") || "")) {
+    if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("Content-Type") || "")) {
       return json({ error: "Content-Type must be application/json." }, 415, env);
     }
     const session = await requireSession(request, env);
