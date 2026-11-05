@@ -203,6 +203,9 @@ assert.throws(() => validateSignalMap({
 assert.throws(() => validateSignalMap({
   bad: { nodeId: 1, wireIds: Array(257).fill(1) }
 }), /invalid mapping entry/i);
+assert.throws(() => validateSignalMap({
+  bad: { nodeId: 1, wireIds: [], unexpected: { nested: true } }
+}), /invalid mapping entry/i);
 await assert.rejects(
   () => readJsonLimited(new Request("https://broker.example/test", {
     method: "POST",
@@ -249,5 +252,27 @@ const repeatedFinish = await guardAction("finish", firstJobId, "completed");
 assert.equal(repeatedFinish.status, 200, "result delivery retries must be idempotent");
 assert.equal((await guardAction("reserve", secondJobId)).status, 429,
   "the cooldown must reject rapid consecutive submissions");
+
+const raceStore = new Map();
+let raceQueue = Promise.resolve();
+const raceGuard = new StaGuard({
+  storage: {
+    transaction(callback) {
+      const operation = raceQueue.then(() => callback({
+        async get(key) { return raceStore.get(key); },
+        async put(key, value) { raceStore.set(key, value); }
+      }));
+      raceQueue = operation.catch(() => {});
+      return operation;
+    }
+  }
+}, {});
+const raceIds = [crypto.randomUUID(), crypto.randomUUID()];
+const raceResults = await Promise.all(raceIds.map(jobId => raceGuard.fetch(new Request(
+  "https://guard.internal/action",
+  { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reserve", jobId }) }
+))));
+assert.deepEqual(raceResults.map(response => response.status).sort(), [200, 409],
+  "simultaneous submissions must atomically reserve only one active STA slot");
 
 console.log("STA owner ID, bounded request parsing, mapping validation, token scope, and atomic job guard tests passed.");
