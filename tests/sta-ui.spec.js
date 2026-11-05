@@ -32,3 +32,23 @@ test('STA UI reports invalid clock periods instead of submitting a job', async (
   });
   expect(result).toContain('Invalid timing constraint: period');
 });
+
+test('Selecting a timing path highlights its schematic node and wire', async ({ page }) => {
+  await page.goto('/');
+  const mapped = await page.evaluate(() => {
+    const wire = window.fpgaWires[0];
+    const source = window.fpgaNodes.find(node => node.id === wire.from);
+    window.fpgaStaHighlightPath(
+      { nets: ['mapped_output'] },
+      { mapped_output: { nodeId: source.id, wireIds: [wire.id] } }
+    );
+    return { nodeId: source.id, wireId: wire.id };
+  });
+
+  await expect(page.locator('g[data-node="' + mapped.nodeId + '"]')).toHaveClass(/sta-path-node/);
+  await expect(page.locator('.editor-wire[data-wire="' + mapped.wireId + '"]')).toHaveClass(/sta-critical/);
+
+  await page.evaluate(() => window.fpgaStaClearHighlight());
+  await expect(page.locator('g[data-node="' + mapped.nodeId + '"]')).not.toHaveClass(/sta-path-node/);
+  await expect(page.locator('.editor-wire[data-wire="' + mapped.wireId + '"]')).not.toHaveClass(/sta-critical/);
+});
