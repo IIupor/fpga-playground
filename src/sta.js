@@ -292,6 +292,7 @@
     if (!nodes.size && !wires.size) setStatus('Path selected, but the synthesized report did not retain any original schematic net names for highlighting.');
   }
   window.fpgaStaClearHighlight = clearPathHighlight;
+  window.fpgaStaHighlightPath = highlightPath;
   function reapplyHighlight() {
     const active = window.fpgaStaActivePath;
     if (!active) return;
