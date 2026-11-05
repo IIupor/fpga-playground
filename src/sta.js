@@ -236,9 +236,11 @@
       verilog: lines.join('\n'),
       top: 'fpga_playground',
       signalMap,
-      sources: (window.fpgaVerilogProject?.state?.libraries || [])
-        .filter(file => /\.(v|sv)$/i.test(file.name) && typeof file.text === 'string')
-        .map(file => ({ name: file.name, text: file.text }))
+      sources: nodes.some(n => n.type === 'MODULE' && n.moduleType)
+        ? (window.fpgaVerilogProject?.state?.libraries || [])
+          .filter(file => /\.(v|sv)$/i.test(file.name) && typeof file.text === 'string')
+          .map(file => ({ name: file.name, text: file.text }))
+        : []
     };
   }
   window.fpgaStaBuildDesign = buildDesign;
