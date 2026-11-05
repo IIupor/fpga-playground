@@ -104,7 +104,7 @@ jobs:
             hierarchy -check -top s27
             synth -top s27
             dfflibmap -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
-            abc -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib -dress
+            abc -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
             clean
             write_verilog -noattr build/sta/netlist.v
           " | tee build/sta/yosys.log
