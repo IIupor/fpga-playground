@@ -44,6 +44,26 @@ jobs:
           gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
             > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
 
+      - name: Exercise the reusable STA job runner
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = {
+              "verilog": Path("benchmarks/iscas89/s27.v").read_text(),
+              "top": "s27",
+              "sdc": Path("scripts/sta/smoke.sdc").read_text(),
+              "analysis": "both",
+              "signalMap": {},
+              "sources": []
+          }
+          Path("build/sta/request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta/runner
+          grep -q '"status": "completed"' build/sta/runner/result.json
+
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
         run: |
           set -o pipefail
