@@ -79,7 +79,7 @@ jobs:
               "top": "fpga_playground",
               "sdc": Path("scripts/sta/keep-netlist.sdc").read_text(),
               "analysis": "setup",
-              "signalMap": {"AND1_out": {"nodeId": 3, "wireIds": [9]}},
+              "signalMap": {"AND1_out": {"nodeId": 3, "wireIds": [9]}, "OR1_out": {"nodeId": 4, "wireIds": [10]}, "Y": {"nodeId": 4, "wireIds": [11]}},
               "sources": []
           }
           Path("build/sta/keep-request.json").write_text(json.dumps(request))
@@ -91,9 +91,9 @@ jobs:
           import json
           from pathlib import Path
           result = json.loads(Path("build/sta/keep-netlist/result.json").read_text())
-          assert any("AND1_out" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
-          assert result["signalMap"]["AND1_out"]["nodeId"] == 3
-          print("Original schematic net AND1_out is present in the OpenSTA path and maps to node 3.")
+          assert any("Y" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
+          assert result["signalMap"]["Y"]["nodeId"] == 4
+          print("The OpenSTA path output net Y maps back to schematic node 4.")
           PY
 
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
