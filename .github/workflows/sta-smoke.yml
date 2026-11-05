@@ -1,0 +1,242 @@
+name: Static timing analysis
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [sta_job]
+  pull_request:
+    paths:
+      - ".github/workflows/sta-smoke.yml"
+      - "scripts/sta/**"
+      - "benchmarks/iscas89/s27.v"
+      - "libraries/sky130/liberty/**"
+      - "sta-broker/**"
+  push:
+    branches:
+      - "feature/sta-opensta-integration"
+    paths:
+      - ".github/workflows/sta-smoke.yml"
+      - "scripts/sta/**"
+      - "benchmarks/iscas89/s27.v"
+      - "libraries/sky130/liberty/**"
+      - "sta-broker/**"
+
+permissions:
+  contents: read
+
+jobs:
+  sta-smoke:
+    if: github.event_name != 'repository_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate STA scripts
+        run: |
+          node --input-type=module --check < sta-broker/worker.js
+          node scripts/sta/test_worker_crypto.mjs
+          python3 -m py_compile scripts/sta/run_job.py
+          python3 -m unittest discover -s scripts/sta -p 'test_*.py'
+
+      - name: Install Yosys and OpenSTA
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes yosys opensta
+
+      - name: Prepare timing library
+        run: |
+          mkdir -p build/sta
+          gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
+            > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+      - name: Exercise the reusable STA job runner
+        env:
+          STA_DEBUG: "1"
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = {
+              "verilog": Path("benchmarks/iscas89/s27.v").read_text(),
+              "top": "s27",
+              "sdc": Path("scripts/sta/smoke.sdc").read_text(),
+              "analysis": "both",
+              "signalMap": {},
+              "sources": []
+          }
+          Path("build/sta/request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta/runner
+          grep -q '"status": "completed"' build/sta/runner/result.json
+
+      - name: Verify schematic net names survive technology mapping
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = {
+              "verilog": Path("scripts/sta/keep-netlist.v").read_text(),
+              "top": "fpga_playground",
+              "sdc": Path("scripts/sta/keep-netlist.sdc").read_text(),
+              "analysis": "setup",
+              "signalMap": {"AND1_out": {"nodeId": 3, "wireIds": [9]}, "OR1_out": {"nodeId": 4, "wireIds": [10]}, "Y": {"nodeId": 4, "wireIds": [11]}},
+              "instanceMap": {"node3": {"nodeId": 3, "wireIds": [9]}, "node4": {"nodeId": 4, "wireIds": [10]}},
+              "sources": []
+          }
+          Path("build/sta/keep-request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/keep-request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta/keep-netlist
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("build/sta/keep-netlist/result.json").read_text())
+          assert any("AND1_out" in path["nets"] and "OR1_out" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
+          assert result["signalMap"]["AND1_out"]["nodeId"] == 3
+          assert result["signalMap"]["OR1_out"]["nodeId"] == 4
+          assert any("node3" in path["cells"] and "node4" in path["cells"] for path in result["setup_paths"]), result["setup_paths"]
+          assert result["instanceMap"]["node3"]["nodeId"] == 3
+          assert result["instanceMap"]["node4"]["nodeId"] == 4
+          print("OpenSTA path nets:", [path["nets"] for path in result["setup_paths"]])
+          print("OpenSTA path cells:", [path["cells"] for path in result["setup_paths"]])
+          print("Intermediate nets and hierarchical cell instances map to schematic nodes 3 and 4.")
+          PY
+
+      - name: Verify Sky130 latch cell mapping
+        env:
+          STA_DEBUG: "1"
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = {
+              "verilog": Path("scripts/sta/latch-smoke.v").read_text(),
+              "top": "fpga_playground",
+              "sdc": Path("scripts/sta/latch-smoke.sdc").read_text(),
+              "analysis": "both",
+              "signalMap": {"Q": {"nodeId": 8, "wireIds": [12]}},
+              "instanceMap": {"LATCH1": {"nodeId": 8, "wireIds": [12]}},
+              "sources": []
+          }
+          Path("build/sta/latch-request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/latch-request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta/latch
+          grep -q '"status": "completed"' build/sta/latch/result.json
+
+      - name: Synthesize ISCAS'89 s27 with Yosys and ABC
+        run: |
+          set -o pipefail
+          yosys -Q -p "
+            read_verilog benchmarks/iscas89/s27.v
+            hierarchy -check -top s27
+            synth -top s27
+            dfflibmap -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+            abc -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+            clean
+            write_verilog -noattr build/sta/netlist.v
+          " | tee build/sta/yosys.log
+
+      - name: Run OpenSTA
+        run: |
+          set -o pipefail
+          sta -exit scripts/sta/smoke.tcl 2>&1 | tee build/sta/opensta.log
+          grep -q "Startpoint:" build/sta/opensta.log
+          grep -q "Endpoint:" build/sta/opensta.log
+          grep -q "wns " build/sta/opensta.log
+          grep -q "tns " build/sta/opensta.log
+
+      - name: Upload STA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sta-smoke-reports
+          path: build/sta/
+          if-no-files-found: warn
+          retention-days: 7
+
+  sta-job:
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'sta_job'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: sta-job-${{ github.event.client_payload.job_id }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Claim job and fetch design
+        id: fetch_design
+        env:
+          STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
+          STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+        run: |
+          set -euo pipefail
+          test -n "$STA_BROKER_URL"
+          test -n "$STA_BROKER_SECRET"
+          test -n "$JOB_ID"
+          mkdir -p build/sta
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $STA_BROKER_SECRET" \
+            "$STA_BROKER_URL/internal/jobs/$JOB_ID" \
+            -o build/sta/request.json
+
+      - name: Install Yosys and OpenSTA
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes yosys opensta
+
+      - name: Prepare timing library
+        run: |
+          gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
+            > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+      - name: Run Yosys, ABC and OpenSTA
+        run: |
+          python3 scripts/sta/run_job.py build/sta/request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta
+
+      - name: Return analysis results to the broker
+        if: success()
+        env:
+          STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
+          STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STA_BROKER_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary @build/sta/result.json \
+            "$STA_BROKER_URL/internal/jobs/$JOB_ID/result"
+
+      - name: Report analysis failure to the broker
+        if: failure() && steps.fetch_design.outcome == 'success'
+        env:
+          STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
+          STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+        run: |
+          if [ -n "$STA_BROKER_URL" ] && [ -n "$STA_BROKER_SECRET" ] && [ -n "$JOB_ID" ]; then
+            mkdir -p build/sta
+            printf '%s\n' '{"status":"error","message":"STA execution failed. Inspect the GitHub Actions run log."}' > build/sta/result.json
+            curl --silent --show-error -X POST \
+              -H "Authorization: Bearer $STA_BROKER_SECRET" \
+              -H "Content-Type: application/json" \
+              --data-binary @build/sta/result.json \
+              "$STA_BROKER_URL/internal/jobs/$JOB_ID/result" || true
+          fi
+
+      # Do not publish artifacts for user-submitted designs: this is a public repository.\n

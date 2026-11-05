@@ -1,0 +1,26 @@
+name = "fpga-playground-sta-broker"
+main = "worker.js"
+compatibility_date = "2026-11-05"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "STA_KV"
+id = "1c80482ccab24976a6b930d6cadaaf78"
+
+[vars]
+APP_ORIGIN = "https://iiupor.github.io"
+APP_URL = "https://iiupor.github.io/fpga-playground/"
+GITHUB_REPOSITORY = "IIupor/fpga-playground"
+
+GITHUB_OWNER_ID = "39133075"
+GITHUB_REPOSITORY_ID = "1435782414"
+
+[[durable_objects.bindings]]
+name = "STA_GUARD"
+class_name = "StaGuard"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["StaGuard"]
+
+# Trigger initial Cloudflare Git deployment.
