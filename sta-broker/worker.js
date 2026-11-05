@@ -300,15 +300,15 @@ function installationTokenPayload(repositoryId) {
 
 async function createInstallationToken(env) {
   const jwt = await createAppJwt(env);
-  const repository = await github("/repos/" + env.GITHUB_REPOSITORY, jwt);
-  if (repository.full_name.toLowerCase() !== env.GITHUB_REPOSITORY.toLowerCase()) {
-    throw new Error("Configured GitHub repository identity did not match.");
+  const repositoryId = Number(env.GITHUB_REPOSITORY_ID);
+  if (!Number.isSafeInteger(repositoryId) || repositoryId <= 0) {
+    throw new Error("Configured GitHub repository ID is invalid.");
   }
   const installation = await github("/repos/" + env.GITHUB_REPOSITORY + "/installation", jwt);
   const token = await github("/app/installations/" + installation.id + "/access_tokens", jwt, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(installationTokenPayload(repository.id))
+    body: JSON.stringify(installationTokenPayload(repositoryId))
   });
   return token.token;
 }
