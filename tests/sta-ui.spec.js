@@ -13,7 +13,9 @@ test('Timing menu opens STA constraints and exports the current schematic', asyn
   expect(design.top).toBe('fpga_playground');
   expect(design.verilog).toContain('module fpga_playground(');
   expect(design.verilog).toContain('(* keep = 1 *) wire');
+  expect(design.verilog).toContain('module fpga_node_');
   expect(Object.keys(design.signalMap).length).toBeGreaterThan(0);
+  expect(Object.keys(design.instanceMap).length).toBeGreaterThan(0);
 
   const sdc = await page.evaluate(() => window.fpgaStaBuildSdc());
   expect(sdc).toContain('create_clock -name core_clk -period 10');
@@ -36,11 +38,15 @@ test('STA UI reports invalid clock periods instead of submitting a job', async (
 test('Selecting a timing path highlights its schematic node and wire', async ({ page }) => {
   await page.goto('/');
   const mapped = await page.evaluate(() => {
-    const wire = window.fpgaWires[0];
+    const wire = window.fpgaWires.find(item => {
+      const node = window.fpgaNodes.find(candidate => candidate.id === item.from);
+      return node && !['INPUT','OUTPUT','VDD','GND'].includes(node.type);
+    });
     const source = window.fpgaNodes.find(node => node.id === wire.from);
     window.fpgaStaHighlightPath(
-      { nets: ['mapped_output'] },
-      { mapped_output: { nodeId: source.id, wireIds: [wire.id] } }
+      { nets: ['mapped_output'], cells: [source.name] },
+      { mapped_output: { nodeId: source.id, wireIds: [wire.id] } },
+      { [source.name]: { nodeId: source.id, wireIds: [wire.id] } }
     );
     return { nodeId: source.id, wireId: wire.id };
   });
