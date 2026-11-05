@@ -1,5 +1,185 @@
 const REPO_API = "https://api.github.com";
 
+const MAX_JOB_BODY_BYTES = 5_500_000;
+const MAX_SOURCE_BYTES = 5_000_000;
+const MAX_SUPPLEMENTARY_SOURCES = 32;
+const MAX_MAP_ENTRIES = 20_000;
+const MAX_WIRE_IDS_PER_ENTRY = 256;
+const STA_JOB_LEASE_MS = 25 * 60 * 1000;
+const STA_JOB_COOLDOWN_MS = 60 * 1000;
+const STA_DAILY_JOB_LIMIT = 20;
+
+function isPlainObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function validateSignalMap(value, label = "signalMap") {
+  if (value === undefined) return {};
+  if (!isPlainObject(value)) throw new Error(label + " must be a plain object.");
+  const entries = Object.entries(value);
+  if (entries.length > MAX_MAP_ENTRIES) throw new Error(label + " contains too many entries.");
+  for (const [name, item] of entries) {
+    if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) || !isPlainObject(item) ||
+        Object.keys(item).some(key => key !== "nodeId" && key !== "wireIds") ||
+        !Number.isSafeInteger(item.nodeId) || item.nodeId < 0 ||
+        !Array.isArray(item.wireIds) || item.wireIds.length > MAX_WIRE_IDS_PER_ENTRY ||
+        item.wireIds.some(id => !Number.isSafeInteger(id) || id < 0)) {
+      throw new Error(label + " contains an invalid mapping entry.");
+    }
+  }
+  return value;
+}
+
+async function readJsonLimited(request, maxBytes) {
+  const declaredLength = Number(request.headers.get("Content-Length") || 0);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    const error = new Error("Request body exceeds the supported size limit.");
+    error.status = 413;
+    throw error;
+  }
+  const encoding = request.headers.get("Content-Encoding");
+  if (encoding && encoding.toLowerCase() !== "identity") {
+    const error = new Error("Compressed request bodies are not supported.");
+    error.status = 415;
+    throw error;
+  }
+  if (!request.body) throw new Error("A JSON request body is required.");
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const part = await reader.read();
+    if (part.done) break;
+    total += part.value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      const error = new Error("Request body exceeds the supported size limit.");
+      error.status = 413;
+      throw error;
+    }
+    chunks.push(part.value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch {
+    throw new Error("Invalid JSON request.");
+  }
+}
+
+async function callStaGuard(env, payload) {
+  if (!env.STA_GUARD) throw new Error("STA job guard is not configured.");
+  const id = env.STA_GUARD.idFromName("fpga-playground-sta-global");
+  const stub = env.STA_GUARD.get(id);
+  return stub.fetch("https://sta-guard.internal/action", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export class StaGuard {
+  constructor(ctx, env) {
+    this.ctx = ctx;
+    this.env = env;
+  }
+
+  async fetch(request) {
+    let input;
+    try { input = await request.json(); }
+    catch { return json({ error: "Invalid guard request." }, 400); }
+    const { action, jobId } = input || {};
+    if (!["reserve", "claim", "finish", "release"].includes(action) ||
+        typeof jobId !== "string" || !/^[0-9a-f-]{36}$/i.test(jobId)) {
+      return json({ error: "Invalid guard action." }, 400);
+    }
+
+    return this.ctx.storage.transaction(async txn => {
+      const now = Date.now();
+      const day = Math.floor(now / 86_400_000);
+      const state = await txn.get("state") || {
+        day, dailyCount: 0, lastSubmitAt: 0,
+        activeJobId: null, activeUntil: 0, jobs: {}
+      };
+      state.jobs ||= {};
+      for (const [id, job] of Object.entries(state.jobs)) {
+        if (!job || now - job.createdAt > 86_400_000) delete state.jobs[id];
+      }
+
+      if (action === "reserve") {
+        if (state.jobs[jobId]) return json({ error: "This STA job has already been registered." }, 409);
+        if (state.activeJobId && state.activeUntil > now) {
+          return json({ error: "Another STA job is already running. Wait for it to finish." }, 409);
+        }
+        if (state.lastSubmitAt && now - state.lastSubmitAt < STA_JOB_COOLDOWN_MS) {
+          return json({ error: "Please wait at least 60 seconds between STA submissions." }, 429);
+        }
+        if (state.day !== day) {
+          state.day = day;
+          state.dailyCount = 0;
+        }
+        if (state.dailyCount >= STA_DAILY_JOB_LIMIT) {
+          return json({ error: "The daily STA job limit (20) has been reached. Try again tomorrow." }, 429);
+        }
+        state.dailyCount++;
+        state.lastSubmitAt = now;
+        state.activeJobId = jobId;
+        state.activeUntil = now + STA_JOB_LEASE_MS;
+        state.jobs[jobId] = { status: "queued", createdAt: now };
+        await txn.put("state", state);
+        return json({ accepted: true });
+      }
+
+      const job = state.jobs[jobId];
+      if (!job) return json({ error: "STA job is unknown or expired." }, 404);
+
+      if (action === "claim") {
+        if (job.status !== "queued" || state.activeJobId !== jobId || state.activeUntil <= now) {
+          return json({ error: "STA job is already claimed, finished, or expired." }, 409);
+        }
+        job.status = "running";
+        await txn.put("state", state);
+        return json({ accepted: true });
+      }
+
+      if (action === "finish") {
+        if (job.status === "completed" || job.status === "error") {
+          return json({ accepted: true, alreadyFinished: true });
+        }
+        if (job.status !== "running") return json({ error: "STA job was not claimed by a runner." }, 409);
+        job.status = input.status === "error" ? "error" : "completed";
+        job.finishedAt = now;
+        if (state.activeJobId === jobId) {
+          state.activeJobId = null;
+          state.activeUntil = 0;
+        }
+        await txn.put("state", state);
+        return json({ accepted: true });
+      }
+
+      if (action === "release") {
+        job.status = "error";
+        job.finishedAt = now;
+        if (state.activeJobId === jobId) {
+          state.activeJobId = null;
+          state.activeUntil = 0;
+        }
+        await txn.put("state", state);
+        return json({ accepted: true });
+      }
+
+      return json({ error: "Unsupported guard action." }, 400);
+    });
+  }
+}
+
 function corsHeaders(env) {
   return {
     "Access-Control-Allow-Origin": env.APP_ORIGIN,
@@ -109,13 +289,27 @@ async function createAppJwt(env) {
   return signingInput + "." + base64Url(new Uint8Array(signature));
 }
 
+function installationTokenPayload(repositoryId) {
+  if (!Number.isSafeInteger(repositoryId) || repositoryId <= 0) {
+    throw new Error("Invalid GitHub repository ID.");
+  }
+  return {
+    repository_ids: [repositoryId],
+    permissions: { contents: "write" }
+  };
+}
+
 async function createInstallationToken(env) {
   const jwt = await createAppJwt(env);
+  const repositoryId = Number(env.GITHUB_REPOSITORY_ID);
+  if (!Number.isSafeInteger(repositoryId) || repositoryId <= 0) {
+    throw new Error("Configured GitHub repository ID is invalid.");
+  }
   const installation = await github("/repos/" + env.GITHUB_REPOSITORY + "/installation", jwt);
   const token = await github("/app/installations/" + installation.id + "/access_tokens", jwt, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: "{}"
+    body: JSON.stringify(installationTokenPayload(repositoryId))
   });
   return token.token;
 }
@@ -185,9 +379,8 @@ async function handle(request, env) {
     }
 
     const user = await github("/user", tokenData.access_token);
-    const repositoryOwner = env.GITHUB_REPOSITORY.split("/")[0];
-    if (user.login.toLowerCase() !== repositoryOwner.toLowerCase()) {
-      return new Response("Sign in with the repository owner account (" + repositoryOwner + ").", {
+    if (!env.GITHUB_OWNER_ID || String(user.id) !== String(env.GITHUB_OWNER_ID)) {
+      return new Response("STA access is restricted to the configured repository owner account.", {
         status: 403, headers: clearOAuthStateCookie()
       });
     }
@@ -195,6 +388,7 @@ async function handle(request, env) {
     const sessionId = crypto.randomUUID();
     await env.STA_KV.put("session:" + sessionId, JSON.stringify({
       login: user.login,
+      githubId: String(user.id),
       expiresAt: Date.now() + 6 * 60 * 60 * 1000
     }), { expirationTtl: 21600 });
     return redirect((env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/")) + "#sta_session=" + encodeURIComponent(sessionId), clearOAuthStateCookie());
@@ -208,42 +402,77 @@ async function handle(request, env) {
 
   if (path === "/api/jobs" && request.method === "POST") {
     if (request.headers.get("Origin") !== env.APP_ORIGIN) return json({ error: "Origin not allowed." }, 403, env);
+    if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("Content-Type") || "")) {
+      return json({ error: "Content-Type must be application/json." }, 415, env);
+    }
     const session = await requireSession(request, env);
-    if (!session) return json({ error: "GitHub sign-in required." }, 401, env);
+    if (!session || String(session.githubId || "") !== String(env.GITHUB_OWNER_ID || "")) {
+      return json({ error: "GitHub owner sign-in required." }, 401, env);
+    }
 
-    const declaredLength = Number(request.headers.get("Content-Length") || 0);
-    if (declaredLength > 5_500_000) return json({ error: "Design payload exceeds 5.5 MB." }, 413, env);
     let input;
-    try { input = await request.json(); } catch { return json({ error: "Invalid JSON request." }, 400, env); }
-    if (!input || typeof input.verilog !== "string" || !input.verilog.trim()) return json({ error: "Verilog source is required." }, 400, env);
-    if (input.verilog.length > 5_000_000) return json({ error: "Verilog source exceeds 5 MB." }, 413, env);
-    if (typeof input.top !== "string" || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(input.top)) return json({ error: "Invalid top module name." }, 400, env);
-    if (typeof input.sdc !== "string" || input.sdc.length > 64_000) return json({ error: "Valid SDC constraints (up to 64 KB) are required." }, 400, env);
-    const sources = Array.isArray(input.sources) ? input.sources : [];
-    if (sources.some(file => !file || typeof file.text !== "string")) return json({ error: "Invalid supplementary Verilog source." }, 400, env);
-    const totalSourceBytes = input.verilog.length + sources.reduce((sum, file) => sum + file.text.length, 0);
-    if (totalSourceBytes > 5_000_000) return json({ error: "Combined Verilog sources exceed 5 MB." }, 413, env);
-    const analysis = ["setup", "hold", "both"].includes(input.analysis) ? input.analysis : "both";
+    try { input = await readJsonLimited(request, MAX_JOB_BODY_BYTES); }
+    catch (error) { return json({ error: error.message, code: error.status === 413 ? "PAYLOAD_TOO_LARGE" : "INVALID_JSON" }, error.status || 400, env); }
+
+    if (!isPlainObject(input) || typeof input.verilog !== "string" || !input.verilog.trim()) {
+      return json({ error: "Verilog source is required." }, 400, env);
+    }
+    if (typeof input.top !== "string" || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(input.top)) {
+      return json({ error: "Invalid top module name." }, 400, env);
+    }
+    if (typeof input.sdc !== "string" || !input.sdc.trim() || new TextEncoder().encode(input.sdc).byteLength > 64_000) {
+      return json({ error: "Valid SDC constraints (up to 64 KB) are required." }, 400, env);
+    }
+    const sources = input.sources === undefined ? [] : input.sources;
+    if (!Array.isArray(sources) || sources.length > MAX_SUPPLEMENTARY_SOURCES ||
+        sources.some(file => !isPlainObject(file) || typeof file.text !== "string" ||
+          file.text.length === 0 || new TextEncoder().encode(file.text).byteLength > 1_000_000 ||
+          (file.name !== undefined && (typeof file.name !== "string" || file.name.length > 256)))) {
+      return json({ error: "Supplementary sources are invalid or exceed the per-file/count limits." }, 400, env);
+    }
+    const totalSourceBytes = new TextEncoder().encode(input.verilog).byteLength +
+      sources.reduce((sum, file) => sum + new TextEncoder().encode(file.text).byteLength, 0);
+    if (totalSourceBytes > MAX_SOURCE_BYTES) {
+      return json({ error: "Combined Verilog sources exceed 5 MB." }, 413, env);
+    }
+    if (!["setup", "hold", "both", undefined].includes(input.analysis)) {
+      return json({ error: "Invalid timing analysis selection." }, 400, env);
+    }
+
+    let signalMap, instanceMap;
+    try {
+      signalMap = validateSignalMap(input.signalMap, "signalMap");
+      instanceMap = validateSignalMap(input.instanceMap, "instanceMap");
+    } catch (error) {
+      return json({ error: error.message }, 400, env);
+    }
 
     const id = crypto.randomUUID();
+    const reservation = await callStaGuard(env, { action: "reserve", jobId: id });
+    if (!reservation.ok) {
+      let detail = {};
+      try { detail = await reservation.json(); } catch {}
+      return json(detail, reservation.status, env);
+    }
+
     const record = {
       id,
       owner: session.login,
+      ownerId: session.githubId,
       status: "queued",
       createdAt: Date.now(),
       input: {
         verilog: input.verilog,
         top: input.top,
         sdc: input.sdc,
-        signalMap: input.signalMap && typeof input.signalMap === "object" ? input.signalMap : {},
-        instanceMap: input.instanceMap && typeof input.instanceMap === "object" ? input.instanceMap : {},
+        signalMap,
+        instanceMap,
         sources,
-        analysis
+        analysis: input.analysis || "both"
       }
     };
-    await env.STA_KV.put("job:" + id, JSON.stringify(record), { expirationTtl: 21600 });
-
     try {
+      await env.STA_KV.put("job:" + id, JSON.stringify(record), { expirationTtl: 21600 });
       const installationToken = await createInstallationToken(env);
       await github("/repos/" + env.GITHUB_REPOSITORY + "/dispatches", installationToken, {
         method: "POST",
@@ -254,6 +483,7 @@ async function handle(request, env) {
       record.status = "error";
       record.error = error.message;
       await env.STA_KV.put("job:" + id, JSON.stringify(record), { expirationTtl: 21600 });
+      await callStaGuard(env, { action: "release", jobId: id }).catch(() => {});
       return json({ error: "Could not start GitHub Actions: " + error.message }, 502, env);
     }
     return json({ jobId: id, status: "queued" }, 202, env);
@@ -264,7 +494,7 @@ async function handle(request, env) {
     const session = await requireSession(request, env);
     if (!session) return json({ error: "GitHub sign-in required." }, 401, env);
     const record = await env.STA_KV.get("job:" + publicJob[1], "json");
-    if (!record || record.owner !== session.login) return json({ error: "Job not found." }, 404, env);
+    if (!record || String(record.ownerId || "") !== String(session.githubId || "")) return json({ error: "Job not found." }, 404, env);
     return json({
       jobId: record.id,
       status: record.status,
@@ -287,6 +517,12 @@ async function handle(request, env) {
     if (!record) return json({ error: "Job not found." }, 404);
 
     if (request.method === "GET" && !internalJob[2]) {
+      const claim = await callStaGuard(env, { action: "claim", jobId: internalJob[1] });
+      if (!claim.ok) {
+        let detail = {};
+        try { detail = await claim.json(); } catch {}
+        return json(detail, claim.status);
+      }
       record.status = "running";
       await env.STA_KV.put(key, JSON.stringify(record), { expirationTtl: 21600 });
       return json(record.input);
@@ -294,8 +530,20 @@ async function handle(request, env) {
 
     if (request.method === "POST" && internalJob[2] === "result") {
       let result;
-      try { result = await request.json(); } catch { return json({ error: "Invalid result JSON." }, 400); }
-      record.status = result.status === "error" ? "error" : "completed";
+      try { result = await readJsonLimited(request, 1_500_000); }
+      catch (error) { return json({ error: error.message }, error.status || 400); }
+      if (!isPlainObject(result) || !["completed", "error"].includes(result.status)) {
+        return json({ error: "Invalid STA result status." }, 400);
+      }
+      const finish = await callStaGuard(env, {
+        action: "finish", jobId: internalJob[1], status: result.status
+      });
+      if (!finish.ok) {
+        let detail = {};
+        try { detail = await finish.json(); } catch {}
+        return json(detail, finish.status);
+      }
+      record.status = result.status;
       record.result = result;
       record.finishedAt = Date.now();
       await env.STA_KV.put(key, JSON.stringify(record), { expirationTtl: 21600 });
@@ -304,8 +552,13 @@ async function handle(request, env) {
 
     if (request.method === "POST" && internalJob[2] === "status") {
       let update;
-      try { update = await request.json(); } catch { return json({ error: "Invalid status JSON." }, 400); }
-      record.status = update.status === "error" ? "error" : "running";
+      try { update = await readJsonLimited(request, 16_384); }
+      catch (error) { return json({ error: error.message }, error.status || 400); }
+      if (!isPlainObject(update) || !["running", "error"].includes(update.status) ||
+          (update.error !== undefined && (typeof update.error !== "string" || update.error.length > 2_000))) {
+        return json({ error: "Invalid status update." }, 400);
+      }
+      record.status = update.status;
       record.error = update.error || null;
       await env.STA_KV.put(key, JSON.stringify(record), { expirationTtl: 21600 });
       return json({ saved: true });
@@ -315,7 +568,7 @@ async function handle(request, env) {
   return json({ error: "Not found." }, 404, env);
 }
 
-export { createAppJwt };
+export { createAppJwt, validateSignalMap, readJsonLimited, installationTokenPayload };
 
 export default {
   async fetch(request, env) {
