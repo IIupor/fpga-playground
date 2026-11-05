@@ -56,13 +56,16 @@ The runner accepts only the editor-generated SDC subset: `create_clock`, `set_in
 
 ## Security and retention
 
-- The Worker requests only the GitHub profile scope (`read:user`) and accepts sign-in only from the repository owner account.
-- GitHub App installation tokens are created on demand with Contents write permission, scoped to this repository.
+- The Worker requests only the GitHub profile scope (`read:user`) and accepts sign-in only when the OAuth user's immutable numeric ID matches `GITHUB_OWNER_ID`.
+- GitHub App installation tokens are created on demand with `Contents: write` only and explicitly scoped to the repository's numeric ID.
+- The SQLite-backed Durable Object serializes job reservations and runner claims. It allows one active job, enforces a 60-second submission cooldown and a maximum of 20 submissions per UTC day, and rejects duplicate claims/results.
+- A runner lease expires after 25 minutes if a workflow disappears unexpectedly. The workflow timeout is 20 minutes.
+- The Worker reads request bodies as a bounded stream (5.5 MB maximum), rather than trusting the optional `Content-Length` header. It also limits supplementary source count/size, validates mapping object shapes and bounds result payloads.
 - Broker sessions expire after six hours; the user's OAuth token is not stored in the session record.
-- Design jobs and results expire after six hours.
-- The workflow receives only a random job ID in its dispatch event, then retrieves the design from the Worker over HTTPS.
+- Design jobs and results expire after six hours in KV; the Durable Object keeps only a bounded 24-hour job history.
+- The workflow receives only a random job ID in its dispatch event, then retrieves the design from the Worker over HTTPS. Duplicate workflow runs cannot claim or execute the same job twice.
 - The Worker secret is required for runner-to-broker requests.
 - The public repository receives no design source commits or branches.
 - User-submitted netlists and reports are not uploaded as public GitHub Actions artifacts; the result is returned to the authenticated broker session. User-job logs also suppress design-specific report text.
 
-Cloudflare's free plan has usage limits. This design does not require a paid plan, but it must stay within the current free-tier quotas. The Durable Object uses SQLite storage on the Free plan; exceeding an included limit causes the affected operation to fail rather than switching to paid usage.
+Cloudflare's free plan has usage limits. This design uses SQLite-backed Durable Objects, available on the Workers Free plan. If an included quota is exhausted, the affected operation fails closed; no paid plan or paid fallback is enabled.
