@@ -263,6 +263,7 @@
     }
     return lines.join('\n') + '\n';
   }
+  window.fpgaStaBuildSdc = buildSdc;
 
   function clearPathHighlight() {
     window.fpgaStaActivePath = null;
