@@ -49,12 +49,43 @@ function base64Url(bytes) {
   return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
+function concatBytes(...parts) {
+  const length = parts.reduce((sum, part) => sum + part.length, 0);
+  const output = new Uint8Array(length);
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+
+function derLength(length) {
+  if (length < 128) return Uint8Array.of(length);
+  const bytes = [];
+  for (let value = length; value > 0; value = Math.floor(value / 256)) bytes.unshift(value & 255);
+  return Uint8Array.of(0x80 | bytes.length, ...bytes);
+}
+
+function pkcs1ToPkcs8(pkcs1) {
+  const version = Uint8Array.of(0x02, 0x01, 0x00);
+  const rsaAlgorithm = Uint8Array.of(
+    0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
+    0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00
+  );
+  const privateKey = concatBytes(Uint8Array.of(0x04), derLength(pkcs1.length), pkcs1);
+  const body = concatBytes(version, rsaAlgorithm, privateKey);
+  return concatBytes(Uint8Array.of(0x30), derLength(body.length), body);
+}
+
 async function createAppJwt(env) {
+  const isPkcs1 = env.GITHUB_APP_PRIVATE_KEY.includes("BEGIN RSA PRIVATE KEY");
   const pem = env.GITHUB_APP_PRIVATE_KEY
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s/g, "");
-  const der = Uint8Array.from(atob(pem), char => char.charCodeAt(0));
+    .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, "")
+    .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, "")
+    .replace(/\\s/g, "");
+  const rawDer = Uint8Array.from(atob(pem), char => char.charCodeAt(0));
+  const der = isPkcs1 ? pkcs1ToPkcs8(rawDer) : rawDer;
   const key = await crypto.subtle.importKey(
     "pkcs8", der,
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
