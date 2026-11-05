@@ -250,6 +250,7 @@ test.describe('Mobile touch import', () => {
     await fileMenu.tap();
     const importItem = page.locator('#importFile');
     await expect(importItem).toBeVisible();
+    await expect(importItem).toHaveText('Import Verilog');
     await importItem.tap();
     await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
     await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
