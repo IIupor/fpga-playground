@@ -177,6 +177,7 @@ def main():
         "setup_paths": setup_paths,
         "hold_paths": hold_paths,
         "signalMap": request.get("signalMap", {}),
+        "instanceMap": request.get("instanceMap", {}),
         "report": sta_report[-100_000:],
     }
     (args.out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
