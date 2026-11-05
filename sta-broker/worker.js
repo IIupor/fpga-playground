@@ -46,14 +46,14 @@ async function github(path, token, options = {}) {
 function base64Url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  return btoa(binary).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 async function createAppJwt(env) {
   const pem = env.GITHUB_APP_PRIVATE_KEY
     .replace(/-----BEGIN PRIVATE KEY-----/g, "")
     .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\\s/g, "");
+    .replace(/\s/g, "");
   const der = Uint8Array.from(atob(pem), char => char.charCodeAt(0));
   const key = await crypto.subtle.importKey(
     "pkcs8", der,
