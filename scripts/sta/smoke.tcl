@@ -9,8 +9,8 @@ report_checks -path_delay max -format full_clock_expanded -fields {slew cap inpu
 puts "=== HOLD PATHS ==="
 report_checks -path_delay min -format full_clock_expanded -fields {slew cap input_pin net} -digits 4
 
-puts "=== WORST SETUP SLACK ==="
-report_worst_slack -max
+puts "=== WORST NEGATIVE SLACK ==="
+report_wns
 
 puts "=== TOTAL NEGATIVE SLACK ==="
 report_tns
