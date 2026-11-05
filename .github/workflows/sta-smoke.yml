@@ -80,6 +80,7 @@ jobs:
               "sdc": Path("scripts/sta/keep-netlist.sdc").read_text(),
               "analysis": "setup",
               "signalMap": {"AND1_out": {"nodeId": 3, "wireIds": [9]}, "OR1_out": {"nodeId": 4, "wireIds": [10]}, "Y": {"nodeId": 4, "wireIds": [11]}},
+              "instanceMap": {"node3": {"nodeId": 3, "wireIds": [9]}, "node4": {"nodeId": 4, "wireIds": [10]}},
               "sources": []
           }
           Path("build/sta/keep-request.json").write_text(json.dumps(request))
@@ -94,8 +95,12 @@ jobs:
           assert any("AND1_out" in path["nets"] and "OR1_out" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
           assert result["signalMap"]["AND1_out"]["nodeId"] == 3
           assert result["signalMap"]["OR1_out"]["nodeId"] == 4
+          assert any("node3" in path["cells"] and "node4" in path["cells"] for path in result["setup_paths"]), result["setup_paths"]
+          assert result["instanceMap"]["node3"]["nodeId"] == 3
+          assert result["instanceMap"]["node4"]["nodeId"] == 4
           print("OpenSTA path nets:", [path["nets"] for path in result["setup_paths"]])
-          print("Both intermediate path nets map back to schematic nodes 3 and 4.")
+          print("OpenSTA path cells:", [path["cells"] for path in result["setup_paths"]])
+          print("Intermediate nets and hierarchical cell instances map to schematic nodes 3 and 4.")
           PY
 
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
