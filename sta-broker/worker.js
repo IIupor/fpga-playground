@@ -132,6 +132,11 @@ async function handle(request, env) {
     if (input.verilog.length > 5_000_000) return json({ error: "Verilog source exceeds 5 MB." }, 413, env);
     if (typeof input.top !== "string" || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(input.top)) return json({ error: "Invalid top module name." }, 400, env);
     if (typeof input.sdc !== "string" || input.sdc.length > 64_000) return json({ error: "Valid SDC constraints (up to 64 KB) are required." }, 400, env);
+    const sources = Array.isArray(input.sources) ? input.sources : [];
+    if (sources.some(file => !file || typeof file.text !== "string")) return json({ error: "Invalid supplementary Verilog source." }, 400, env);
+    const totalSourceBytes = input.verilog.length + sources.reduce((sum, file) => sum + file.text.length, 0);
+    if (totalSourceBytes > 5_000_000) return json({ error: "Combined Verilog sources exceed 5 MB." }, 413, env);
+    const analysis = ["setup", "hold", "both"].includes(input.analysis) ? input.analysis : "both";
 
     const id = crypto.randomUUID();
     const record = {
@@ -143,7 +148,9 @@ async function handle(request, env) {
         verilog: input.verilog,
         top: input.top,
         sdc: input.sdc,
-        signalMap: input.signalMap && typeof input.signalMap === "object" ? input.signalMap : {}
+        signalMap: input.signalMap && typeof input.signalMap === "object" ? input.signalMap : {},
+        sources,
+        analysis
       }
     };
     await env.STA_KV.put("job:" + id, JSON.stringify(record), { expirationTtl: 21600 });
