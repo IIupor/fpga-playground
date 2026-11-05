@@ -93,7 +93,10 @@ jobs:
           result = json.loads(Path("build/sta/keep-netlist/result.json").read_text())
           assert any("Y" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
           assert result["signalMap"]["Y"]["nodeId"] == 4
-          print("The OpenSTA path output net Y maps back to schematic node 4.")
+          assert any("AND1_out" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
+          assert result["signalMap"]["AND1_out"]["nodeId"] == 3
+          print("OpenSTA path nets:", [path["nets"] for path in result["setup_paths"]])
+          print("The output and intermediate path nets map back to schematic nodes 3 and 4.")
           PY
 
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
