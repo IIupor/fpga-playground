@@ -16,8 +16,12 @@ function json(data, status = 200, env = null) {
   return new Response(JSON.stringify(data), { status, headers });
 }
 
-function redirect(url) {
-  return Response.redirect(url, 302);
+function redirect(url, headers = {}) {
+  return new Response(null, { status: 302, headers: { Location: url, ...headers } });
+}
+
+function clearOAuthStateCookie() {
+  return { "Set-Cookie": "sta_oauth_state=; Path=/auth; Max-Age=0; HttpOnly; Secure; SameSite=Lax" };
 }
 
 function safeEqual(a, b) {
@@ -146,14 +150,21 @@ async function handle(request, env) {
     target.searchParams.set("redirect_uri", callback);
     target.searchParams.set("scope", "read:user");
     target.searchParams.set("state", state);
-    return redirect(target.toString());
+    return redirect(target.toString(), {
+      "Set-Cookie": "sta_oauth_state=" + state + "; Path=/auth; Max-Age=300; HttpOnly; Secure; SameSite=Lax"
+    });
   }
 
   if (path === "/auth/callback" && request.method === "GET") {
     const state = url.searchParams.get("state");
     const code = url.searchParams.get("code");
-    if (!state || !code || !(await env.STA_KV.get("oauth-state:" + state))) {
-      return new Response("Invalid or expired GitHub authorization state.", { status: 400 });
+    const stateCookie = request.headers.get("Cookie")?.split(";")
+      .map(part => part.trim()).find(part => part.startsWith("sta_oauth_state="))
+      ?.slice("sta_oauth_state=".length) || "";
+    if (!state || !code || !safeEqual(state, stateCookie) || !(await env.STA_KV.get("oauth-state:" + state))) {
+      return new Response("Invalid or expired GitHub authorization state.", {
+        status: 400, headers: clearOAuthStateCookie()
+      });
     }
     await env.STA_KV.delete("oauth-state:" + state);
 
@@ -168,13 +179,17 @@ async function handle(request, env) {
     });
     const tokenData = await tokenResponse.json();
     if (!tokenResponse.ok || !tokenData.access_token) {
-      return new Response("GitHub authorization failed: " + (tokenData.error_description || tokenData.error || "unknown error"), { status: 400 });
+      return new Response("GitHub authorization failed: " + (tokenData.error_description || tokenData.error || "unknown error"), {
+        status: 400, headers: clearOAuthStateCookie()
+      });
     }
 
     const user = await github("/user", tokenData.access_token);
     const repositoryOwner = env.GITHUB_REPOSITORY.split("/")[0];
     if (user.login.toLowerCase() !== repositoryOwner.toLowerCase()) {
-      return new Response("Sign in with the repository owner account (" + repositoryOwner + ").", { status: 403 });
+      return new Response("Sign in with the repository owner account (" + repositoryOwner + ").", {
+        status: 403, headers: clearOAuthStateCookie()
+      });
     }
 
     const sessionId = crypto.randomUUID();
@@ -182,7 +197,7 @@ async function handle(request, env) {
       login: user.login,
       expiresAt: Date.now() + 6 * 60 * 60 * 1000
     }), { expirationTtl: 21600 });
-    return redirect((env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/")) + "#sta_session=" + encodeURIComponent(sessionId));
+    return redirect((env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/")) + "#sta_session=" + encodeURIComponent(sessionId), clearOAuthStateCookie());
   }
 
   if (path === "/api/session" && request.method === "GET") {
