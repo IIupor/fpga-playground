@@ -58,3 +58,25 @@ test('Selecting a timing path highlights its schematic node and wire', async ({ 
   await expect(page.locator('g[data-node="' + mapped.nodeId + '"]')).not.toHaveClass(/sta-path-node/);
   await expect(page.locator('.editor-wire[data-wire="' + mapped.wireId + '"]')).not.toHaveClass(/sta-critical/);
 });
+
+
+test('STA explains when the Cloudflare Free daily quota is exhausted', async ({ page }) => {
+  await page.goto('/');
+  const message = await page.evaluate(() =>
+    window.fpgaStaBrokerErrorMessage(429, JSON.stringify({
+      code: 'FREE_TIER_LIMIT',
+      error: 'Cloudflare Free usage limit reached.'
+    }))
+  );
+  expect(message).toContain('quota resets');
+  expect(message).toContain('No paid plan is enabled');
+});
+
+test('STA explains Cloudflare edge quota errors even when the response is not JSON', async ({ page }) => {
+  await page.goto('/');
+  const message = await page.evaluate(() =>
+    window.fpgaStaBrokerErrorMessage(429, '<html>Cloudflare error 1027: daily request limit exceeded</html>')
+  );
+  expect(message).toContain('quota resets');
+  expect(message).toContain('No paid plan is enabled');
+});
