@@ -192,17 +192,30 @@
       lines.push('  assign ' + n.name + ' = ' + (src?.node ? getSignalName(src.node, src.pin) : "1'b0") + ';');
     }
     const gates = {AND:'and', OR:'or', XOR:'xor', NAND:'nand', NOR:'nor', XNOR:'xnor', NOT:'not', BUF:'buf'};
+    const submodules = [];
+    const moduleFor = n => 'fpga_node_' + String(n.id).replace(/[^A-Za-z0-9_]/g, '_');
+
     for (const n of nodes) {
       if (['INPUT','OUTPUT','VDD','GND','DFF','LATCH'].includes(n.type) || n.cellType || n.moduleType) continue;
       const gate = gates[n.type];
       if (!gate) throw new Error('STA export does not yet support block type ' + n.type + ' (' + n.name + ').');
-      const outs = Array.from({length:n.outputs || 1}, (_, i) => getSignalName(n, i));
-      const ins = Array.from({length:n.inputs || 0}, (_, i) => {
+      const moduleName = moduleFor(n);
+      const inputPorts = Array.from({length:n.inputs || 0}, (_, i) => 'A' + i);
+      const outputPorts = Array.from({length:n.outputs || 1}, (_, i) => 'Y' + i);
+      submodules.push('module ' + moduleName + '(' + [...inputPorts, ...outputPorts].join(', ') + ');');
+      inputPorts.forEach(pin => submodules.push('  input wire ' + pin + ';'));
+      outputPorts.forEach(pin => submodules.push('  output wire ' + pin + ';'));
+      submodules.push('  ' + gate + ' gate (' + [...outputPorts, ...inputPorts].join(', ') + ');');
+      submodules.push('endmodule', '');
+      const connections = [];
+      inputPorts.forEach((pin, i) => {
         const src = sourceAt(n, i);
-        return src?.node ? getSignalName(src.node, src.pin) : "1'b0";
+        connections.push('.' + pin + '(' + (src?.node ? getSignalName(src.node, src.pin) : "1'b0") + ')');
       });
-      lines.push('  ' + gate + ' ' + n.name + ' (' + [...outs, ...ins].join(', ') + ');');
+      outputPorts.forEach((pin, i) => connections.push('.' + pin + '(' + getSignalName(n, i) + ')'));
+      lines.push('  ' + moduleName + ' ' + n.name + ' (' + connections.join(', ') + ');');
     }
+
     for (const n of nodes) {
       const moduleName = n.cellType || (n.type === 'MODULE' ? n.moduleType : null);
       if (!moduleName) continue;
@@ -220,18 +233,29 @@
       }
       lines.push('  ' + moduleName + ' ' + n.name + ' (' + connections.join(', ') + ');');
     }
+
     for (const n of nodes) {
       if (n.type !== 'DFF' && n.type !== 'LATCH') continue;
-      const src = i => { const item = sourceAt(n, i); return item?.node ? getSignalName(item.node, item.pin) : "1'b0"; };
+      const moduleName = moduleFor(n);
       const q = getSignalName(n);
-      lines.push('  reg ' + q + '_reg;');
-      if (n.type === 'DFF') lines.push('  initial ' + q + '_reg = 1\'b0;');
-      lines.push(n.type === 'DFF'
-        ? '  always @(posedge ' + src(1) + ') ' + q + '_reg <= ' + src(0) + ';'
-        : '  always @* if (' + src(1) + ') ' + q + '_reg = ' + src(0) + ';');
-      lines.push('  assign ' + q + ' = ' + q + '_reg;');
+      const data = sourceAt(n, 0), control = sourceAt(n, 1);
+      const dataSignal = data?.node ? getSignalName(data.node, data.pin) : "1'b0";
+      const controlSignal = control?.node ? getSignalName(control.node, control.pin) : "1'b0";
+      if (n.type === 'DFF') {
+        submodules.push('module ' + moduleName + '(input wire D, input wire CLK, output wire Q);');
+        submodules.push('  reg q_reg;');
+        submodules.push("  initial q_reg = 1'b0;");
+        submodules.push('  always @(posedge CLK) q_reg <= D;');
+      } else {
+        submodules.push('module ' + moduleName + '(input wire D, input wire EN, output wire Q);');
+        submodules.push('  reg q_reg;');
+        submodules.push('  always @* if (EN) q_reg = D;');
+      }
+      submodules.push('  assign Q = q_reg;', 'endmodule', '');
+      lines.push('  ' + moduleName + ' ' + n.name + ' (.D(' + dataSignal + '), .' +
+        (n.type === 'DFF' ? 'CLK' : 'EN') + '(' + controlSignal + '), .Q(' + q + '));');
     }
-    lines.push('endmodule', '');
+    lines.push('endmodule', '', ...submodules);
     return {
       verilog: lines.join('\n'),
       top: 'fpga_playground',
