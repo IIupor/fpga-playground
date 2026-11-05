@@ -13,6 +13,7 @@ APP_URL = "https://iiupor.github.io/fpga-playground/"
 GITHUB_REPOSITORY = "IIupor/fpga-playground"
 
 GITHUB_OWNER_ID = "39133075"
+GITHUB_REPOSITORY_ID = "1435782414"
 
 [[durable_objects.bindings]]
 name = "STA_GUARD"
