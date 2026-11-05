@@ -9,7 +9,7 @@ The static GitHub Pages editor cannot dispatch GitHub Actions directly without e
 - GitHub Actions: runs Yosys, ABC and OpenSTA on the free standard runner.
 - Sky130 HD TT Liberty: the timing library already stored in this repository.
 
-The browser receives only a short-lived broker session identifier. It never receives a GitHub token, App secret or workflow secret.
+The browser receives only a short-lived broker session identifier. It never receives a GitHub token, App secret or workflow secret. This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty cell timing, but does not yet extract routed interconnect parasitics from SPEF.
 
 ## One-time setup
 
