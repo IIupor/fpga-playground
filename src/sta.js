@@ -11,6 +11,16 @@
   menuItem.id = 'staMenu';
   menuItem.innerHTML = '<button class="toolbtn" data-menu="timing">Timing</button><div class="editor-menu-popup" data-popup="timing" hidden><button class="toolbtn" id="staOpen">Timing Constraints / Run STA</button><button class="toolbtn" id="staClearHighlight">Clear path highlight</button></div>';
   menu.append(menuItem);
+  const timingTrigger = menuItem.querySelector('[data-menu="timing"]');
+  const timingPopup = menuItem.querySelector('[data-popup="timing"]');
+  timingTrigger.addEventListener('click', () => {
+    const wasOpen = !timingPopup.hidden;
+    menu.querySelectorAll('[data-popup]').forEach(popup => popup.hidden = true);
+    timingPopup.hidden = wasOpen;
+  });
+  document.addEventListener('click', event => {
+    if (!menuItem.contains(event.target)) timingPopup.hidden = true;
+  });
 
   const style = document.createElement('style');
   style.textContent = `
