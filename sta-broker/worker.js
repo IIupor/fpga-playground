@@ -288,6 +288,16 @@ async function createAppJwt(env) {
   return signingInput + "." + base64Url(new Uint8Array(signature));
 }
 
+function installationTokenPayload(repositoryId) {
+  if (!Number.isSafeInteger(repositoryId) || repositoryId <= 0) {
+    throw new Error("Invalid GitHub repository ID.");
+  }
+  return {
+    repository_ids: [repositoryId],
+    permissions: { contents: "write" }
+  };
+}
+
 async function createInstallationToken(env) {
   const jwt = await createAppJwt(env);
   const repository = await github("/repos/" + env.GITHUB_REPOSITORY, jwt);
@@ -298,10 +308,7 @@ async function createInstallationToken(env) {
   const token = await github("/app/installations/" + installation.id + "/access_tokens", jwt, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repository_ids: [repository.id],
-      permissions: { contents: "write" }
-    })
+    body: JSON.stringify(installationTokenPayload(repository.id))
   });
   return token.token;
 }
@@ -555,7 +562,7 @@ async function handle(request, env) {
   return json({ error: "Not found." }, 404, env);
 }
 
-export { createAppJwt, validateSignalMap, readJsonLimited };
+export { createAppJwt, validateSignalMap, readJsonLimited, installationTokenPayload };
 
 export default {
   async fetch(request, env) {
