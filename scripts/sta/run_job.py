@@ -38,9 +38,11 @@ def parse_paths(report, path_type):
             net = re.search(r"\s([A-Za-z_$][A-Za-z0-9_$]*(?:\[[^]]+\])?)\s+\(net\)\s*$", line)
             if net and net.group(1) not in nets:
                 nets.append(net.group(1))
-            cell = re.search(r"\s([A-Za-z_$][A-Za-z0-9_$]*)/([A-Za-z_$][A-Za-z0-9_$]*)\s+\(([^)]+)\)", line)
-            if cell and cell.group(1) not in cells:
-                cells.append(cell.group(1))
+            cell = re.search(r"\\s((?:[A-Za-z_$][A-Za-z0-9_$]*/)*[A-Za-z_$][A-Za-z0-9_$]*)/([A-Za-z_$][A-Za-z0-9_$]*)\\s+\\(([^)]+)\\)", line)
+            if cell:
+                top_instance = cell.group(1).split("/")[0]
+                if top_instance not in cells:
+                    cells.append(top_instance)
         paths.append({
             "type": path_type,
             "startpoint": match.group(1).strip(),
