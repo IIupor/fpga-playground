@@ -151,6 +151,7 @@ async function handle(request, env) {
         top: input.top,
         sdc: input.sdc,
         signalMap: input.signalMap && typeof input.signalMap === "object" ? input.signalMap : {},
+        instanceMap: input.instanceMap && typeof input.instanceMap === "object" ? input.instanceMap : {},
         sources,
         analysis
       }
