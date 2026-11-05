@@ -59,6 +59,6 @@ This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty ce
 - The workflow receives only a random job ID in its dispatch event, then retrieves the design from the Worker over HTTPS.
 - The Worker secret is required for runner-to-broker requests.
 - The public repository receives no design source commits or branches.
-- User-submitted netlists and reports are not uploaded as public GitHub Actions artifacts; the result is returned to the authenticated broker session.
+- User-submitted netlists and reports are not uploaded as public GitHub Actions artifacts; the result is returned to the authenticated broker session. User-job logs also suppress design-specific report text.
 
 Cloudflare's free plan has usage limits. This design does not require a paid plan, but it must stay within the current free-tier quotas.
