@@ -39,6 +39,7 @@ jobs:
 
       - name: Synthesize smoke design with Yosys and ABC
         run: |
+          set -o pipefail
           yosys -Q -p "
             read_verilog scripts/sta/smoke.v
             hierarchy -check -top sta_smoke
@@ -51,9 +52,12 @@ jobs:
 
       - name: Run OpenSTA
         run: |
+          set -o pipefail
           sta -exit scripts/sta/smoke.tcl 2>&1 | tee build/sta/opensta.log
           grep -q "Startpoint:" build/sta/opensta.log
           grep -q "Endpoint:" build/sta/opensta.log
+          grep -q "wns " build/sta/opensta.log
+          grep -q "tns " build/sta/opensta.log
 
       - name: Upload STA reports
         if: always()
