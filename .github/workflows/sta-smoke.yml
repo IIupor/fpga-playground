@@ -64,6 +64,33 @@ jobs:
             --out build/sta/runner
           grep -q '"status": "completed"' build/sta/runner/result.json
 
+      - name: Verify schematic net names survive technology mapping
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = {
+              "verilog": Path("scripts/sta/keep-netlist.v").read_text(),
+              "top": "fpga_playground",
+              "sdc": Path("scripts/sta/keep-netlist.sdc").read_text(),
+              "analysis": "setup",
+              "signalMap": {"AND1_out": {"nodeId": 3, "wireIds": [9]}},
+              "sources": []
+          }
+          Path("build/sta/keep-request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/keep-request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta/keep-netlist
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("build/sta/keep-netlist/result.json").read_text())
+          assert any("AND1_out" in path["nets"] for path in result["setup_paths"]), result["setup_paths"]
+          assert result["signalMap"]["AND1_out"]["nodeId"] == 3
+          print("Original schematic net AND1_out is present in the OpenSTA path and maps to node 3.")
+          PY
+
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
         run: |
           set -o pipefail
