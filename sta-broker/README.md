@@ -52,8 +52,8 @@ This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty ce
 
 ## Security and retention
 
-- The Worker accepts sign-in only from the repository owner account.
-- GitHub App installation tokens are created on demand and scoped to this repository.
+- The Worker requests only the GitHub profile scope (`read:user`) and accepts sign-in only from the repository owner account.
+- GitHub App installation tokens are created on demand with Contents write permission, scoped to this repository.
 - Broker sessions expire after six hours; the user's OAuth token is not stored in the session record.
 - Design jobs and results expire after six hours.
 - The workflow receives only a random job ID in its dispatch event, then retrieves the design from the Worker over HTTPS.
