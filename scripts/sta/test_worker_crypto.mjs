@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { generateKeyPairSync, webcrypto } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import { readFile } from "node:fs/promises";
 
-globalThis.crypto = webcrypto;
 globalThis.btoa ||= value => Buffer.from(value, "binary").toString("base64");
 globalThis.atob ||= value => Buffer.from(value, "base64").toString("binary");
 
