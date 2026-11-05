@@ -65,8 +65,8 @@
         </div>
       </div>
       <div class="sta-grid">
-        <label class="sta-field">Top module
-          <input id="staTop" value="fpga_playground" spellcheck="false">
+        <label class="sta-field">Top module (editor-generated)
+          <input id="staTop" value="fpga_playground" spellcheck="false" readonly>
         </label>
         <label class="sta-field">Analysis
           <select id="staAnalysis"><option value="both">Setup + Hold</option><option value="setup">Setup only</option><option value="hold">Hold only</option></select>
