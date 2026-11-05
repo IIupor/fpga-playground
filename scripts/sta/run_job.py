@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -10,6 +11,61 @@ import sys
 from pathlib import Path
 
 IDENTIFIER = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
+
+NUMBER = r"(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?"
+PORT = r"[A-Za-z_$][A-Za-z0-9_$]*"
+PORTS = rf"\\{{({PORT}(?: {PORT})*)\\}}"
+
+
+def validate_sdc(sdc):
+    """Accept only the small, data-only SDC subset emitted by the editor.
+
+    OpenSTA reads SDC as Tcl. Never execute arbitrary Tcl supplied by a job.
+    """
+    if not isinstance(sdc, str) or not sdc.strip() or len(sdc) > 64_000:
+        raise ValueError("The request does not contain valid SDC constraints.")
+
+    patterns = [
+        ("create_clock", re.compile(
+            rf"create_clock -name core_clk -period ({NUMBER})(?: \\[get_ports \\{{({PORT})\\}}\\])?"
+        )),
+        ("set_input_delay", re.compile(
+            rf"set_input_delay -clock core_clk ({NUMBER}) \\[get_ports {PORTS}\\]"
+        )),
+        ("set_input_transition", re.compile(
+            rf"set_input_transition ({NUMBER}) \\[get_ports {PORTS}\\]"
+        )),
+        ("set_output_delay", re.compile(
+            rf"set_output_delay -clock core_clk ({NUMBER}) \\[get_ports {PORTS}\\]"
+        )),
+        ("set_load", re.compile(
+            rf"set_load ({NUMBER}) \\[get_ports {PORTS}\\]"
+        )),
+    ]
+    seen = set()
+    for raw_line in sdc.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        matched = False
+        for name, pattern in patterns:
+            match = pattern.fullmatch(line)
+            if not match:
+                continue
+            if name in seen:
+                raise ValueError(f"Duplicate SDC command: {name}.")
+            seen.add(name)
+            numeric_values = [value for value in match.groups() if value is not None and re.fullmatch(NUMBER, value)]
+            for value in numeric_values:
+                number = float(value)
+                if not math.isfinite(number) or number < 0 or (name == "create_clock" and number == 0):
+                    raise ValueError(f"Invalid numeric value in SDC command: {name}.")
+            matched = True
+            break
+        if not matched:
+            raise ValueError("Unsupported SDC command. Only editor-generated clock, input-delay, transition, output-delay and load constraints are accepted.")
+    if "create_clock" not in seen:
+        raise ValueError("The SDC must contain exactly one editor-generated create_clock command.")
 
 
 def run(command, *, cwd, log_path, timeout=300):
@@ -76,8 +132,7 @@ def main():
         raise ValueError("The request does not contain Verilog source.")
     if not isinstance(top, str) or not IDENTIFIER.fullmatch(top):
         raise ValueError("The top module name is invalid.")
-    if not isinstance(sdc, str) or not sdc.strip():
-        raise ValueError("The request does not contain SDC constraints.")
+    validate_sdc(sdc)
 
     sources = request.get("sources", [])
     if not isinstance(sources, list):
