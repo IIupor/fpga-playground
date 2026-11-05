@@ -169,8 +169,10 @@
     inputs.forEach(n => lines.push('  input wire ' + n.name + ';'));
     outputs.forEach(n => lines.push('  output wire ' + n.name + ';'));
     const signalMap = {};
+    const instanceMap = {};
     for (const n of nodes) {
       if (['INPUT','OUTPUT','VDD','GND'].includes(n.type)) continue;
+      instanceMap[n.name] = { nodeId: n.id, wireIds: wires.filter(w => w.from === n.id).map(w => w.id) };
       for (let i = 0; i < Math.max(1, n.outputs || 1); i++) {
         const signal = getSignalName(n, i);
         lines.push('  (* keep = 1 *) wire ' + signal + ';');
@@ -260,6 +262,7 @@
       verilog: lines.join('\n'),
       top: 'fpga_playground',
       signalMap,
+      instanceMap,
       sources: nodes.some(n => n.type === 'MODULE' && n.moduleType)
         ? (window.fpgaVerilogProject?.state?.libraries || [])
           .filter(file => /\.(v|sv)$/i.test(file.name) && typeof file.text === 'string')
@@ -303,16 +306,17 @@
     svg.querySelectorAll('.sta-critical,.sta-path-node').forEach(el => el.classList.remove('sta-critical','sta-path-node'));
   }
 
-  function highlightPath(path, signalMap) {
+  function highlightPath(path, signalMap, instanceMap = {}) {
     clearPathHighlight();
-    window.fpgaStaActivePath = { path, signalMap };
+    window.fpgaStaActivePath = { path, signalMap, instanceMap };
     const nodes = new Set(), wires = new Set();
-    for (const net of path.nets || []) {
-      const mapped = signalMap?.[net];
-      if (!mapped) continue;
+    const addMapped = mapped => {
+      if (!mapped) return;
       if (mapped.nodeId != null) nodes.add(mapped.nodeId);
       (mapped.wireIds || []).forEach(id => wires.add(id));
-    }
+    };
+    for (const net of path.nets || []) addMapped(signalMap?.[net]);
+    for (const cell of path.cells || []) addMapped(instanceMap?.[cell]);
     for (const id of nodes) svg.querySelectorAll('g[data-node="' + id + '"]').forEach(el => el.classList.add('sta-path-node'));
     for (const id of wires) svg.querySelectorAll('.editor-wire[data-wire="' + id + '"]').forEach(el => el.classList.add('sta-critical'));
     if (!nodes.size && !wires.size) setStatus('Path selected, but the synthesized report did not retain any original schematic net names for highlighting.');
@@ -322,13 +326,14 @@
   function reapplyHighlight() {
     const active = window.fpgaStaActivePath;
     if (!active) return;
-    const {path, signalMap} = active;
-    for (const net of path.nets || []) {
-      const mapped = signalMap?.[net];
-      if (!mapped) continue;
+    const {path, signalMap, instanceMap} = active;
+    const apply = mapped => {
+      if (!mapped) return;
       if (mapped.nodeId != null) svg.querySelectorAll('g[data-node="' + mapped.nodeId + '"]').forEach(el => el.classList.add('sta-path-node'));
       (mapped.wireIds || []).forEach(id => svg.querySelectorAll('.editor-wire[data-wire="' + id + '"]').forEach(el => el.classList.add('sta-critical')));
-    }
+    };
+    for (const net of path.nets || []) apply(signalMap?.[net]);
+    for (const cell of path.cells || []) apply(instanceMap?.[cell]);
   }
   new MutationObserver(reapplyHighlight).observe(svg, { childList: true, subtree: true });
 
@@ -361,7 +366,7 @@
       label.textContent = (path.kind.toUpperCase()) + ': ' + path.startpoint + ' → ' + path.endpoint;
       const slack = document.createElement('small'); slack.textContent = path.slack == null ? 'slack —' : path.slack.toFixed(4) + ' ns';
       button.append(label, slack);
-      button.addEventListener('click', () => highlightPath(path, result.signalMap || {}));
+      button.addEventListener('click', () => highlightPath(path, result.signalMap || {}, result.instanceMap || {}));
       list.append(button);
     });
     $('staReport').textContent = result.report || '';
