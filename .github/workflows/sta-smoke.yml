@@ -1,13 +1,16 @@
-name: STA smoke test
+name: Static timing analysis
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [sta_job]
   pull_request:
     paths:
       - ".github/workflows/sta-smoke.yml"
       - "scripts/sta/**"
       - "benchmarks/iscas89/s27.v"
       - "libraries/sky130/liberty/**"
+      - "sta-broker/**"
   push:
     branches:
       - "feature/sta-opensta-integration"
@@ -16,12 +19,14 @@ on:
       - "scripts/sta/**"
       - "benchmarks/iscas89/s27.v"
       - "libraries/sky130/liberty/**"
+      - "sta-broker/**"
 
 permissions:
   contents: read
 
 jobs:
   sta-smoke:
+    if: github.event_name != 'repository_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -66,6 +71,81 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sta-smoke-reports
+          path: build/sta/
+          if-no-files-found: warn
+          retention-days: 7
+
+  sta-job:
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'sta_job'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Yosys and OpenSTA
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes yosys opensta
+
+      - name: Prepare timing library and fetch design
+        env:
+          STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
+          STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+        run: |
+          set -euo pipefail
+          test -n "$STA_BROKER_URL"
+          test -n "$STA_BROKER_SECRET"
+          test -n "$JOB_ID"
+          mkdir -p build/sta
+          gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
+            > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $STA_BROKER_SECRET" \
+            "$STA_BROKER_URL/internal/jobs/$JOB_ID" \
+            -o build/sta/request.json
+
+      - name: Run Yosys, ABC and OpenSTA
+        run: |
+          python3 scripts/sta/run_job.py build/sta/request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta
+
+      - name: Return analysis results to the broker
+        if: success()
+        env:
+          STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
+          STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $STA_BROKER_SECRET" \
+            -H "Content-Type: application/json" \
+            --data-binary @build/sta/result.json \
+            "$STA_BROKER_URL/internal/jobs/$JOB_ID/result"
+
+      - name: Report analysis failure to the broker
+        if: failure()
+        env:
+          STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
+          STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
+          JOB_ID: ${{ github.event.client_payload.job_id }}
+        run: |
+          if [ -n "$STA_BROKER_URL" ] && [ -n "$STA_BROKER_SECRET" ] && [ -n "$JOB_ID" ]; then
+            printf '%s\n' '{"status":"error","message":"STA execution failed. Inspect the GitHub Actions run log."}' > build/sta/result.json
+            curl --silent --show-error -X POST \
+              -H "Authorization: Bearer $STA_BROKER_SECRET" \
+              -H "Content-Type: application/json" \
+              --data-binary @build/sta/result.json \
+              "$STA_BROKER_URL/internal/jobs/$JOB_ID/result" || true
+          fi
+
+      - name: Upload STA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sta-job-${{ github.event.client_payload.job_id }}
           path: build/sta/
           if-no-files-found: warn
           retention-days: 7
