@@ -277,7 +277,10 @@ async function handle(request, env) {
   const internalJob = path.match(/^\/internal\/jobs\/([0-9a-f-]{36})(?:\/(result|status))?$/i);
   if (internalJob) {
     const auth = request.headers.get("Authorization")?.replace(/^Bearer\s+/, "") || "";
-    if (!safeEqual(auth, env.STA_BROKER_SECRET)) return json({ error: "Unauthorized." }, 401);
+    const configuredSecret = env.STA_BROKER_SECRET;
+    if (typeof configuredSecret !== "string" || configuredSecret.length < 32 || !safeEqual(auth, configuredSecret)) {
+      return json({ error: "Unauthorized." }, 401);
+    }
 
     const key = "job:" + internalJob[1];
     const record = await env.STA_KV.get(key, "json");
