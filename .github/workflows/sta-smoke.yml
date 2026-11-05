@@ -193,11 +193,4 @@ jobs:
               "$STA_BROKER_URL/internal/jobs/$JOB_ID/result" || true
           fi
 
-      - name: Upload STA reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sta-job-${{ github.event.client_payload.job_id }}
-          path: build/sta/
-          if-no-files-found: warn
-          retention-days: 7
+      # Do not publish artifacts for user-submitted designs: this is a public repository.\n
