@@ -83,7 +83,7 @@ async function createAppJwt(env) {
   const pem = env.GITHUB_APP_PRIVATE_KEY
     .replace(/-----BEGIN (?:RSA )?PRIVATE KEY-----/g, "")
     .replace(/-----END (?:RSA )?PRIVATE KEY-----/g, "")
-    .replace(/\\s/g, "");
+    .replace(/\s/g, "");
   const rawDer = Uint8Array.from(atob(pem), char => char.charCodeAt(0));
   const der = isPkcs1 ? pkcs1ToPkcs8(rawDer) : rawDer;
   const key = await crypto.subtle.importKey(
