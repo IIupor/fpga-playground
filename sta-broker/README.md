@@ -4,21 +4,25 @@ The static GitHub Pages editor cannot dispatch GitHub Actions directly without e
 
 ## Components
 
-- GitHub OAuth App: signs the user in. The OAuth access token remains inside the Worker.
+- GitHub App: authenticates the repository owner and grants the Worker a repository-scoped installation token.
 - Cloudflare Worker + KV: stores short-lived design submissions and results, and dispatches a GitHub `repository_dispatch` event.
 - GitHub Actions: runs Yosys, ABC and OpenSTA on the free standard runner.
 - Sky130 HD TT Liberty: the timing library already stored in this repository.
 
-The browser receives only a short-lived broker session identifier. It never receives a GitHub token, App secret or workflow secret. This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty cell timing, but does not yet extract routed interconnect parasitics from SPEF.
+The browser receives only a short-lived broker session identifier. The user's GitHub token and the GitHub App private key never reach public JavaScript. The Worker uses a GitHub App installation token limited to this repository.
+
+This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty cell timing, but does not yet extract routed interconnect parasitics from SPEF.
 
 ## One-time setup
 
 1. Create a free Cloudflare account.
 2. In Cloudflare, create a KV namespace named `STA_KV`.
-3. Create a GitHub OAuth App under **GitHub → Settings → Developer settings → OAuth Apps**:
+3. Create a GitHub App under **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**:
    - Homepage URL: `https://iiupor.github.io/fpga-playground/`
-   - Authorization callback URL: `https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/auth/callback`
-   - The Worker requests only the `public_repo` scope and checks that the signed-in account has push access to this repository.
+   - Callback URL / user authorization callback URL: `https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/auth/callback`
+   - Repository permissions: **Contents → Read and write**.
+   - Install the app on **IIupor/fpga-playground only**.
+   - Generate a private key and keep the downloaded PEM file private.
 4. Install Wrangler and deploy the Worker:
    ```sh
    npm install --global wrangler
@@ -28,10 +32,12 @@ The browser receives only a short-lived broker session identifier. It never rece
    ```sh
    wrangler kv namespace create STA_KV
    ```
-6. From the `sta-broker` directory, set the OAuth and runner secrets:
+6. From the `sta-broker` directory, set the GitHub App and runner secrets:
    ```sh
+   wrangler secret put GITHUB_APP_ID
    wrangler secret put GITHUB_CLIENT_ID
    wrangler secret put GITHUB_CLIENT_SECRET
+   wrangler secret put GITHUB_APP_PRIVATE_KEY
    wrangler secret put STA_BROKER_SECRET
    ```
    Use a long random value for `STA_BROKER_SECRET`. Do not commit secrets or paste them into the editor.
@@ -46,9 +52,10 @@ The browser receives only a short-lived broker session identifier. It never rece
 
 ## Security and retention
 
-- OAuth tokens are stored only in Cloudflare KV and expire after six hours.
+- The Worker accepts sign-in only from the repository owner account.
+- GitHub App installation tokens are created on demand and scoped to this repository.
+- Broker sessions expire after six hours; the user's OAuth token is not stored in the session record.
 - Design jobs and results expire after six hours.
-- The Worker checks repository write permission before accepting jobs.
 - The workflow receives only a random job ID in its dispatch event, then retrieves the design from the Worker over HTTPS.
 - The Worker secret is required for runner-to-broker requests.
 - The public repository receives no design source commits or branches.
