@@ -22,3 +22,5 @@ class_name = "StaGuard"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["StaGuard"]
+
+# Trigger initial Cloudflare Git deployment.
