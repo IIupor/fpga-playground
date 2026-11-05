@@ -12,9 +12,9 @@ from pathlib import Path
 
 IDENTIFIER = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
-NUMBER = r"(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?"
+NUMBER = r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?"
 PORT = r"[A-Za-z_$][A-Za-z0-9_$]*"
-PORTS = rf"\\{{({PORT}(?: {PORT})*)\\}}"
+PORTS = rf"\{{({PORT}(?: {PORT})*)\}}"
 
 
 def validate_sdc(sdc):
@@ -27,19 +27,19 @@ def validate_sdc(sdc):
 
     patterns = [
         ("create_clock", re.compile(
-            rf"create_clock -name core_clk -period ({NUMBER})(?: \\[get_ports \\{{({PORT})\\}}\\])?"
+            rf"create_clock -name core_clk -period ({NUMBER})(?: \[get_ports \{{({PORT})\}}\])?"
         )),
         ("set_input_delay", re.compile(
-            rf"set_input_delay -clock core_clk ({NUMBER}) \\[get_ports {PORTS}\\]"
+            rf"set_input_delay -clock core_clk ({NUMBER}) \[get_ports {PORTS}\]"
         )),
         ("set_input_transition", re.compile(
-            rf"set_input_transition ({NUMBER}) \\[get_ports {PORTS}\\]"
+            rf"set_input_transition ({NUMBER}) \[get_ports {PORTS}\]"
         )),
         ("set_output_delay", re.compile(
-            rf"set_output_delay -clock core_clk ({NUMBER}) \\[get_ports {PORTS}\\]"
+            rf"set_output_delay -clock core_clk ({NUMBER}) \[get_ports {PORTS}\]"
         )),
         ("set_load", re.compile(
-            rf"set_load ({NUMBER}) \\[get_ports {PORTS}\\]"
+            rf"set_load ({NUMBER}) \[get_ports {PORTS}\]"
         )),
     ]
     seen = set()
@@ -55,7 +55,10 @@ def validate_sdc(sdc):
             if name in seen:
                 raise ValueError(f"Duplicate SDC command: {name}.")
             seen.add(name)
-            numeric_values = [value for value in match.groups() if value is not None and re.fullmatch(NUMBER, value)]
+            numeric_values = [
+                value for value in match.groups()
+                if value is not None and re.fullmatch(NUMBER, value)
+            ]
             for value in numeric_values:
                 number = float(value)
                 if not math.isfinite(number) or number < 0 or (name == "create_clock" and number == 0):
@@ -63,10 +66,12 @@ def validate_sdc(sdc):
             matched = True
             break
         if not matched:
-            raise ValueError("Unsupported SDC command. Only editor-generated clock, input-delay, transition, output-delay and load constraints are accepted.")
+            raise ValueError(
+                "Unsupported SDC command. Only editor-generated clock, input-delay, "
+                "transition, output-delay and load constraints are accepted."
+            )
     if "create_clock" not in seen:
         raise ValueError("The SDC must contain exactly one editor-generated create_clock command.")
-
 
 def run(command, *, cwd, log_path, timeout=300):
     completed = subprocess.run(
