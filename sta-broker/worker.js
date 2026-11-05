@@ -43,6 +43,48 @@ async function github(path, token, options = {}) {
   return body ? JSON.parse(body) : null;
 }
 
+function base64Url(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+}
+
+async function createAppJwt(env) {
+  const pem = env.GITHUB_APP_PRIVATE_KEY
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\\s/g, "");
+  const der = Uint8Array.from(atob(pem), char => char.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    "pkcs8", der,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false, ["sign"]
+  );
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64Url(new TextEncoder().encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+  const payload = base64Url(new TextEncoder().encode(JSON.stringify({
+    iat: now - 60,
+    exp: now + 540,
+    iss: env.GITHUB_APP_ID
+  })));
+  const signingInput = header + "." + payload;
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(signingInput)
+  );
+  return signingInput + "." + base64Url(new Uint8Array(signature));
+}
+
+async function createInstallationToken(env) {
+  const jwt = await createAppJwt(env);
+  const installation = await github("/repos/" + env.GITHUB_REPOSITORY + "/installation", jwt);
+  const token = await github("/app/installations/" + installation.id + "/access_tokens", jwt, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}"
+  });
+  return token.token;
+}
+
 async function getSession(request, env) {
   const match = request.headers.get("Authorization")?.match(/^Bearer\s+([A-Za-z0-9-]{20,80})$/);
   if (!match) return null;
@@ -71,7 +113,7 @@ async function handle(request, env) {
     const target = new URL("https://github.com/login/oauth/authorize");
     target.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
     target.searchParams.set("redirect_uri", callback);
-    target.searchParams.set("scope", "public_repo");
+    target.searchParams.set("scope", "read:user");
     target.searchParams.set("state", state);
     return redirect(target.toString());
   }
@@ -99,17 +141,14 @@ async function handle(request, env) {
     }
 
     const user = await github("/user", tokenData.access_token);
-    const repository = await github("/repos/" + env.GITHUB_REPOSITORY, tokenData.access_token);
-    const hasPushAccess = repository.permissions?.push
-      || user.login.toLowerCase() === repository.owner?.login?.toLowerCase();
-    if (!hasPushAccess) {
-      return new Response("This GitHub account does not have write access to " + env.GITHUB_REPOSITORY + ".", { status: 403 });
+    const repositoryOwner = env.GITHUB_REPOSITORY.split("/")[0];
+    if (user.login.toLowerCase() !== repositoryOwner.toLowerCase()) {
+      return new Response("Sign in with the repository owner account (" + repositoryOwner + ").", { status: 403 });
     }
 
     const sessionId = crypto.randomUUID();
     await env.STA_KV.put("session:" + sessionId, JSON.stringify({
       login: user.login,
-      token: tokenData.access_token,
       expiresAt: Date.now() + 6 * 60 * 60 * 1000
     }), { expirationTtl: 21600 });
     return redirect((env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/")) + "#sta_session=" + encodeURIComponent(sessionId));
@@ -159,7 +198,8 @@ async function handle(request, env) {
     await env.STA_KV.put("job:" + id, JSON.stringify(record), { expirationTtl: 21600 });
 
     try {
-      await github("/repos/" + env.GITHUB_REPOSITORY + "/dispatches", session.token, {
+      const installationToken = await createInstallationToken(env);
+      await github("/repos/" + env.GITHUB_REPOSITORY + "/dispatches", installationToken, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event_type: "sta_job", client_payload: { job_id: id } })
