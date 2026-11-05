@@ -303,7 +303,14 @@ export default {
   async fetch(request, env) {
     try { return await handle(request, env); }
     catch (error) {
-      return json({ error: error?.message || "Internal error." }, 500, env);
+      const message = error?.message || "Internal error.";
+      if (/(?:1027|1015|quota|rate.?limit|limit.{0,40}exceed|exceed.{0,40}limit)/i.test(message)) {
+        return json({
+          code: "FREE_TIER_LIMIT",
+          error: "Cloudflare Free usage limit reached. STA is temporarily unavailable until the quota resets. No paid plan is enabled."
+        }, 429, env);
+      }
+      return json({ error: message }, 500, env);
     }
   }
 };
