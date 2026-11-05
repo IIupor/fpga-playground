@@ -46,9 +46,13 @@ const env = {
   GITHUB_REPOSITORY: "IIupor/fpga-playground",
   GITHUB_CLIENT_ID: "client-id",
   GITHUB_CLIENT_SECRET: "client-secret",
+  STA_BROKER_SECRET: "test-broker-secret-".repeat(3),
   STA_KV: {
     async put(key, value) { kvStore.set(key, value); },
-    async get(key) { return kvStore.get(key) || null; },
+    async get(key, type) {
+      const value = kvStore.get(key) || null;
+      return type === "json" && value ? JSON.parse(value) : value;
+    },
     async delete(key) { kvStore.delete(key); }
   }
 };
@@ -102,3 +106,30 @@ try {
 }
 
 console.log("GitHub OAuth state is bound to the initiating browser and rejects missing or mismatched cookies.");
+
+const jobId = crypto.randomUUID();
+kvStore.set("job:" + jobId, JSON.stringify({
+  id: jobId,
+  status: "queued",
+  input: { verilog: "module top; endmodule", top: "top", sdc: "create_clock -name core_clk -period 1" }
+}));
+const internalUrl = "https://broker.example/internal/jobs/" + jobId;
+const missingInternalAuth = await worker.fetch(new Request(internalUrl), env);
+assert.equal(missingInternalAuth.status, 401, "internal endpoints must reject requests without a broker secret");
+const validInternalAuth = await worker.fetch(new Request(internalUrl, {
+  headers: { Authorization: "Bearer " + env.STA_BROKER_SECRET }
+}), env);
+assert.equal(validInternalAuth.status, 200);
+assert.equal((await validInternalAuth.json()).top, "top");
+
+env.STA_BROKER_SECRET = "";
+const emptyConfiguredSecret = await worker.fetch(new Request(internalUrl), env);
+assert.equal(emptyConfiguredSecret.status, 401, "an empty configured secret must fail closed");
+env.STA_BROKER_SECRET = "short";
+const weakConfiguredSecret = await worker.fetch(new Request(internalUrl, {
+  headers: { Authorization: "Bearer short" }
+}), env);
+assert.equal(weakConfiguredSecret.status, 401, "short configured secrets must fail closed");
+
+console.log("Internal broker endpoints require a configured secret of at least 32 characters.");
+
