@@ -238,24 +238,22 @@
 
     for (const n of nodes) {
       if (n.type !== 'DFF' && n.type !== 'LATCH') continue;
-      const moduleName = moduleFor(n);
       const q = getSignalName(n);
       const data = sourceAt(n, 0), control = sourceAt(n, 1);
       const dataSignal = data?.node ? getSignalName(data.node, data.pin) : "1'b0";
       const controlSignal = control?.node ? getSignalName(control.node, control.pin) : "1'b0";
       if (n.type === 'DFF') {
+        const moduleName = moduleFor(n);
         submodules.push('module ' + moduleName + '(input wire D, input wire CLK, output wire Q);');
         submodules.push('  reg q_reg;');
         submodules.push("  initial q_reg = 1'b0;");
         submodules.push('  always @(posedge CLK) q_reg <= D;');
+        submodules.push('  assign Q = q_reg;', 'endmodule', '');
+        lines.push('  ' + moduleName + ' ' + n.name + ' (.D(' + dataSignal + '), .CLK(' + controlSignal + '), .Q(' + q + '));');
       } else {
-        submodules.push('module ' + moduleName + '(input wire D, input wire EN, output wire Q);');
-        submodules.push('  reg q_reg;');
-        submodules.push('  always @* if (EN) q_reg = D;');
+        lines.push('  sky130_fd_sc_hd__dlxtp_1 ' + n.name +
+          ' (.D(' + dataSignal + '), .GATE(' + controlSignal + '), .Q(' + q + '));');
       }
-      submodules.push('  assign Q = q_reg;', 'endmodule', '');
-      lines.push('  ' + moduleName + ' ' + n.name + ' (.D(' + dataSignal + '), .' +
-        (n.type === 'DFF' ? 'CLK' : 'EN') + '(' + controlSignal + '), .Q(' + q + '));');
     }
     lines.push('endmodule', '', ...submodules);
     return {
