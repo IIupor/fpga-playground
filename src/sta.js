@@ -180,8 +180,15 @@
         };
       }
     }
+    for (const n of inputs) {
+      signalMap[n.name] = {
+        nodeId: n.id,
+        wireIds: wires.filter(w => w.from === n.id && (w.fromPin || 0) === 0).map(w => w.id)
+      };
+    }
     for (const n of outputs) {
       const src = sourceAt(n, 0);
+      if (src?.node) signalMap[n.name] = { nodeId: src.node.id, wireIds: [src.wire.id] };
       lines.push('  assign ' + n.name + ' = ' + (src?.node ? getSignalName(src.node, src.pin) : "1'b0") + ';');
     }
     const gates = {AND:'and', OR:'or', XOR:'xor', NAND:'nand', NOR:'nor', XNOR:'xnor', NOT:'not', BUF:'buf'};
