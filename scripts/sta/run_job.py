@@ -130,12 +130,12 @@ def main():
     if analysis in ("setup", "both"):
         sta_lines += [
             'puts "=== SETUP PATHS ==="',
-            "report_checks -path_delay max -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
+            "report_checks -path_delay max -group_count 20 -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
         ]
     if analysis in ("hold", "both"):
         sta_lines += [
             'puts "=== HOLD PATHS ==="',
-            "report_checks -path_delay min -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
+            "report_checks -path_delay min -group_count 20 -format full_clock_expanded -fields {slew cap input_pin net} -digits 4",
         ]
     sta_lines += [
         'puts "=== WORST NEGATIVE SLACK ==="',
