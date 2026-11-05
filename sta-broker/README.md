@@ -6,10 +6,11 @@ The static GitHub Pages editor cannot dispatch GitHub Actions directly without e
 
 - GitHub App: authenticates the repository owner and grants the Worker a repository-scoped installation token.
 - Cloudflare Worker + KV: stores short-lived design submissions and results, and dispatches a GitHub `repository_dispatch` event.
+- Cloudflare SQLite Durable Object: atomically reserves one STA job at a time, enforces cooldown/daily limits, and prevents duplicate runner claims.
 - GitHub Actions: runs Yosys, ABC and OpenSTA on the free standard runner.
 - Sky130 HD TT Liberty: the timing library already stored in this repository.
 
-The browser receives only a short-lived broker session identifier. The user's GitHub token and the GitHub App private key never reach public JavaScript. The Worker uses a GitHub App installation token limited to this repository.
+The browser receives only a short-lived broker session identifier. The user's GitHub token and the GitHub App private key never reach public JavaScript. The Worker uses a GitHub App installation token explicitly scoped to this repository ID and to `Contents: write` only. OAuth authorization is checked against the immutable GitHub numeric owner ID (`GITHUB_OWNER_ID`), not a changeable login name.
 
 This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty cell timing, but does not yet extract routed interconnect parasitics from SPEF.
 
@@ -19,7 +20,7 @@ The runner accepts only the editor-generated SDC subset: `create_clock`, `set_in
 ## One-time setup
 
 1. Create a free Cloudflare account.
-2. In Cloudflare, create a KV namespace named `STA_KV`.
+2. In Cloudflare, create a KV namespace named `STA_KV`. The SQLite-backed `StaGuard` Durable Object is provisioned by the Wrangler migration in this repository; it is available on Cloudflare Workers Free.
 3. Create a GitHub App under **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App**:
    - Homepage URL: `https://iiupor.github.io/fpga-playground/`
    - Enable user authorization (OAuth) and set the callback URL to `https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/auth/callback`.
@@ -64,4 +65,4 @@ The runner accepts only the editor-generated SDC subset: `create_clock`, `set_in
 - The public repository receives no design source commits or branches.
 - User-submitted netlists and reports are not uploaded as public GitHub Actions artifacts; the result is returned to the authenticated broker session. User-job logs also suppress design-specific report text.
 
-Cloudflare's free plan has usage limits. This design does not require a paid plan, but it must stay within the current free-tier quotas.
+Cloudflare's free plan has usage limits. This design does not require a paid plan, but it must stay within the current free-tier quotas. The Durable Object uses SQLite storage on the Free plan; exceeding an included limit causes the affected operation to fail rather than switching to paid usage.
