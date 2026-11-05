@@ -112,7 +112,7 @@ def main():
         f"hierarchy -check -top {top}",
         f"synth -top {top}",
         f'dfflibmap -liberty "{args.liberty.resolve()}"',
-        f'abc -liberty "{args.liberty.resolve()}"',
+        f'abc -liberty "{args.liberty.resolve()}" -dress',
         "clean",
         f'write_verilog -noattr "{netlist.resolve()}"',
         f'write_json "{netlist_json.resolve()}"',
