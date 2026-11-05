@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -18,9 +19,9 @@ def run(command, *, cwd, log_path, timeout=300):
     )
     log_path.write_text(completed.stdout, encoding="utf-8")
     if completed.returncode:
+        detail = completed.stdout[-12000:] if os.environ.get("STA_DEBUG") == "1" else "Detailed design-specific logs were kept on the temporary runner."
         raise RuntimeError(
-            f"Command failed ({completed.returncode}): {' '.join(command)}\n"
-            + completed.stdout[-12000:]
+            f"Command failed ({completed.returncode}): {' '.join(command)}\n" + detail
         )
     return completed.stdout
 
@@ -152,9 +153,12 @@ def main():
     sta_report = run(["sta", "-exit", str(sta_script)], cwd=Path.cwd(),
                      log_path=args.out / "opensta.log", timeout=300)
     if "Error:" in sta_report or "Startpoint:" not in sta_report:
-        netlist_excerpt = "\\n".join(netlist.read_text(encoding="utf-8").splitlines()[30:48])
-        raise RuntimeError("OpenSTA did not produce valid timing paths.\\n"
-                           + sta_report[-12000:] + "\\nMapped netlist excerpt:\\n" + netlist_excerpt)
+        if os.environ.get("STA_DEBUG") == "1":
+            netlist_excerpt = "\\n".join(netlist.read_text(encoding="utf-8").splitlines()[30:48])
+            detail = sta_report[-12000:] + "\\nMapped netlist excerpt:\\n" + netlist_excerpt
+        else:
+            detail = "Check the timing constraints and library compatibility; design-specific report text is not written to public logs."
+        raise RuntimeError("OpenSTA did not produce valid timing paths.\\n" + detail)
 
     setup_section = (
         sta_report.split("=== SETUP PATHS ===", 1)[-1].split("=== HOLD PATHS ===", 1)[0]
