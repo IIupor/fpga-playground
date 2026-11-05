@@ -115,6 +115,27 @@ kvStore.set("job:" + jobId, JSON.stringify({
   input: { verilog: "module top; endmodule", top: "top", sdc: "create_clock -name core_clk -period 1" }
 }));
 const internalUrl = "https://broker.example/internal/jobs/" + jobId;
+const internalGuardStore = new Map();
+const internalGuard = new StaGuard({
+  storage: {
+    async transaction(callback) {
+      return callback({
+        async get(key) { return internalGuardStore.get(key); },
+        async put(key, value) { internalGuardStore.set(key, value); }
+      });
+    }
+  }
+}, {});
+env.STA_GUARD = {
+  idFromName() { return "internal-test-guard"; },
+  get() { return internalGuard; }
+};
+const internalReservation = await internalGuard.fetch(new Request("https://guard.internal/action", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ action: "reserve", jobId })
+}));
+assert.equal(internalReservation.status, 200);
 const missingInternalAuth = await worker.fetch(new Request(internalUrl), env);
 assert.equal(missingInternalAuth.status, 401, "internal endpoints must reject requests without a broker secret");
 const validInternalAuth = await worker.fetch(new Request(internalUrl, {
