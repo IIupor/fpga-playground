@@ -14,7 +14,7 @@ IDENTIFIER = re.compile(r"^[A-Za-z_$][A-Za-z0-9_$]*$")
 
 NUMBER = r"(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?"
 PORT = r"[A-Za-z_$][A-Za-z0-9_$]*"
-PORTS = rf"\{{({PORT}(?: {PORT})*)\}}"
+PORTS = rf"(?:\{{({PORT}(?: {PORT})*)\}}|({PORT}))"
 
 
 def validate_sdc(sdc):
@@ -27,7 +27,7 @@ def validate_sdc(sdc):
 
     patterns = [
         ("create_clock", re.compile(
-            rf"create_clock -name core_clk -period ({NUMBER})(?: \[get_ports \{{({PORT})\}}\])?"
+            rf"create_clock -name core_clk -period ({NUMBER})(?: \[get_ports (?:\{{({PORT})\}}|({PORT}))\])?"
         )),
         ("set_input_delay", re.compile(
             rf"set_input_delay -clock core_clk ({NUMBER}) \[get_ports {PORTS}\]"
