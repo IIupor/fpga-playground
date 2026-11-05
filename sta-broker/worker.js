@@ -22,6 +22,7 @@ function validateSignalMap(value, label = "signalMap") {
   if (entries.length > MAX_MAP_ENTRIES) throw new Error(label + " contains too many entries.");
   for (const [name, item] of entries) {
     if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) || !isPlainObject(item) ||
+        Object.keys(item).some(key => key !== "nodeId" && key !== "wireIds") ||
         !Number.isSafeInteger(item.nodeId) || item.nodeId < 0 ||
         !Array.isArray(item.wireIds) || item.wireIds.length > MAX_WIRE_IDS_PER_ENTRY ||
         item.wireIds.some(id => !Number.isSafeInteger(id) || id < 0)) {
@@ -493,7 +494,7 @@ async function handle(request, env) {
     const session = await requireSession(request, env);
     if (!session) return json({ error: "GitHub sign-in required." }, 401, env);
     const record = await env.STA_KV.get("job:" + publicJob[1], "json");
-    if (!record || record.owner !== session.login) return json({ error: "Job not found." }, 404, env);
+    if (!record || String(record.ownerId || "") !== String(session.githubId || "")) return json({ error: "Job not found." }, 404, env);
     return json({
       jobId: record.id,
       status: record.status,
@@ -551,8 +552,13 @@ async function handle(request, env) {
 
     if (request.method === "POST" && internalJob[2] === "status") {
       let update;
-      try { update = await request.json(); } catch { return json({ error: "Invalid status JSON." }, 400); }
-      record.status = update.status === "error" ? "error" : "running";
+      try { update = await readJsonLimited(request, 16_384); }
+      catch (error) { return json({ error: error.message }, error.status || 400); }
+      if (!isPlainObject(update) || !["running", "error"].includes(update.status) ||
+          (update.error !== undefined && (typeof update.error !== "string" || update.error.length > 2_000))) {
+        return json({ error: "Invalid status update." }, 400);
+      }
+      record.status = update.status;
       record.error = update.error || null;
       await env.STA_KV.put(key, JSON.stringify(record), { expirationTtl: 21600 });
       return json({ saved: true });
