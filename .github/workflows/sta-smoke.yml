@@ -223,6 +223,7 @@ jobs:
           JOB_ID: ${{ github.event.client_payload.job_id }}
         run: |
           if [ -n "$STA_BROKER_URL" ] && [ -n "$STA_BROKER_SECRET" ] && [ -n "$JOB_ID" ]; then
+            mkdir -p build/sta
             printf '%s\n' '{"status":"error","message":"STA execution failed. Inspect the GitHub Actions run log."}' > build/sta/result.json
             curl --silent --show-error -X POST \
               -H "Authorization: Bearer $STA_BROKER_SECRET" \
