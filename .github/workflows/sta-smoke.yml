@@ -167,18 +167,17 @@ jobs:
     if: github.event_name == 'repository_dispatch' && github.event.action == 'sta_job'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    concurrency:
+      group: sta-job-${{ github.event.client_payload.job_id }}
+      cancel-in-progress: false
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Install Yosys and OpenSTA
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes yosys opensta
-
-      - name: Prepare timing library and fetch design
+      - name: Claim job and fetch design
+        id: fetch_design
         env:
           STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
           STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
@@ -189,12 +188,20 @@ jobs:
           test -n "$STA_BROKER_SECRET"
           test -n "$JOB_ID"
           mkdir -p build/sta
-          gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
-            > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $STA_BROKER_SECRET" \
             "$STA_BROKER_URL/internal/jobs/$JOB_ID" \
             -o build/sta/request.json
+
+      - name: Install Yosys and OpenSTA
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes yosys opensta
+
+      - name: Prepare timing library
+        run: |
+          gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
+            > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
 
       - name: Run Yosys, ABC and OpenSTA
         run: |
@@ -216,7 +223,7 @@ jobs:
             "$STA_BROKER_URL/internal/jobs/$JOB_ID/result"
 
       - name: Report analysis failure to the broker
-        if: failure()
+        if: failure() && steps.fetch_design.outcome == 'success'
         env:
           STA_BROKER_URL: ${{ secrets.STA_BROKER_URL }}
           STA_BROKER_SECRET: ${{ secrets.STA_BROKER_SECRET }}
