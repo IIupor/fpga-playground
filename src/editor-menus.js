@@ -9,7 +9,7 @@
 
   const bar = document.createElement('div');
   bar.id = 'editorMenus'; bar.className = 'editor-menus';
-  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importFile">Import file</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
+  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importFile" type="button" style="min-height:44px;touch-action:manipulation">Import Verilog</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
   toolbar.prepend(bar);
 
   const panel = $('libraryBrowser');
@@ -24,7 +24,7 @@
   function closeMenus(){bar.querySelectorAll('[data-popup]').forEach(p=>p.hidden=true);}
   bar.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click',()=>{const p=bar.querySelector('[data-popup="'+b.dataset.menu+'"]');const open=!p.hidden;closeMenus();p.hidden=open;}));
   document.addEventListener('click',e=>{if(!bar.contains(e.target))closeMenus();});
-  $('importFile').onclick=()=>{closeMenus();$('importVerilog')?.click();bar.querySelector('[data-menu="file"]').focus();};
+  $('importFile').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();closeMenus();const importButton=$('importVerilog');if(importButton)importButton.click();bar.querySelector('[data-menu="file"]').focus();});
   $('exportFile').onclick=()=>{closeMenus();$('exportVerilog')?.click();};
   $('menuUndo').onclick=()=>{closeMenus();$('editorUndo')?.click();};
   $('menuRedo').onclick=()=>{closeMenus();$('editorRedo')?.click();};
