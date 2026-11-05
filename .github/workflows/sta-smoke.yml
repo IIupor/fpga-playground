@@ -1,0 +1,65 @@
+name: STA smoke test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/sta-smoke.yml"
+      - "scripts/sta/**"
+      - "libraries/sky130/liberty/**"
+  push:
+    branches:
+      - "feature/sta-opensta-integration"
+    paths:
+      - ".github/workflows/sta-smoke.yml"
+      - "scripts/sta/**"
+      - "libraries/sky130/liberty/**"
+
+permissions:
+  contents: read
+
+jobs:
+  sta-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Yosys and OpenSTA
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes yosys opensta
+
+      - name: Prepare timing library
+        run: |
+          mkdir -p build/sta
+          gzip -dc libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz \
+            > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+      - name: Synthesize smoke design with Yosys and ABC
+        run: |
+          yosys -Q -p "
+            read_verilog scripts/sta/smoke.v
+            hierarchy -check -top sta_smoke
+            synth -top sta_smoke
+            dfflibmap -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+            abc -liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
+            clean
+            write_verilog -noattr build/sta/netlist.v
+          " | tee build/sta/yosys.log
+
+      - name: Run OpenSTA
+        run: |
+          sta -exit scripts/sta/smoke.tcl 2>&1 | tee build/sta/opensta.log
+          grep -q "Startpoint:" build/sta/opensta.log
+          grep -q "Endpoint:" build/sta/opensta.log
+
+      - name: Upload STA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sta-smoke-reports
+          path: build/sta/
+          if-no-files-found: warn
+          retention-days: 7
