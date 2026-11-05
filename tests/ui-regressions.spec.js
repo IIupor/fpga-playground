@@ -236,3 +236,20 @@ test('Sky130 Liberty library exposes real cell pins and allows placing a cell', 
   expect(pins.inputNames).toHaveLength(2);
   expect(pins.outputNames).toHaveLength(1);
 });
+
+
+test('Mobile: importing pasted Verilog from the File menu responds to a tap', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const source = ['module mobile_import(A, B, Y);', 'input A, B;', 'output Y;', 'and U1(Y, A, B);', 'endmodule'].join('\n');
+  await page.locator('#verilogText').fill(source);
+  const fileMenu = page.locator('[data-menu="file"]');
+  await expect(fileMenu).toBeVisible();
+  await fileMenu.tap();
+  const importItem = page.locator('#importFile');
+  await expect(importItem).toBeVisible();
+  await importItem.tap();
+  await expect(page.locator('#editorMessage')).toContainText('Imported', { timeout: 30000 });
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
+  await expect(page.locator('#editorStage path.editor-wire')).toHaveCount(3);
+});
