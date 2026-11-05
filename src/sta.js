@@ -110,6 +110,20 @@
   const setStatus = value => { $('staStatus').textContent = value; };
   const brokerUrl = () => brokerInput.value.trim().replace(/\/$/, '');
   const session = () => sessionStorage.getItem(sessionKey) || '';
+  function brokerErrorMessage(status, responseText) {
+    let body = {};
+    try { body = JSON.parse(responseText || '{}'); } catch {}
+    const detail = [body.code, body.error, body.message, responseText].filter(Boolean).join(' ');
+    if (body.code === 'FREE_TIER_LIMIT' || /(?:1027|quota|daily request limit)/i.test(detail)) {
+      return 'Cloudflare Free usage limit reached. STA is paused until the quota resets. No paid plan is enabled; please try again later.';
+    }
+    if (status === 429 || /(?:1015|rate.?limit|too many requests)/i.test(detail)) {
+      return 'Cloudflare is temporarily limiting requests. Please wait and try again. No paid plan is enabled.';
+    }
+    return body.error || body.message || ('Broker returned HTTP ' + status);
+  }
+  window.fpgaStaBrokerErrorMessage = brokerErrorMessage;
+
   const api = async (path, options = {}) => {
     const base = brokerUrl();
     if (!base) throw new Error('Enter the free broker URL first.');
@@ -117,9 +131,10 @@
     if (session()) headers.set('Authorization', 'Bearer ' + session());
     if (options.body) headers.set('Content-Type', 'application/json');
     const response = await fetch(base + path, { ...options, headers });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || ('Broker returned HTTP ' + response.status));
-    return body;
+    const responseText = await response.text();
+    if (!response.ok) throw new Error(brokerErrorMessage(response.status, responseText));
+    try { return JSON.parse(responseText || '{}'); }
+    catch { throw new Error('The STA broker returned an invalid response. Please try again later.'); }
   };
 
   function refreshClockPorts() {
