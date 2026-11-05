@@ -2,6 +2,7 @@
 """Security tests for the restricted SDC subset accepted by STA jobs."""
 
 import unittest
+from pathlib import Path
 
 from run_job import validate_sdc
 
@@ -17,6 +18,9 @@ set_load 5 [get_ports {Y}]
 
     def test_accepts_virtual_clock(self):
         validate_sdc("create_clock -name core_clk -period 1e-2\n")
+
+    def test_accepts_repository_smoke_constraints(self):
+        validate_sdc(Path(__file__).with_name("smoke.sdc").read_text(encoding="utf-8"))
 
     def test_rejects_arbitrary_tcl(self):
         for payload in (
