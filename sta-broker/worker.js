@@ -297,6 +297,8 @@ async function handle(request, env) {
   return json({ error: "Not found." }, 404, env);
 }
 
+export { createAppJwt };
+
 export default {
   async fetch(request, env) {
     try { return await handle(request, env); }
