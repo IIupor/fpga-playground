@@ -309,11 +309,12 @@
     activeResult = result;
     $('staMetrics').replaceChildren();
     const summary = result.summary || {};
+    const holdWns = result.hold_paths?.[0]?.slack;
     const metrics = [
       ['Setup WNS', summary.setup_wns ?? '—', 'ns'],
       ['Setup TNS', summary.setup_tns ?? '—', 'ns'],
-      ['Setup paths', summary.setup_path_count ?? 0, ''],
-      ['Hold paths', summary.hold_path_count ?? 0, '']
+      ['Hold worst slack', holdWns ?? '—', 'ns'],
+      ['Paths (setup / hold)', (summary.setup_path_count ?? 0) + ' / ' + (summary.hold_path_count ?? 0), '']
     ];
     for (const [label, value, unit] of metrics) {
       const card = document.createElement('div'); card.className = 'sta-metric';
