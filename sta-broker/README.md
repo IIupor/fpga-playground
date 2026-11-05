@@ -10,7 +10,7 @@ The static GitHub Pages editor cannot dispatch GitHub Actions directly without e
 - GitHub Actions: runs Yosys, ABC and OpenSTA on the free standard runner.
 - Sky130 HD TT Liberty: the timing library already stored in this repository.
 
-The browser receives only a short-lived broker session identifier. The user's GitHub token and the GitHub App private key never reach public JavaScript. The Worker uses a GitHub App installation token explicitly scoped to this repository ID and to `Contents: write` only. OAuth authorization is checked against the immutable GitHub numeric owner ID (`GITHUB_OWNER_ID`), not a changeable login name.
+The browser receives only a short-lived broker session identifier. The user's GitHub token and the GitHub App private key never reach public JavaScript. The Worker uses a GitHub App installation token explicitly scoped to this repository ID and to `Contents: write` only. OAuth authorization is checked against the immutable GitHub numeric owner ID (`GITHUB_OWNER_ID`), not a changeable login name. The GitHub App token is scoped using the configured immutable repository ID (`GITHUB_REPOSITORY_ID`). Both IDs are non-secret deployment configuration values.
 
 This first implementation is **pre-layout STA**: it uses Sky130 HD TT Liberty cell timing, but does not yet extract routed interconnect parasitics from SPEF.
 
