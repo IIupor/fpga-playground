@@ -87,7 +87,11 @@ def main():
         raise ValueError("The top module name is invalid.")
     if not isinstance(sdc, str) or not sdc.strip():
         raise ValueError("The request does not contain SDC constraints.")
-    if len(source) > 5_000_000 or len(sdc) > 64_000:
+    sources = request.get("sources", [])
+    analysis = request.get("analysis", "both")
+    if analysis not in ("setup", "hold", "both"):
+        analysis = "both"
+    if len(source) + sum(len(item.get("text", "")) for item in sources if isinstance(item, dict)) > 5_000_000 or len(sdc) > 64_000:
         raise ValueError("The submitted design or SDC exceeds the supported size.")
 
     design = args.out / "design.v"
@@ -136,8 +140,8 @@ def main():
     if "Error:" in sta_report or "Startpoint:" not in sta_report:
         raise RuntimeError("OpenSTA did not produce valid timing paths. See opensta.log.")
 
-    setup_section = sta_report.split("=== SETUP PATHS ===", 1)[-1].split("=== HOLD PATHS ===", 1)[0]
-    hold_section = sta_report.split("=== HOLD PATHS ===", 1)[-1].split("=== WORST NEGATIVE SLACK ===", 1)[0]
+    setup_section = sta_report.split("=== SETUP PATHS ===", 1)[-1].split("=== HOLD PATHS ===", 1)[0] if "=== SETUP PATHS ===" in sta_report else ""
+    hold_section = sta_report.split("=== HOLD PATHS ===", 1)[-1].split("=== WORST NEGATIVE SLACK ===", 1)[0] if "=== HOLD PATHS ===" in sta_report else ""
     setup_paths = parse_paths(setup_section, "setup")
     hold_paths = parse_paths(hold_section, "hold")
 
@@ -145,8 +149,8 @@ def main():
         "status": "completed",
         "top": top,
         "summary": {
-            "setup_wns": metric(sta_report, "wns"),
-            "setup_tns": metric(sta_report, "tns"),
+            "setup_wns": metric(sta_report, "wns") if analysis in ("setup", "both") else None,
+            "setup_tns": metric(sta_report, "tns") if analysis in ("setup", "both") else None,
             "setup_path_count": len(setup_paths),
             "hold_path_count": len(hold_paths),
             "mapped_netlist_bytes": netlist.stat().st_size,
