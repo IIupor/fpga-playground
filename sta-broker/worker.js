@@ -110,7 +110,7 @@ async function handle(request, env) {
       token: tokenData.access_token,
       expiresAt: Date.now() + 6 * 60 * 60 * 1000
     }), { expirationTtl: 21600 });
-    return redirect(env.APP_ORIGIN + "/#sta_session=" + encodeURIComponent(sessionId));
+    return redirect((env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/")) + "#sta_session=" + encodeURIComponent(sessionId));
   }
 
   if (path === "/api/session" && request.method === "GET") {
