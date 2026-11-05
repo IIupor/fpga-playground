@@ -36,6 +36,7 @@ jobs:
       - name: Validate STA scripts
         run: |
           node --input-type=module --check < sta-broker/worker.js
+          node scripts/sta/test_worker_crypto.mjs
           python3 -m py_compile scripts/sta/run_job.py
 
       - name: Install Yosys and OpenSTA
