@@ -171,7 +171,8 @@ jobs:
           script = (out / "synthesis.ys").read_text()
           assert result["status"] == "completed", result
           assert result["flow_mode"] == "mixed_synthesized", result["flow_mode"]
-          assert mapped.count("sky130_fd_sc_hd__and2_1 U_KEEP") == 1, mapped
+          assert mapped.count("sky130_fd_sc_hd__and2_1 U_KEEP (") == 1, mapped
+          assert mapped.count("sky130_fd_sc_hd__and2_1 U_KEEP2 (") == 1, mapped
           assert mapped.count("sky130_fd_sc_hd__") > 1, "RTL logic was not technology-mapped."
           assert "synth -top mixed_top -noabc" in script, script
           assert "dfflibmap -liberty" in script and "abc -liberty" in script, script
