@@ -283,6 +283,7 @@ def main():
         ]), encoding="utf-8")
         run(["yosys", "-Q", "-s", str(yosys_script)], cwd=Path.cwd(),
             log_path=args.out / "yosys.log", timeout=600)
+        flow_mode = "rtl_synthesized"
 
     sta_lines = [
         f'read_liberty "{args.liberty.resolve()}"',
@@ -348,6 +349,14 @@ def main():
         "instanceMap": request.get("instanceMap", {}),
         "report": sta_report[-100_000:],
     }
+    if flow_mode == "rtl_synthesized":
+        mapped_source = netlist.read_text(encoding="utf-8")
+        if len(mapped_source.encode("utf-8")) <= 900_000:
+            result["mapped_verilog"] = mapped_source
+        else:
+            result["mapped_verilog_unavailable_reason"] = (
+                "The synthesized Verilog is larger than the result transfer limit."
+            )
     (args.out / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result["summary"], indent=2))
 
