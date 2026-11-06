@@ -9,7 +9,7 @@
 
   const bar = document.createElement('div');
   bar.id = 'editorMenus'; bar.className = 'editor-menus';
-  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importBenchmarks">Import File</button><button class="toolbtn" id="importFile">Import editor text</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
+  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importBenchmarks">Import File</button><button class="toolbtn" id="importFile">Import editor text</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><button class="toolbtn" id="menuLoadLibraryFile">Load from computer…</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
   toolbar.prepend(bar);
 
   const panel = $('libraryBrowser');
@@ -30,6 +30,7 @@
   $('menuUndo').onclick=()=>{closeMenus();$('editorUndo')?.click();};
   $('menuRedo').onclick=()=>{closeMenus();$('editorRedo')?.click();};
   $('menuLoadLibrary').onclick=()=>{closeMenus();if(window.fpgaProjectFileBrowser)window.fpgaProjectFileBrowser.open('libraries');else $('importLibraries')?.click();};
+  $('menuLoadLibraryFile').onclick=()=>{closeMenus();$('importLibraries')?.click();};
 
   let activeLibrary='standard';
   const files=()=>window.fpgaVerilogProject?.state?.libraries||[];
