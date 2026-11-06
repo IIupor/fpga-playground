@@ -566,7 +566,7 @@ function setupUI() {
   const toolbar=$('importVerilog')?.parentElement;
   if(!toolbar)return;
   let button=$('importLibraries');
-  if(!button){button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load libraries';toolbar.appendChild(button);}
+  if(!button){button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load Library';toolbar.appendChild(button);}
   let fileInput=$('libraryFiles');
   if(!fileInput){fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib,.lib.gz';fileInput.hidden=true;toolbar.appendChild(fileInput);}
   if(!$('hierarchyStatus')){
@@ -713,7 +713,7 @@ function setupUI() {
     return true;
   }
   document.addEventListener('click',event=>{
-    if(event.target!==importButton||!area.value.trim())return;
+    if(event.target!==importButton||event.isTrusted||!area.value.trim())return;
     try{
       if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value)&&!hasSupportedPrimitiveInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();
