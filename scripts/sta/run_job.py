@@ -272,7 +272,6 @@ def main():
             *read_commands,
             f"hierarchy -check -top {top}",
             "flatten",
-            "clean",
             f'write_verilog -noattr "{netlist.resolve()}"',
             f'write_json "{netlist_json.resolve()}"',
             "",
@@ -284,7 +283,7 @@ def main():
                 "\nDetected a library-mapped netlist: all reachable leaf Cell "
                 "Names exist in the loaded Liberty library. Yosys synth, "
                 "dfflibmap and ABC were skipped; only hierarchy flattening "
-                "and cleanup were performed.\n"
+                "was performed.\n"
             )
     else:
         yosys_script = args.out / "synthesis.ys"
