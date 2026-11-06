@@ -35,7 +35,7 @@
 <header class="top"><div class="logo">⌁</div><div><div class="eyebrow">Interactive logic lab · 01</div><h1>FPGA Playground</h1><p>Build a logic circuit, change its inputs, and simulate the output.</p></div></header>
 <div class="layout">
 <section class="panel editor-panel"><div class="panelhead"><div><h2>Graphical circuit editor</h2><div class="eyebrow" style="margin-top:5px">Build · connect · simulate</div></div><span class="pill">BETA 01</span></div><div class="body">
-<div class="editor-toolbar"><button class="toolbtn" data-add="INPUT">＋ Input</button><button class="toolbtn" data-add="VDD">vdd! · 1</button><button class="toolbtn" data-add="GND">gnd! · 0</button><button class="toolbtn" data-add="AND">AND</button><button class="toolbtn" data-add="OR">OR</button><button class="toolbtn" data-add="XOR">XOR</button><button class="toolbtn" data-add="NOT">NOT</button><button class="toolbtn" data-add="NAND">NAND</button><button class="toolbtn" data-add="NOR">NOR</button><button class="toolbtn" data-add="XNOR">XNOR</button><button class="toolbtn" data-add="DFF">D flip-flop</button><button class="toolbtn" data-add="LATCH">D latch</button><button class="toolbtn" data-add="OUTPUT">＋ Output</button><button class="toolbtn" id="editorUndo" disabled>Undo</button><button class="toolbtn" id="editorRedo" disabled>Redo</button><button class="toolbtn" id="editorDelete">Delete selected</button><button class="toolbtn" id="editorReset">Reset example</button><button class="toolbtn" id="exportVerilog">Export Verilog</button><button class="toolbtn" id="importVerilog">Import Verilog</button><input id="verilogFile" type="file" accept=".v,.sv,.txt,text/plain" hidden></div>
+<div class="editor-toolbar"><button class="toolbtn" data-add="INPUT">＋ Input</button><button class="toolbtn" data-add="VDD">vdd! · 1</button><button class="toolbtn" data-add="GND">gnd! · 0</button><button class="toolbtn" data-add="AND">AND</button><button class="toolbtn" data-add="OR">OR</button><button class="toolbtn" data-add="XOR">XOR</button><button class="toolbtn" data-add="NOT">NOT</button><button class="toolbtn" data-add="NAND">NAND</button><button class="toolbtn" data-add="NOR">NOR</button><button class="toolbtn" data-add="XNOR">XNOR</button><button class="toolbtn" data-add="DFF">D flip-flop</button><button class="toolbtn" data-add="LATCH">D latch</button><button class="toolbtn" data-add="OUTPUT">＋ Output</button><button class="toolbtn" id="editorUndo" disabled>Undo</button><button class="toolbtn" id="editorRedo" disabled>Redo</button><button class="toolbtn" id="editorDelete">Delete selected</button><button class="toolbtn" id="editorReset">Reset example</button><button class="toolbtn" id="exportVerilog">Export Verilog</button><button class="toolbtn" id="importVerilog">Import File</button><input id="verilogFile" type="file" accept=".v,.sv,.txt,text/plain" hidden></div>
 <div class="editor-toolbar" style="margin-top:10px"><label class="status-chip" style="display:flex;align-items:center;gap:8px">ISCAS’85 / ISCAS’89 benchmark<select id="benchmarkSelect" style="max-width:220px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"><option value="">Choose a circuit…</option><option value="c17">c17 · 6 gates</option><option value="c432">c432 · 171 gates</option><option value="c499">c499 · 174 gates</option><option value="c880">c880 · 323 gates</option><option value="c1355">c1355 · 518 gates</option><option value="c1908">c1908 · 479 gates · up to 8 inputs</option><option value="c2670">c2670 · 699 gates</option><option value="c3540">c3540 · 1,043 gates</option><option value="c5315">c5315 · 1,586 gates</option><option value="c6288">c6288 · 2,353 gates</option><option value="c7552">c7552 · 2,331 gates</option><optgroup label="ISCAS’89 · sequential"><option value="s27">s27 · 3 DFF · 8 gates</option><option value="s298">s298</option><option value="s344">s344</option><option value="s349">s349</option><option value="s382">s382</option><option value="s386">s386</option><option value="s400">s400</option><option value="s420">s420</option><option value="s444">s444</option><option value="s510">s510</option><option value="s526">s526</option><option value="s641">s641</option><option value="s713">s713</option><option value="s820">s820</option><option value="s832">s832</option><option value="s838">s838</option><option value="s953">s953</option><option value="s1196">s1196</option><option value="s1238">s1238</option><option value="s1423">s1423</option><option value="s1488">s1488</option><option value="s5378">s5378</option><option value="s9234">s9234</option><option value="s13207">s13207</option><option value="s15850">s15850</option><option value="s35932">s35932</option><option value="s38417">s38417</option><option value="s38584">s38584</option></optgroup></select></label><button class="toolbtn primary" id="loadBenchmark">Load benchmark</button><span class="editor-hint" style="margin:0">Loads an ISCAS’85 or ISCAS’89 Verilog benchmark from this repository.</span></div>
 <div class="editor-status" id="benchmarkStats" aria-live="polite" style="margin-top:8px"><span class="status-chip" id="benchmarkGateCount">Gates: —</span><span class="status-chip" id="benchmarkDffCount">DFF: —</span><span class="status-chip" id="benchmarkLatchCount">Latches: —</span></div>
 <div class="editor-toolbar" style="margin-top:10px"><span class="status-chip">Selected block ports:</span><button class="toolbtn" id="inputMinus">− Input</button><button class="toolbtn" id="inputPlus">＋ Input</button><button class="toolbtn" id="outputMinus">− Output</button><button class="toolbtn" id="outputPlus">＋ Output</button><span class="editor-hint" style="margin:0">Adjust ports of the selected block (logic gates support 2–4 inputs).</span></div>
@@ -620,7 +620,7 @@ document.addEventListener('click',e=>{if(e.target?.id!=='editorDelete')return;co
  for(const n of ns){if(!gates[n.type]||n.cellType)continue;const outs=Array.from({length:n.outputs},(_,i)=>signal(n,i)),ins=Array.from({length:n.inputs},(_,i)=>{const src=sourceAt(n,i);return src?.node?signal(src.node,src.pin):"1'b0"});lines.push('  '+gates[n.type]+' '+n.name+' ('+[...outs,...ins].join(', ')+');')}
  for(const n of ns){const moduleName=n.cellType||((n.type==='MODULE')?n.moduleType:null);if(!moduleName)continue;const connections=[];for(let i=0;i<n.inputs;i++){const src=sourceAt(n,i);const pinName=n.inputNames?.[i];if(pinName&&valid(pinName))connections.push('.'+pinName+'('+(src?.node?signal(src.node,src.pin):"1'b0")+')')}for(let i=0;i<n.outputs;i++){const pinName=n.outputNames?.[i];if(pinName&&valid(pinName))connections.push('.'+pinName+'('+signal(n,i)+')')}lines.push('  '+moduleName+' '+n.name+' ('+connections.join(', ')+');')}
  for(const n of ns){if(n.cellType||(n.type!=='DFF'&&n.type!=='LATCH'))continue;const src=i=>{const v=sourceAt(n,i);return v?.node?signal(v.node,v.pin):"1'b0"};lines.push('  reg '+signal(n)+'_reg;');if(n.type==='DFF')lines.push('  initial '+signal(n)+'_reg = 1\'b0;');lines.push(n.type==='DFF'?'  always @(posedge '+src(1)+') '+signal(n)+'_reg <= '+src(0)+';':'  always @* if ('+src(1)+') '+signal(n)+'_reg = '+src(0)+';','  assign '+signal(n)+' = '+signal(n)+'_reg;')}
- lines.push('endmodule','');area.value=lines.join('\n');msg.textContent='Structural Verilog generated in the text area.';
+ lines.push('endmodule','');area.value=lines.join('\n');area.dispatchEvent(new Event('input',{bubbles:true}));msg.textContent='Structural Verilog generated in the text area.';
  const blob=new Blob([area.value],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='fpga_playground.v';a.click();URL.revokeObjectURL(url)
  }
  function importVerilog(source){const clean=source.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');const mod=clean.match(/\bmodule\s+\w+\s*\(([\s\S]*?)\)\s*;([\s\S]*?)\bendmodule\b/i);if(!mod)throw Error('Could not find a Verilog module. Paste structural Verilog exported by this editor.');const body=mod[2],decls=[...body.matchAll(/\b(input|output)(?:\s+wire)?\s+([A-Za-z_$][\w$]*)\s*;/gi)],inputs=decls.filter(m=>m[1].toLowerCase()==='input').map(m=>m[2]),outputs=decls.filter(m=>m[1].toLowerCase()==='output').map(m=>m[2]);if(!decls.length)throw Error('Expected input/output declarations using one signal per statement.');const parsed=[];for(const m of body.matchAll(/\b(and|or|xor|nand|nor|xnor|not|buf)\s+([A-Za-z_$][\w$]*)\s*\(([^;]+)\)\s*;/gi)){const kind=m[1].toLowerCase(),type={and:'AND',or:'OR',xor:'XOR',nand:'NAND',nor:'NOR',xnor:'XNOR',not:'NOT',buf:'BUF'}[kind],pins=m[3].split(',').map(s=>s.trim()),outputList=kind==='not'||kind==='buf',outs=outputList?pins.slice(0,-1):pins.slice(0,1),ins=outputList?pins.slice(-1):pins.slice(1);if(pins.length<2||!outs.length||!ins.length||pins.some(s=>!valid(s)))throw Error('Invalid gate instance '+m[2]+'.');parsed.push({type,name:m[2],outs,ins})}const assigns=[...body.matchAll(/\bassign\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;/gi)].map(m=>({to:m[1],from:m[2]}));if(!parsed.length&&!assigns.length)throw Error('No supported gates or simple assign statements found.');const all=[...inputs,...outputs,...parsed.map(g=>g.name),...parsed.flatMap(g=>g.outs),...parsed.flatMap(g=>g.ins)];if(all.some(x=>!valid(x)))throw Error('Invalid Verilog identifier.');const map=new Map(),next=[];let id=1;const gateRowHeight=Math.max(110,...parsed.map(g=>Math.max(76,50+g.ins.length*22)+20));for(const name of inputs){const n={id:id++,type:'INPUT',name,x:40,y:35+next.length*90,value:0,inputs:0,outputs:1,inputNames:[],outputNames:[name],prevClock:0,state:0};next.push(n);map.set(name,n)}for(const g of parsed){const n={id:id++,type:g.type,name:g.name,x:280+((next.length-inputs.length)%2)*200,y:25+Math.floor((next.length-inputs.length)/2)*gateRowHeight,value:0,inputs:g.ins.length,outputs:g.outs.length,inputNames:g.ins.map((_,i)=>String.fromCharCode(65+i)),outputNames:g.outs,outputPinLabels:g.outs.map((_,i)=>g.outs.length===1?'Y':'Y'+(i+1)),prevClock:0,state:0};if((n.type==='NOT'||n.type==='BUF')&&n.inputs!==1)throw Error(n.type+' gate '+n.name+' must have one input.');if(n.inputs>8)throw Error('Gate '+n.name+' has more than eight inputs.');next.push(n);g.outs.forEach((out,index)=>map.set(out,{node:n,pin:index}))}for(const name of outputs){const n={id:id++,type:'OUTPUT',name,x:650,y:35+outputs.indexOf(name)*90,value:0,inputs:1,outputs:0,inputNames:['A'],outputNames:[],prevClock:0,state:0};next.push(n);map.set(name,n)}const nw=[];for(const g of parsed){const n=next.find(x=>x.name===g.name);g.ins.forEach((name,i)=>{const source=map.get(name),src=source?.node||source;if(src)nw.push({id:id++,from:src.id,fromPin:source?.pin||0,to:n.id,toPin:i})})}for(const a of assigns){const target=next.find(n=>n.type==='OUTPUT'&&n.name===a.to),src=map.get(a.from);if(target&&src)nw.push({id:id++,from:src.id,to:target.id,toPin:0})}window.fpgaLoadCircuit(next,nw,id);area.value=source;msg.textContent=`Imported ${next.length} blocks and ${nw.length} wires from Verilog.`}
@@ -677,7 +677,7 @@ window.fpgaLegacyImport=importVerilog;
    }
    if(!source||!/^\s*module\s+/m.test(source))throw Error('Benchmark '+name+' is empty or is not a Verilog module.');
    if(request!==activeRequest)return;
-   area.value=source;
+   area.value=source;area.dispatchEvent(new Event('input',{bubbles:true}));
    window.fpgaLastImportedSource='';
    if(name.startsWith('s')&&window.fpgaVerilogProject?.importProject){
     window.fpgaVerilogProject.importProject(source,name);
@@ -876,4 +876,223 @@ window.fpgaLegacyImport=importVerilog;
  setZoom(1);
 })();
 </script>
+
+<script>
+(() => {
+  'use strict';
+  const area = document.getElementById('verilogText');
+  const importButton = document.getElementById('importVerilog');
+  const libraryButton = document.getElementById('importLibraries');
+  const libraryInput = document.getElementById('libraryFiles');
+  const message = document.getElementById('editorMessage');
+  if (!area || !importButton || !libraryButton || !libraryInput) return;
+
+  const editorWrap = document.createElement('div');
+  editorWrap.id = 'verilogEditorWrap';
+  editorWrap.style.cssText = 'display:flex;align-items:stretch;width:100%;margin-top:12px;border:1px solid var(--border);border-radius:10px;background:var(--surface2);overflow:hidden';
+  const gutter = document.createElement('pre');
+  gutter.id = 'verilogLineNumbers';
+  gutter.setAttribute('aria-hidden', 'true');
+  gutter.style.cssText = 'flex:0 0 44px;min-width:44px;max-height:420px;overflow:hidden;margin:0;padding:12px 8px;text-align:right;border-right:1px solid var(--border);background:var(--surface);color:var(--muted);font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;user-select:none';
+  area.parentNode.insertBefore(editorWrap, area);
+  editorWrap.append(gutter, area);
+  area.style.marginTop = '0';
+  area.style.border = '0';
+  area.style.borderRadius = '0';
+  area.style.flex = '1 1 auto';
+  area.style.minWidth = '0';
+  area.style.width = 'calc(100% - 44px)';
+  area.style.maxHeight = '420px';
+  area.style.resize = 'vertical';
+  function updateLineNumbers() {
+    const count = Math.max(1, area.value.split('\n').length);
+    gutter.textContent = Array.from({length: count}, (_, index) => String(index + 1)).join('\n');
+    gutter.scrollTop = area.scrollTop;
+  }
+  area.addEventListener('input', updateLineNumbers);
+  area.addEventListener('scroll', () => { gutter.scrollTop = area.scrollTop; });
+  updateLineNumbers();
+  window.fpgaUpdateVerilogLineNumbers = updateLineNumbers;
+
+  const style = document.createElement('style');
+  style.textContent = '#projectFileDialog{width:min(760px,calc(100vw - 24px));max-height:85vh;overflow:hidden;border:1px solid var(--border);border-radius:14px;padding:0;background:var(--surface);color:var(--text);box-shadow:0 20px 60px #0005}#projectFileDialog::backdrop{background:#10182899}.project-file-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border)}.project-file-body{padding:14px 18px;display:grid;gap:12px}.project-file-list{display:grid;gap:6px;max-height:48vh;overflow:auto}.project-file-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);text-align:left;overflow-wrap:anywhere}.project-file-item small{display:block;color:var(--muted);font-size:11px}.project-file-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.project-file-search{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text)}';
+  document.head.append(style);
+
+  const dialog = document.createElement('dialog');
+  dialog.id = 'projectFileDialog';
+  dialog.innerHTML = '<div class="project-file-head"><strong id="projectFileTitle">Project files</strong><button class="toolbtn" id="projectFileClose" type="button">×</button></div><div class="project-file-body"><input class="project-file-search" id="projectFileSearch" type="search" placeholder="Filter files by name or folder…"><div id="projectFileCount" class="editor-hint" style="margin:0">Loading file list…</div><div id="projectFileList" class="project-file-list"></div><div class="project-file-footer"><span id="projectFileStatus" class="editor-hint" style="margin:0">Paths are relative to the project root.</span><div style="display:flex;gap:8px"><button class="toolbtn" id="projectFileCancel" type="button">Cancel</button><button class="toolbtn primary" id="projectFileLoad" type="button" disabled>Load selected</button></div></div></div>';
+  document.body.append(dialog);
+
+  const script = Array.from(document.scripts).find(item => item.src && item.src.includes('hierarchical-project.js'));
+  const projectRoot = script ? new URL('../', script.src) : new URL('./', document.baseURI);
+  let manifestPromise = null;
+  let mode = 'benchmarks';
+  const selectedLibraries = new Set();
+  const list = document.getElementById('projectFileList');
+  const search = document.getElementById('projectFileSearch');
+  const count = document.getElementById('projectFileCount');
+  const status = document.getElementById('projectFileStatus');
+  const loadButton = document.getElementById('projectFileLoad');
+
+  async function getManifest() {
+    if (!manifestPromise) {
+      manifestPromise = fetch(new URL('project-files.json', projectRoot), {cache: 'no-cache'})
+        .then(response => {
+          if (!response.ok) throw new Error('Could not load project-files.json (HTTP ' + response.status + ').');
+          return response.json();
+        });
+    }
+    return manifestPromise;
+  }
+
+  function renderFiles(paths) {
+    const query = search.value.trim().toLowerCase();
+    const visible = paths.filter(path => path.toLowerCase().includes(query));
+    list.replaceChildren();
+    for (const path of visible) {
+      if (mode === 'libraries') {
+        const label = document.createElement('label');
+        label.className = 'project-file-item';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = selectedLibraries.has(path);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedLibraries.add(path);
+          else selectedLibraries.delete(path);
+          loadButton.disabled = selectedLibraries.size === 0;
+          loadButton.textContent = selectedLibraries.size ? 'Load selected (' + selectedLibraries.size + ')' : 'Load selected';
+        });
+        const text = document.createElement('span');
+        text.textContent = path;
+        label.append(checkbox, text);
+        list.append(label);
+      } else {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'project-file-item';
+        const text = document.createElement('span');
+        text.textContent = path.split('/').pop();
+        const folder = document.createElement('small');
+        folder.textContent = path;
+        text.append(folder);
+        button.append(text);
+        button.addEventListener('click', () => loadBenchmarkFile(path));
+        list.append(button);
+      }
+    }
+    count.textContent = visible.length + ' file(s) shown · ' + paths.length + ' in ' + mode + '/';
+    if (!visible.length) {
+      const empty = document.createElement('p');
+      empty.className = 'editor-hint';
+      empty.textContent = 'No files match this filter.';
+      list.append(empty);
+    }
+    if (mode === 'libraries') {
+      loadButton.hidden = false;
+      loadButton.disabled = selectedLibraries.size === 0;
+      loadButton.textContent = selectedLibraries.size ? 'Load selected (' + selectedLibraries.size + ')' : 'Load selected';
+    } else {
+      loadButton.hidden = true;
+    }
+  }
+
+  async function openBrowser(nextMode) {
+    mode = nextMode;
+    selectedLibraries.clear();
+    document.getElementById('projectFileTitle').textContent = mode === 'libraries' ? 'Load Library · libraries/' : 'Import File · benchmarks/';
+    search.value = '';
+    list.replaceChildren();
+    count.textContent = 'Loading file list…';
+    status.textContent = 'Paths are relative to the project root.';
+    loadButton.hidden = mode !== 'libraries';
+    loadButton.disabled = true;
+    if (!dialog.open) dialog.showModal();
+    try {
+      const manifest = await getManifest();
+      const paths = mode === 'libraries' ? manifest.libraries : manifest.benchmarks;
+      if (!Array.isArray(paths)) throw new Error('The project file manifest has no ' + mode + ' list.');
+      dialog.dataset.paths = JSON.stringify(paths);
+      renderFiles(paths);
+    } catch (error) {
+      count.textContent = 'Could not list project files.';
+      status.textContent = error.message;
+    }
+  }
+
+  async function fetchProjectFile(path) {
+    const response = await fetch(new URL(path, projectRoot), {cache: 'no-cache'});
+    if (!response.ok) throw new Error('Could not load ' + path + ' (HTTP ' + response.status + ').');
+    return response;
+  }
+
+  async function loadBenchmarkFile(path) {
+    status.textContent = 'Loading ' + path + '…';
+    try {
+      const response = await fetchProjectFile(path);
+      const source = await response.text();
+      if (!/^\s*module\s+/m.test(source)) throw new Error('The selected file does not contain a Verilog module.');
+      area.value = source;
+      area.dispatchEvent(new Event('input', {bubbles: true}));
+      window.fpgaLastImportedSource = source;
+      dialog.close();
+      if (path.startsWith('benchmarks/iscas89/') && window.fpgaVerilogProject?.importProject) {
+        const top = source.match(/\bmodule\s+([A-Za-z_$][A-Za-z0-9_$]*)/);
+        window.fpgaVerilogProject.importProject(source, top ? top[1] : undefined);
+        message.textContent = 'Loaded and imported ' + path + '.';
+      } else if (path.startsWith('benchmarks/iscas85/')) {
+        importButton.click();
+      } else {
+        message.textContent = 'Loaded ' + path + ' into the Verilog editor. The graphical importer was not run for this RTL source.';
+      }
+      updateLineNumbers();
+    } catch (error) {
+      status.textContent = error.message;
+      message.textContent = 'File import failed: ' + error.message;
+    }
+  }
+
+  async function loadSelectedLibraries() {
+    const paths = [...selectedLibraries];
+    if (!paths.length) return;
+    loadButton.disabled = true;
+    status.textContent = 'Loading ' + paths.length + ' library file(s)…';
+    try {
+      const transfer = new DataTransfer();
+      for (const path of paths) {
+        const response = await fetchProjectFile(path);
+        const blob = await response.blob();
+        transfer.items.add(new File([blob], path.split('/').pop(), {type: 'application/octet-stream'}));
+      }
+      libraryInput.files = transfer.files;
+      libraryInput.dispatchEvent(new Event('change', {bubbles: true}));
+      dialog.close();
+      message.textContent = 'Loading selected library file(s)…';
+    } catch (error) {
+      status.textContent = error.message;
+      loadButton.disabled = false;
+    }
+  }
+
+  importButton.addEventListener('click', event => {
+    if (!event.isTrusted) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openBrowser('benchmarks');
+  }, true);
+  libraryButton.addEventListener('click', event => {
+    if (!event.isTrusted) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openBrowser('libraries');
+  }, true);
+  search.addEventListener('input', () => {
+    try { renderFiles(JSON.parse(dialog.dataset.paths || '[]')); }
+    catch (_) {}
+  });
+  loadButton.addEventListener('click', loadSelectedLibraries);
+  document.getElementById('projectFileClose').addEventListener('click', () => dialog.close());
+  document.getElementById('projectFileCancel').addEventListener('click', () => dialog.close());
+})();
+</script>
+
 </body></html>
