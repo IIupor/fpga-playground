@@ -417,12 +417,25 @@
     }
   }
 
+  function acceptAuthSession(value) {
+    if (!authPopup || typeof value !== 'string' || !value) return;
+    if (session() === value) { authPopup = null; return; }
+    sessionStorage.setItem(sessionKey, value);
+    authPopup = null;
+    checkSession();
+  }
+
   window.addEventListener('message', event => {
     if (event.origin !== location.origin || event.source !== authPopup ||
         event.data?.type !== 'fpga-sta-auth' || typeof event.data.session !== 'string') return;
-    sessionStorage.setItem(sessionKey, event.data.session);
-    authPopup = null;
-    checkSession();
+    acceptAuthSession(event.data.session);
+  });
+
+  const authChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel('fpga-sta-auth')
+    : null;
+  authChannel?.addEventListener('message', event => {
+    if (event.data?.type === 'fpga-sta-auth') acceptAuthSession(event.data.session);
   });
 
   async function pollJob(jobId) {
@@ -516,8 +529,13 @@
     history.replaceState(null, '', location.pathname + location.search);
     if (window.opener && window.opener !== window) {
       window.opener.postMessage({type: 'fpga-sta-auth', session: returnedSession}, location.origin);
-      window.close();
     }
+    if (typeof BroadcastChannel === 'function') {
+      const channel = new BroadcastChannel('fpga-sta-auth');
+      channel.postMessage({type: 'fpga-sta-auth', session: returnedSession});
+      channel.close();
+    }
+    window.close();
   }
   checkSession();
 })();
