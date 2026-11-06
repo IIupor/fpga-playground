@@ -566,7 +566,7 @@ function setupUI() {
   const toolbar=$('importVerilog')?.parentElement;
   if(!toolbar)return;
   let button=$('importLibraries');
-  if(!button){button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load libraries';toolbar.appendChild(button);}
+  if(!button){button=document.createElement('button');button.id='importLibraries';button.className='toolbtn';button.textContent='Load Library';toolbar.appendChild(button);}
   let fileInput=$('libraryFiles');
   if(!fileInput){fileInput=document.createElement('input');fileInput.id='libraryFiles';fileInput.type='file';fileInput.multiple=true;fileInput.accept='.v,.sv,.lib,.lib.gz';fileInput.hidden=true;toolbar.appendChild(fileInput);}
   if(!$('hierarchyStatus')){
@@ -707,13 +707,13 @@ function setupUI() {
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
     const selectedTop=project.modules.get(topName||project.tops[0].name);
     console.log('HIER_IMPORT',JSON.stringify({libraryFiles:state.libraries.map(f=>f.name),sourceHeader:source.slice(0,240),top:selectedTop?.name,topHeader:selectedTop?.header,ports:selectedTop?.ports?.map(p=>({name:p.name,direction:p.direction}))}));
-    area.value=source;
+    area.value=source;area.dispatchEvent(new Event('input',{bubbles:true}));
     installProject(project,topName||project.tops[0].name);
     console.log('HIER_IMPORT_DONE',JSON.stringify({current:state.current?.module?.name,ports:state.current?.module?.ports?.map(p=>({name:p.name,direction:p.direction}))}));
     return true;
   }
   document.addEventListener('click',event=>{
-    if(event.target!==importButton||!area.value.trim())return;
+    if(event.target!==importButton||event.isTrusted||!area.value.trim())return;
     try{
       if(!hasHierarchicalInstances(area.value)&&!hasLoadedLibraryInstances(area.value)&&!hasSupportedPrimitiveInstances(area.value))return;
       event.preventDefault();event.stopImmediatePropagation();

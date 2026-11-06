@@ -5,6 +5,41 @@ const zlib = require('node:zlib');
 
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
+
+test('File > Import File browses root-relative benchmarks and imports the selected circuit', async ({ page }) => {
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importBenchmarks').click();
+  await expect(page.locator('#projectFileDialog')).toBeVisible();
+  await expect(page.locator('#projectFileTitle')).toContainText('benchmarks/');
+  await page.locator('#projectFileSearch').fill('s27.v');
+  const file = page.locator('#projectFileList button').filter({hasText: 's27.v'});
+  await expect(file).toHaveCount(1);
+  await file.click();
+  await expect(page.locator('#editorMessage')).toContainText('Loaded and imported benchmarks/iscas89/s27.v');
+  await expect(page.locator('#verilogText')).toHaveValue(/module s27/);
+  await expect(page.locator('#verilogLineNumbers')).toContainText('1');
+});
+
+test('Load Library opens the root-relative libraries file list', async ({ page }) => {
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
+  await expect(page.locator('#projectFileDialog')).toBeVisible();
+  await expect(page.locator('#projectFileTitle')).toContainText('libraries/');
+  await expect(page.locator('#projectFileList')).toContainText('libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz');
+  await page.locator('#projectFileCancel').click();
+});
+
+
+test('Load Library imports the selected repository Liberty file', async ({ page }) => {
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
+  await expect(page.locator('#projectFileDialog')).toBeVisible();
+  await page.locator('#projectFileList input[type="checkbox"]').check();
+  await page.locator('#projectFileLoad').click();
+  await expect(page.locator('#libraryStatus')).toContainText('Liberty cells', {timeout: 30000});
+  await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+});
+
 test('imports a multi-module Verilog project and navigates down and up the hierarchy', async ({ page }) => {
   const source = ['module leaf(input wire [1:0] a, output wire y);','  and g1 (y, a[1], a[0]);','endmodule','module middle(input wire [1:0] a, output wire y);','  leaf u_leaf (.a(a), .y(y));','endmodule','module top(input wire [1:0] a, output wire y);','  middle u_middle (.a(a), .y(y));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(source);
@@ -38,7 +73,7 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
   const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles([
     { name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) },
     { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },
@@ -112,11 +147,11 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
   const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : \"input\"; } } }';
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'duplicate.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1');
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
@@ -135,7 +170,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     ...libraryFiles.map(name => ({ name, mimeType: 'text/plain', buffer: fs.readFileSync(path.join(verilogDir, name)) }))
   ];
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
   await expect.poll(async () => {
     const status = await page.locator('#libraryStatus').textContent();
@@ -202,4 +237,30 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   await expect(page.locator('#hierarchyStatus')).toContainText('hierarchy_test_top / ' + report.childName + ' / ' + report.childType);
   await page.keyboard.press('Control+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('hierarchy_test_top');
+});
+
+
+test('Import File imports the SKY130 mapped APB SPI netlist after loading Liberty', async ({ page }) => {
+  test.setTimeout(120000);
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#projectFileList input[type="checkbox"]').check();
+  await page.locator('#projectFileLoad').click();
+  await expect(page.locator('#libraryStatus')).toContainText('Liberty cells', {timeout: 30000});
+
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importBenchmarks').click();
+  await page.locator('#projectFileSearch').fill('apb_spi.v');
+  const file = page.locator('#projectFileList button').filter({hasText: 'apb_spi.v'});
+  await expect(file).toHaveCount(1);
+  await file.click();
+
+  await expect(page.locator('#editorMessage')).toContainText(
+    'Loaded and imported library-mapped netlist benchmarks/sky130/verilog/apb_spi.v',
+    {timeout: 60000}
+  );
+  await expect(page.locator('#verilogText')).toHaveValue(/module apb_spi/);
+  const imported = await page.evaluate(() => ({cells: window.fpgaNodes.filter(node => node.cellType).length, unresolved: window.fpgaNodes.filter(node => node.isUnresolved).length}));
+  expect(imported.cells).toBeGreaterThan(50);
+  expect(imported.unresolved).toBe(0);
 });

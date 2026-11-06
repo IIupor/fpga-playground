@@ -93,6 +93,7 @@
       <div class="sta-actions">
         <button class="toolbtn primary" id="staRun" type="button">Run STA</button>
         <button class="toolbtn" id="staClear" type="button">Clear results</button>
+        <button class="toolbtn" id="staOpenYosysVerilog" type="button" hidden>Open Yosys Verilog in editor</button>
       </div>
       <div class="sta-status" id="staStatus" aria-live="polite">Ready. Pre-layout STA uses Sky130 HD TT cell timing; interconnect parasitics are not extracted yet.</div>
       <div class="sta-metrics" id="staMetrics"></div>
@@ -106,6 +107,7 @@
   const sessionKey = 'fpgaStaSession';
   let pollTimer = null;
   let activeResult = null;
+  let authPopup = null;
 
   const setStatus = value => { $('staStatus').textContent = value; };
   const brokerUrl = () => brokerInput.value.trim().replace(/\/$/, '');
@@ -383,19 +385,60 @@
       list.append(button);
     });
     $('staReport').textContent = result.report || '';
-    setStatus('STA completed. Select a critical path to highlight its mapped nets and blocks in the schematic.');
+    $('staOpenYosysVerilog').hidden = typeof result.mapped_verilog !== 'string' || !result.mapped_verilog;
+    const mode = result.flow_mode || summary.flow_mode;
+    const netlistNote = result.mapped_verilog_unavailable_reason
+      ? ' ' + result.mapped_verilog_unavailable_reason
+      : '';
+    setStatus((mode === 'library_mapped'
+      ? 'STA completed using the existing library-mapped Verilog. Yosys synthesis was skipped.'
+      : 'STA completed after Yosys synthesis. Select a critical path to highlight its mapped nets and blocks in the schematic.') + netlistNote);
   }
 
   async function checkSession() {
-    if (!session()) { $('staAuthStatus').textContent = 'Not signed in. Enter your free broker URL, then sign in with GitHub.'; return; }
+    const loginButton = $('staLogin');
+    if (!session()) {
+      loginButton.textContent = 'Sign in with GitHub';
+      loginButton.disabled = false;
+      $('staAuthStatus').textContent = 'Not signed in. Enter your free broker URL, then sign in with GitHub.';
+      return;
+    }
     try {
       const status = await api('/api/session');
+      if (!status.authenticated || !status.login) throw new Error('GitHub session is no longer valid. Please sign in again.');
       $('staAuthStatus').textContent = 'Signed in as ' + status.login + '. The GitHub token remains on the broker.';
+      loginButton.textContent = 'Signed in as ' + status.login;
+      loginButton.disabled = true;
     } catch (error) {
       sessionStorage.removeItem(sessionKey);
+      loginButton.textContent = 'Sign in with GitHub';
+      loginButton.disabled = false;
       $('staAuthStatus').textContent = error.message;
     }
   }
+
+  function acceptAuthSession(value) {
+    if (!authPopup || typeof value !== 'string' || !value) return;
+    if (session() === value) { authPopup = null; return; }
+    sessionStorage.setItem(sessionKey, value);
+    const popup = authPopup;
+    authPopup = null;
+    try { if (popup && !popup.closed) popup.close(); } catch (_) {}
+    checkSession();
+  }
+
+  window.addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== authPopup ||
+        event.data?.type !== 'fpga-sta-auth' || typeof event.data.session !== 'string') return;
+    acceptAuthSession(event.data.session);
+  });
+
+  const authChannel = typeof BroadcastChannel === 'function'
+    ? new BroadcastChannel('fpga-sta-auth')
+    : null;
+  authChannel?.addEventListener('message', event => {
+    if (event.data?.type === 'fpga-sta-auth') acceptAuthSession(event.data.session);
+  });
 
   async function pollJob(jobId) {
     const status = await api('/api/jobs/' + jobId);
@@ -432,6 +475,7 @@
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null; activeResult = null;
     $('staMetrics').replaceChildren(); $('staPaths').replaceChildren(); $('staReport').textContent = '';
+    $('staOpenYosysVerilog').hidden = true;
     clearPathHighlight(); setStatus('Results cleared.');
   }
 
@@ -446,12 +490,34 @@
     try {
       localStorage.setItem('fpgaStaBrokerUrl', brokerUrl());
       if (!brokerUrl()) throw new Error('Enter the broker URL first.');
-      location.href = brokerUrl() + '/auth/login';
+      if (authPopup && !authPopup.closed) authPopup.focus();
+      else authPopup = window.open(
+        brokerUrl() + '/auth/login',
+        'fpgaStaGithubAuth',
+        'popup,width=620,height=760,resizable=yes,scrollbars=yes'
+      );
+      if (!authPopup) {
+        setStatus('The browser blocked the GitHub sign-in popup. Allow popups for this site and try again.');
+      } else {
+        setStatus('Complete GitHub sign-in in the popup. This STA window and the current schematic will remain open.');
+      }
     } catch (error) { setStatus(error.message); }
   });
   $('staLogout').addEventListener('click', () => {
     sessionStorage.removeItem(sessionKey);
     $('staAuthStatus').textContent = 'Signed out.';
+    $('staLogin').textContent = 'Sign in with GitHub';
+    $('staLogin').disabled = false;
+  });
+  $('staOpenYosysVerilog').addEventListener('click', () => {
+    if (typeof activeResult?.mapped_verilog !== 'string') return;
+    const area = $('verilogText');
+    if (!area) { setStatus('The Verilog editor is not available.'); return; }
+    area.value = activeResult.mapped_verilog;
+    area.dispatchEvent(new Event('input', {bubbles: true}));
+    window.fpgaLastImportedSource = '';
+    $('editorMessage').textContent = 'Loaded the Yosys technology-mapped Verilog into the text editor. The schematic was not changed.';
+    setStatus('Yosys Verilog is now open in the editor. The STA dialog remains open.');
   });
   $('staRun').addEventListener('click', runSta);
   $('staClear').addEventListener('click', clearResults);
@@ -463,6 +529,15 @@
   if (returnedSession) {
     sessionStorage.setItem(sessionKey, returnedSession);
     history.replaceState(null, '', location.pathname + location.search);
+    if (window.opener && window.opener !== window) {
+      window.opener.postMessage({type: 'fpga-sta-auth', session: returnedSession}, location.origin);
+    }
+    if (typeof BroadcastChannel === 'function') {
+      const channel = new BroadcastChannel('fpga-sta-auth');
+      channel.postMessage({type: 'fpga-sta-auth', session: returnedSession});
+      channel.close();
+    }
+    window.close();
   }
   checkSession();
 })();

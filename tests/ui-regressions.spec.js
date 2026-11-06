@@ -135,7 +135,7 @@ test('Library browser lists and places functional Liberty cells', async ({ page 
   ].join('\n');
   const chooserPromise = page.waitForEvent('filechooser');
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   const chooser = await chooserPromise;
   await chooser.setFiles({ name: 'test.lib.gz', mimeType: 'application/gzip', buffer: gzipSync(Buffer.from(liberty)) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
@@ -197,7 +197,7 @@ test('Liberty input inversion is marked with a bubble distinct from square pins'
   ].join('\n');
   const chooserPromise = page.waitForEvent('filechooser');
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   const chooser = await chooserPromise;
   await chooser.setFiles({ name: 'inverted_input.lib', mimeType: 'text/plain', buffer: Buffer.from(liberty) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
