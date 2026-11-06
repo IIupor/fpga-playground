@@ -133,9 +133,13 @@ jobs:
           grep -q '"status": "completed"' build/sta/latch/result.json
           grep -q '"flow_mode": "library_mapped"' build/sta/latch/result.json
           grep -q 'Yosys synth, dfflibmap and ABC were skipped' build/sta/yosys.log
-          cmp build/sta/latch-request.json build/sta/design.v >/dev/null 2>&1 || \
-            cmp <(python3 -c 'import json; print(json.load(open("build/sta/latch-request.json"))["verilog"], end="")') \
-                build/sta/design.v
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = json.loads(Path("build/sta/latch-request.json").read_text())
+          assert Path("build/sta/design.v").read_text() == request["verilog"]
+          print("OpenSTA received the original library-mapped Verilog unchanged.")
+          PY
 
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
         run: |
