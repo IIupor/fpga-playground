@@ -145,7 +145,8 @@ def classify_netlist(design, top, library_cells):
     Generic Yosys cells/processes indicate RTL. Unknown leaf types are rejected
     rather than accidentally passed through synthesis as if they were RTL.
     """
-    modules = design.get("modules", {})
+    modules = {name.lstrip("\\"): module for name, module in design.get("modules", {}).items()}
+    top = top.lstrip("\\")
     if top not in modules:
         raise ValueError(f"Top module {top!r} was not found in the Verilog design.")
 
@@ -355,7 +356,7 @@ def main():
     }
     if flow_mode == "rtl_synthesized":
         mapped_source = netlist.read_text(encoding="utf-8")
-        if len(mapped_source.encode("utf-8")) <= 900_000:
+        if len(mapped_source.encode("utf-8")) <= 600_000:
             result["mapped_verilog"] = mapped_source
         else:
             result["mapped_verilog_unavailable_reason"] = (
