@@ -15,11 +15,14 @@ class NetlistClassificationTests(unittest.TestCase):
         design = {
             "modules": {
                 "top": {"cells": {"u0": {"type": "wrapper"}}},
-                "wrapper": {"cells": {"u1": {"type": "sky130__and2_1"}}},
+                "wrapper": {"cells": {
+                    "u1": {"type": "sky130__and2_1"},
+                    "u2": {"type": "sky130__or2_1"},
+                }},
             }
         }
         self.assertEqual(
-            RUN_JOB.classify_netlist(design, "top", {"sky130__and2_1"}),
+            RUN_JOB.classify_netlist(design, "top", {"sky130__and2_1", "sky130__or2_1"}),
             "library_mapped",
         )
 
