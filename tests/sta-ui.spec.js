@@ -108,7 +108,7 @@ test('GitHub sign-in popup preserves the STA dialog and updates the account butt
   const popupPromise = page.waitForEvent('popup');
   await page.locator('#staLogin').click();
   const popup = await popupPromise;
-  await expect.poll(() => popup.isClosed()).toBe(true);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.locator('#staDialog')).toBeVisible();
   await expect(page.locator('#staAuthStatus')).toContainText('Signed in as vas.khvatov');
   await expect(page.locator('#staLogin')).toHaveText('Signed in as vas.khvatov');
