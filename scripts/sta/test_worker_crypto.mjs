@@ -166,6 +166,21 @@ const sessionEntry = [...kvStore.entries()].find(([key]) => key.startsWith("sess
 assert.ok(sessionEntry, "successful OAuth must create a broker session");
 const ownerSessionId = sessionEntry[0].slice("session:".length);
 const ownerSession = JSON.parse(sessionEntry[1]);
+const privateInputJobId = crypto.randomUUID();
+const privateInput = { verilog: "module private_top; endmodule", top: "private_top", sdc: "create_clock -name core_clk -period 1", sources: [] };
+kvStore.set("job:" + privateInputJobId, JSON.stringify({
+  id: privateInputJobId, ownerId: "39133075", input: privateInput
+}));
+const privateInputUrl = "https://broker.example/api/jobs/" + privateInputJobId + "/input";
+const ownerInputResponse = await worker.fetch(new Request(privateInputUrl, {
+  headers: { Authorization: "Bearer " + ownerSessionId }
+}), env);
+assert.equal(ownerInputResponse.status, 200, "the authenticated job owner can retrieve the original private STA input");
+assert.deepEqual((await ownerInputResponse.json()).request, privateInput);
+const nonOwnerInputResponse = await worker.fetch(new Request(privateInputUrl, {
+  headers: { Authorization: "Bearer non-owner-session" }
+}), env);
+assert.equal(nonOwnerInputResponse.status, 404, "other GitHub accounts must not retrieve a user's private STA input");
 kvStore.set("session:non-owner-session", JSON.stringify({
   login: "other-account",
   githubId: "99999999",
