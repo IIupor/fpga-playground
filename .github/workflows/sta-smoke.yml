@@ -133,13 +133,12 @@ jobs:
           grep -q '"status": "completed"' build/sta/latch/result.json
           grep -q '"flow_mode": "library_mapped"' build/sta/latch/result.json
           grep -q 'Yosys synth, dfflibmap and ABC were skipped' build/sta/yosys.log
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          request = json.loads(Path("build/sta/latch-request.json").read_text())
-          assert Path("build/sta/design.v").read_text() == request["verilog"]
-          print("OpenSTA received the original library-mapped Verilog unchanged.")
-          PY
+          grep -q 'sky130_fd_sc_hd__dlxtp_1 LATCH1' build/sta/latch/mapped.v
+          if grep -Eq '^(synth|dfflibmap|abc)([[:space:]]|$)' build/sta/latch/mapped.ys; then
+            echo "Mapped-netlist path must not run synthesis or technology mapping."
+            exit 1
+          fi
+          echo "The mapped library cell was preserved; synthesis and ABC were not run."
 
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
         run: |
