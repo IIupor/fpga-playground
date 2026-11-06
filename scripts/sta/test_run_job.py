@@ -40,19 +40,35 @@ class NetlistClassificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing_cell"):
             RUN_JOB.classify_netlist(design, "top", {"known_cell"})
 
-    def test_mixed_library_and_generic_cells_are_rejected(self):
+    def test_mixed_library_and_generic_cells_are_synthesized_together(self):
         design = {
             "modules": {
                 "top": {
                     "cells": {
-                        "u0": {"type": "known_cell"},
-                        "u1": {"type": "$_AND_"},
+                        "U_KEEP": {"type": "known_cell"},
+                        "rtl_gate": {"type": "$_AND_"},
                     }
                 }
             }
         }
-        with self.assertRaisesRegex(ValueError, "mixes library-mapped cells"):
-            RUN_JOB.classify_netlist(design, "top", {"known_cell"})
+        self.assertEqual(
+            RUN_JOB.classify_netlist(design, "top", {"known_cell"}),
+            "mixed",
+        )
+
+    def test_mixed_library_cells_and_rtl_processes_are_detected(self):
+        design = {
+            "modules": {
+                "top": {
+                    "processes": {"rtl_process": {}},
+                    "cells": {"U_KEEP": {"type": "known_cell"}},
+                }
+            }
+        }
+        self.assertEqual(
+            RUN_JOB.classify_netlist(design, "top", {"known_cell"}),
+            "mixed",
+        )
 
     def test_verilog_processes_are_rtl(self):
         design = {
