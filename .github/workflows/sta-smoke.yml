@@ -142,6 +142,45 @@ jobs:
           fi
           echo "The mapped library cell was preserved; synthesis and ABC were not run."
 
+      - name: Synthesize mixed RTL while preserving mapped library cells
+        env:
+          STA_DEBUG: "1"
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request = {
+              "verilog": Path("scripts/sta/mixed-smoke.v").read_text(),
+              "top": "mixed_top",
+              "sdc": Path("scripts/sta/mixed-smoke.sdc").read_text(),
+              "analysis": "both",
+              "signalMap": {},
+              "sources": []
+          }
+          Path("build/sta/mixed-request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/mixed-request.json \
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
+            --out build/sta/mixed
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          out = Path("build/sta/mixed")
+          result = json.loads((out / "result.json").read_text())
+          mapped = (out / "mapped.v").read_text()
+          script = (out / "synthesis.ys").read_text()
+          assert result["status"] == "completed", result
+          assert result["flow_mode"] == "mixed_synthesized", result["flow_mode"]
+          assert mapped.count("sky130_fd_sc_hd__and2_1 U_KEEP") == 1, mapped
+          assert mapped.count("sky130_fd_sc_hd__") > 1, "RTL logic was not technology-mapped."
+          assert "synth -top mixed_top -noabc" in script, script
+          assert "dfflibmap -liberty" in script and "abc -liberty" in script, script
+          assert "assign Y =" not in mapped and "assign Z =" not in mapped, mapped
+          assert "mapped_verilog" in result, "Mixed synthesized netlist was not returned."
+          print("Mixed flow preserved U_KEEP and mapped the surrounding RTL logic.")
+          print("Timing paths:", result["summary"]["setup_path_count"], "setup,", result["summary"]["hold_path_count"], "hold")
+          PY
+
       - name: Analyze the SKY130-mapped APB SPI netlist without resynthesis
         env:
           STA_DEBUG: "1"
