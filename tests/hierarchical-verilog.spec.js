@@ -238,3 +238,27 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
   await page.keyboard.press('Control+E');
   await expect(page.locator('#hierarchyStatus')).toContainText('hierarchy_test_top');
 });
+
+
+test('Import File imports the SKY130 mapped APB SPI netlist after loading Liberty', async ({ page }) => {
+  test.setTimeout(120000);
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#projectFileList input[type="checkbox"]').check();
+  await page.locator('#projectFileLoad').click();
+  await expect(page.locator('#libraryStatus')).toContainText('Liberty cells', {timeout: 30000});
+
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importBenchmarks').click();
+  await page.locator('#projectFileSearch').fill('apb_spi.v');
+  const file = page.locator('#projectFileList button').filter({hasText: 'apb_spi.v'});
+  await expect(file).toHaveCount(1);
+  await file.click();
+
+  await expect(page.locator('#editorMessage')).toContainText(
+    'Loaded and imported library-mapped netlist benchmarks/sky130/verilog/apb_spi.v',
+    {timeout: 60000}
+  );
+  await expect(page.locator('#verilogText')).toHaveValue(/module apb_spi/);
+  expect(await page.evaluate(() => window.fpgaNodes.length)).toBeGreaterThan(50);
+});
