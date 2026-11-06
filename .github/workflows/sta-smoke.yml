@@ -192,15 +192,15 @@ jobs:
           assert verilog.count(" U96 (") == 1, "The source APB SPI netlist must contain exactly one U96 instance."
           import re
           header = verilog.split(");", 1)[0]
-          inputs = re.findall(r"\\binput\\s+(?:wire\\s+)?(\\w+)", header)
-          outputs = re.findall(r"\\boutput\\s+(?:wire\\s+)?(\\w+)", header)
+          inputs = re.findall(r"\binput\s+(?:wire\s+)?(\w+)", header)
+          outputs = re.findall(r"\boutput\s+(?:wire\s+)?(\w+)", header)
           assert "clk" in inputs and inputs and outputs, "Could not extract APB SPI ports."
           input_ports = " ".join(port for port in inputs if port != "clk")
           output_ports = " ".join(outputs)
           request = {
               "verilog": verilog,
               "top": "apb_spi",
-              "sdc": "\\n".join([
+              "sdc": "\n".join([
                   "create_clock -name core_clk -period 10.0 [get_ports clk]",
                   f"set_input_delay -clock core_clk 1.0 [get_ports {{{input_ports}}}]",
                   f"set_input_transition 0.1 [get_ports {{{input_ports}}}]",
