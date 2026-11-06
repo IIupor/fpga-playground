@@ -117,7 +117,7 @@ test('GitHub sign-in popup preserves the STA dialog and updates the account butt
 });
 
 test('STA result can open synthesized Yosys Verilog in the editor', async ({ page }) => {
-  const mappedVerilog = 'module mapped_top(input wire a, output wire y);\\n  sky130_fd_sc_hd__buf_1 U1 (.A(a), .X(y));\\nendmodule\\n';
+  const mappedVerilog = 'module mapped_top(input wire a, output wire y);\n  sky130_fd_sc_hd__buf_1 U1 (.A(a), .X(y));\nendmodule\n';
   await page.addInitScript(() => {
     localStorage.setItem('fpgaStaBrokerUrl', 'https://sta-broker.test');
     sessionStorage.setItem('fpgaStaSession', 'test-session-id');
