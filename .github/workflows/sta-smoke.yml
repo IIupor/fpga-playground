@@ -131,6 +131,11 @@ jobs:
             --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
             --out build/sta/latch
           grep -q '"status": "completed"' build/sta/latch/result.json
+          grep -q '"flow_mode": "library_mapped"' build/sta/latch/result.json
+          grep -q 'Yosys synth, dfflibmap and ABC were skipped' build/sta/yosys.log
+          cmp build/sta/latch-request.json build/sta/design.v >/dev/null 2>&1 || \
+            cmp <(python3 -c 'import json; print(json.load(open("build/sta/latch-request.json"))["verilog"], end="")') \
+                build/sta/design.v
 
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
         run: |
