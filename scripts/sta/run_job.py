@@ -255,6 +255,7 @@ def main():
     preflight_script = args.out / "preflight.ys"
     preflight_script.write_text("\n".join([
         *read_commands,
+        "proc",
         f'write_json "{preflight_json.resolve()}"',
         "",
     ]), encoding="utf-8")
