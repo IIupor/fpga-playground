@@ -177,6 +177,11 @@ const ownerInputResponse = await worker.fetch(new Request(privateInputUrl, {
 }), env);
 assert.equal(ownerInputResponse.status, 200, "the authenticated job owner can retrieve the original private STA input");
 assert.deepEqual((await ownerInputResponse.json()).request, privateInput);
+kvStore.set("session:non-owner-session", JSON.stringify({
+  login: "other-account",
+  githubId: "99999999",
+  expiresAt: Date.now() + 60_000
+}));
 const nonOwnerInputResponse = await worker.fetch(new Request(privateInputUrl, {
   headers: { Authorization: "Bearer non-owner-session" }
 }), env);
