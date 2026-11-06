@@ -165,6 +165,10 @@ def classify_netlist(design, top, library_cells):
             unknown.add(module_name)
             return
         visited.add(module_name)
+        attributes = module.get("attributes", {})
+        if attributes.get("blackbox") in ("1", "00000000000000000000000000000001"):
+            unknown.add(module_name)
+            return
         if module.get("processes"):
             kinds.add("rtl")
         for cell in module.get("cells", {}).values():
