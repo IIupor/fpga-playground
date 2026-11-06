@@ -193,15 +193,10 @@ def classify_netlist(design, top, library_cells):
             "Load the matching library/model files before running STA."
         )
     if "library" in kinds and "rtl" in kinds:
-        raise ValueError(
-            "The design mixes library-mapped cells with generic RTL logic. "
-            "Separate the mapped netlist from RTL before running STA; automatic "
-            "resynthesis could change already-mapped cells."
-        )
+        return "mixed"
     if "library" in kinds:
         return "library_mapped"
     return "rtl"
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -286,11 +281,13 @@ def main():
                 "was performed.\n"
             )
     else:
+        # Liberty cells remain blackboxes throughout Yosys synthesis. The RTL
+        # passes and ABC mapping operate on generic logic outside those cells.
         yosys_script = args.out / "synthesis.ys"
         yosys_script.write_text("\n".join([
             *read_commands,
             f"hierarchy -check -top {top}",
-            f"synth -top {top}",
+            f"synth -top {top} -noabc",
             f'dfflibmap -liberty "{args.liberty.resolve()}"',
             f'abc -liberty "{args.liberty.resolve()}"',
             "clean",
@@ -300,7 +297,7 @@ def main():
         ]), encoding="utf-8")
         run(["yosys", "-Q", "-s", str(yosys_script)], cwd=Path.cwd(),
             log_path=args.out / "yosys.log", timeout=600)
-        flow_mode = "rtl_synthesized"
+        flow_mode = "mixed_synthesized" if flow_mode == "mixed" else "rtl_synthesized"
 
     sta_lines = [
         f'read_liberty "{args.liberty.resolve()}"',
@@ -366,7 +363,7 @@ def main():
         "instanceMap": request.get("instanceMap", {}),
         "report": sta_report[-100_000:],
     }
-    if flow_mode == "rtl_synthesized":
+    if flow_mode in ("rtl_synthesized", "mixed_synthesized"):
         mapped_source = netlist.read_text(encoding="utf-8")
         if len(mapped_source.encode("utf-8")) <= 600_000:
             result["mapped_verilog"] = mapped_source
