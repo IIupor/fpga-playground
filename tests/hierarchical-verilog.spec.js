@@ -5,6 +5,30 @@ const zlib = require('node:zlib');
 
 test.beforeEach(async ({ page }) => { await page.goto('/'); });
 
+
+test('File > Import File browses root-relative benchmarks and imports the selected circuit', async ({ page }) => {
+  await page.locator('[data-menu="file"]').click();
+  await page.locator('#importBenchmarks').click();
+  await expect(page.locator('#projectFileDialog')).toBeVisible();
+  await expect(page.locator('#projectFileTitle')).toContainText('benchmarks/');
+  await page.locator('#projectFileSearch').fill('s27.v');
+  const file = page.locator('#projectFileList button').filter({hasText: 's27.v'});
+  await expect(file).toHaveCount(1);
+  await file.click();
+  await expect(page.locator('#editorMessage')).toContainText('Loaded and imported benchmarks/iscas89/s27.v');
+  await expect(page.locator('#verilogText')).toHaveValue(/module s27/);
+  await expect(page.locator('#verilogLineNumbers')).toContainText('1');
+});
+
+test('Load Library opens the root-relative libraries file list', async ({ page }) => {
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
+  await expect(page.locator('#projectFileDialog')).toBeVisible();
+  await expect(page.locator('#projectFileTitle')).toContainText('libraries/');
+  await expect(page.locator('#projectFileList')).toContainText('libraries/sky130/liberty/sky130_fd_sc_hd__tt_025C_1v80.lib.gz');
+  await page.locator('#projectFileCancel').click();
+});
+
 test('imports a multi-module Verilog project and navigates down and up the hierarchy', async ({ page }) => {
   const source = ['module leaf(input wire [1:0] a, output wire y);','  and g1 (y, a[1], a[0]);','endmodule','module middle(input wire [1:0] a, output wire y);','  leaf u_leaf (.a(a), .y(y));','endmodule','module top(input wire [1:0] a, output wire y);','  middle u_middle (.a(a), .y(y));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(source);
