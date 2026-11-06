@@ -142,6 +142,44 @@ jobs:
           fi
           echo "The mapped library cell was preserved; synthesis and ABC were not run."
 
+      - name: Analyze the SKY130-mapped APB SPI netlist without resynthesis
+        env:
+          STA_DEBUG: "1"
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          verilog = Path("benchmarks/sky130/verilog/apb_spi.v").read_text()
+          assert verilog.count(" U96 (") == 1, "The source APB SPI netlist must contain exactly one U96 instance."
+          request = {
+              "verilog": verilog,
+              "top": "apb_spi",
+              "sdc": "\\n".join([
+                  "create_clock -name core_clk -period 10 [get_ports clk]",
+                  "set_input_delay -clock core_clk 1.0 [all_inputs]",
+                  "set_output_delay -clock core_clk 1.0 [all_outputs]",
+                  ""
+              ]),
+              "analysis": "both",
+              "signalMap": {},
+              "instanceMap": {},
+              "sources": []
+          }
+          Path("build/sta/apb-spi-request.json").write_text(json.dumps(request))
+          PY
+          python3 scripts/sta/run_job.py build/sta/apb-spi-request.json \\
+            --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \\
+            --out build/sta/apb-spi
+          grep -q '"status": "completed"' build/sta/apb-spi/result.json
+          grep -q '"flow_mode": "library_mapped"' build/sta/apb-spi/result.json
+          grep -q 'Yosys synth, dfflibmap and ABC were skipped' build/sta/apb-spi/yosys.log
+          grep -q 'sky130_fd_sc_hd__dfrtp_1 U96' build/sta/apb-spi/mapped.v
+          if grep -Eq '^(synth|dfflibmap|abc)([[:space:]]|$)' build/sta/apb-spi/mapped.ys; then
+            echo "APB SPI library-mapped netlist must not run synthesis or technology mapping."
+            exit 1
+          fi
+          echo "APB SPI contains one U96 instance and completes STA without resynthesis."
+
       - name: Synthesize ISCAS'89 s27 with Yosys and ABC
         run: |
           set -o pipefail
