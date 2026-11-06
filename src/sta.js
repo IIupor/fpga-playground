@@ -106,6 +106,7 @@
   const sessionKey = 'fpgaStaSession';
   let pollTimer = null;
   let activeResult = null;
+  let authPopup = null;
 
   const setStatus = value => { $('staStatus').textContent = value; };
   const brokerUrl = () => brokerInput.value.trim().replace(/\/$/, '');
@@ -387,15 +388,34 @@
   }
 
   async function checkSession() {
-    if (!session()) { $('staAuthStatus').textContent = 'Not signed in. Enter your free broker URL, then sign in with GitHub.'; return; }
+    const loginButton = $('staLogin');
+    if (!session()) {
+      loginButton.textContent = 'Sign in with GitHub';
+      loginButton.disabled = false;
+      $('staAuthStatus').textContent = 'Not signed in. Enter your free broker URL, then sign in with GitHub.';
+      return;
+    }
     try {
       const status = await api('/api/session');
+      if (!status.authenticated || !status.login) throw new Error('GitHub session is no longer valid. Please sign in again.');
       $('staAuthStatus').textContent = 'Signed in as ' + status.login + '. The GitHub token remains on the broker.';
+      loginButton.textContent = 'Signed in as ' + status.login;
+      loginButton.disabled = true;
     } catch (error) {
       sessionStorage.removeItem(sessionKey);
+      loginButton.textContent = 'Sign in with GitHub';
+      loginButton.disabled = false;
       $('staAuthStatus').textContent = error.message;
     }
   }
+
+  window.addEventListener('message', event => {
+    if (event.origin !== location.origin || event.source !== authPopup ||
+        event.data?.type !== 'fpga-sta-auth' || typeof event.data.session !== 'string') return;
+    sessionStorage.setItem(sessionKey, event.data.session);
+    authPopup = null;
+    checkSession();
+  });
 
   async function pollJob(jobId) {
     const status = await api('/api/jobs/' + jobId);
@@ -446,12 +466,24 @@
     try {
       localStorage.setItem('fpgaStaBrokerUrl', brokerUrl());
       if (!brokerUrl()) throw new Error('Enter the broker URL first.');
-      location.href = brokerUrl() + '/auth/login';
+      if (authPopup && !authPopup.closed) authPopup.focus();
+      else authPopup = window.open(
+        brokerUrl() + '/auth/login',
+        'fpgaStaGithubAuth',
+        'popup,width=620,height=760,resizable=yes,scrollbars=yes'
+      );
+      if (!authPopup) {
+        setStatus('The browser blocked the GitHub sign-in popup. Allow popups for this site and try again.');
+      } else {
+        setStatus('Complete GitHub sign-in in the popup. This STA window and the current schematic will remain open.');
+      }
     } catch (error) { setStatus(error.message); }
   });
   $('staLogout').addEventListener('click', () => {
     sessionStorage.removeItem(sessionKey);
     $('staAuthStatus').textContent = 'Signed out.';
+    $('staLogin').textContent = 'Sign in with GitHub';
+    $('staLogin').disabled = false;
   });
   $('staRun').addEventListener('click', runSta);
   $('staClear').addEventListener('click', clearResults);
@@ -463,6 +495,10 @@
   if (returnedSession) {
     sessionStorage.setItem(sessionKey, returnedSession);
     history.replaceState(null, '', location.pathname + location.search);
+    if (window.opener && window.opener !== window) {
+      window.opener.postMessage({type: 'fpga-sta-auth', session: returnedSession}, location.origin);
+      window.close();
+    }
   }
   checkSession();
 })();
