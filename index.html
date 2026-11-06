@@ -1073,8 +1073,6 @@ window.fpgaLegacyImport=importVerilog;
     }
   }
 
-  const importBenchmarksButton = document.getElementById('importBenchmarks');
-  if (importBenchmarksButton) importBenchmarksButton.addEventListener('click', () => openBrowser('benchmarks'));
   libraryInput.addEventListener('change', () => {
     if (dialog.open && mode === 'libraries') dialog.close();
   });
