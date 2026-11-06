@@ -24,12 +24,12 @@
   function closeMenus(){bar.querySelectorAll('[data-popup]').forEach(p=>p.hidden=true);}
   bar.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click',()=>{const p=bar.querySelector('[data-popup="'+b.dataset.menu+'"]');const open=!p.hidden;closeMenus();p.hidden=open;}));
   document.addEventListener('click',e=>{if(!bar.contains(e.target))closeMenus();});
-  $('importBenchmarks').onclick=()=>{closeMenus();if(window.fpgaProjectFileBrowser)window.fpgaProjectFileBrowser.open('benchmarks');else $('importVerilog')?.click();bar.querySelector('[data-menu="file"]').focus();};
+  $('importBenchmarks').onclick=()=>{closeMenus();if(window.fpgaProjectFileBrowser)window.fpgaProjectFileBrowser.open('benchmarks');else $('importVerilog')?.click();};
   $('importFile').onclick=()=>{closeMenus();$('importVerilog')?.click();bar.querySelector('[data-menu="file"]').focus();};
   $('exportFile').onclick=()=>{closeMenus();$('exportVerilog')?.click();};
   $('menuUndo').onclick=()=>{closeMenus();$('editorUndo')?.click();};
   $('menuRedo').onclick=()=>{closeMenus();$('editorRedo')?.click();};
-  $('menuLoadLibrary').onclick=()=>{closeMenus();if(window.fpgaProjectFileBrowser)window.fpgaProjectFileBrowser.open('libraries');else $('importLibraries')?.click();bar.querySelector('[data-menu="libraries"]').focus();};
+  $('menuLoadLibrary').onclick=()=>{closeMenus();if(window.fpgaProjectFileBrowser)window.fpgaProjectFileBrowser.open('libraries');else $('importLibraries')?.click();};
 
   let activeLibrary='standard';
   const files=()=>window.fpgaVerilogProject?.state?.libraries||[];
