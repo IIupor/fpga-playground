@@ -707,7 +707,7 @@ function setupUI() {
     const project=projectFrom([...state.libraries,{name:'design.v',text:source}]);
     const selectedTop=project.modules.get(topName||project.tops[0].name);
     console.log('HIER_IMPORT',JSON.stringify({libraryFiles:state.libraries.map(f=>f.name),sourceHeader:source.slice(0,240),top:selectedTop?.name,topHeader:selectedTop?.header,ports:selectedTop?.ports?.map(p=>({name:p.name,direction:p.direction}))}));
-    area.value=source;
+    area.value=source;area.dispatchEvent(new Event('input',{bubbles:true}));
     installProject(project,topName||project.tops[0].name);
     console.log('HIER_IMPORT_DONE',JSON.stringify({current:state.current?.module?.name,ports:state.current?.module?.ports?.map(p=>({name:p.name,direction:p.direction}))}));
     return true;
