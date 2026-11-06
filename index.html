@@ -904,6 +904,7 @@ window.fpgaLegacyImport=importVerilog;
   area.style.width = 'calc(100% - 44px)';
   area.style.maxHeight = '420px';
   area.style.resize = 'vertical';
+  area.wrap = 'off';
   function updateLineNumbers() {
     const count = Math.max(1, area.value.split('\n').length);
     gutter.textContent = Array.from({length: count}, (_, index) => String(index + 1)).join('\n');
