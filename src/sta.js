@@ -94,6 +94,8 @@
         <button class="toolbtn primary" id="staRun" type="button">Run STA</button>
         <button class="toolbtn" id="staClear" type="button">Clear results</button>
         <button class="toolbtn" id="staOpenYosysVerilog" type="button" hidden>Open Yosys Verilog in editor</button>
+        <button class="toolbtn" id="staDownloadDesign" type="button" hidden>Download design.v</button>
+        <button class="toolbtn" id="staDownloadRequest" type="button" hidden>Download request.json</button>
       </div>
       <div class="sta-status" id="staStatus" aria-live="polite">Ready. Pre-layout STA uses Sky130 HD TT cell timing; interconnect parasitics are not extracted yet.</div>
       <div class="sta-metrics" id="staMetrics"></div>
@@ -107,6 +109,7 @@
   const sessionKey = 'fpgaStaSession';
   let pollTimer = null;
   let activeResult = null;
+  let activeJobId = null;
   let authPopup = null;
 
   const setStatus = value => { $('staStatus').textContent = value; };
@@ -445,9 +448,13 @@
     setStatus('STA job ' + status.status + '…');
     if (status.status === 'completed' && status.result) {
       clearInterval(pollTimer); pollTimer = null;
+      $('staDownloadDesign').hidden = false;
+      $('staDownloadRequest').hidden = false;
       renderResult(status.result);
     } else if (status.status === 'error') {
       clearInterval(pollTimer); pollTimer = null;
+      $('staDownloadDesign').hidden = false;
+      $('staDownloadRequest').hidden = false;
       setStatus(status.error || status.result?.message || 'STA job failed. Inspect the GitHub Actions run.');
     }
   }
@@ -463,6 +470,9 @@
         body: JSON.stringify({...design, sdc, analysis:$('staAnalysis').value})
       });
       if (pollTimer) clearInterval(pollTimer);
+      activeJobId = response.jobId;
+      $('staDownloadDesign').hidden = true;
+      $('staDownloadRequest').hidden = true;
       setStatus('STA job queued: ' + response.jobId);
       pollTimer = setInterval(() => pollJob(response.jobId).catch(error => setStatus(error.message)), 3000);
       await pollJob(response.jobId);
@@ -473,7 +483,9 @@
 
   function clearResults() {
     if (pollTimer) clearInterval(pollTimer);
-    pollTimer = null; activeResult = null;
+    pollTimer = null; activeResult = null; activeJobId = null;
+    $('staDownloadDesign').hidden = true;
+    $('staDownloadRequest').hidden = true;
     $('staMetrics').replaceChildren(); $('staPaths').replaceChildren(); $('staReport').textContent = '';
     $('staOpenYosysVerilog').hidden = true;
     clearPathHighlight(); setStatus('Results cleared.');
@@ -509,6 +521,28 @@
     $('staLogin').textContent = 'Sign in with GitHub';
     $('staLogin').disabled = false;
   });
+  async function downloadStaInput(kind) {
+    if (!activeJobId) { setStatus('No STA job is selected.'); return; }
+    try {
+      const payload = await api('/api/jobs/' + activeJobId + '/input');
+      const request = payload.request;
+      const content = kind === 'design'
+        ? request.verilog
+        : JSON.stringify(request, null, 2);
+      const filename = kind === 'design' ? 'design.v' : 'request.json';
+      const blob = new Blob([content], {type: kind === 'design' ? 'text/plain;charset=utf-8' : 'application/json;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = filename;
+      document.body.append(link); link.click(); link.remove();
+      URL.revokeObjectURL(url);
+      setStatus('Downloaded ' + filename + ' from the private STA broker.');
+    } catch (error) {
+      setStatus('Could not download STA input: ' + error.message);
+    }
+  }
+  $('staDownloadDesign').addEventListener('click', () => downloadStaInput('design'));
+  $('staDownloadRequest').addEventListener('click', () => downloadStaInput('request'));
   $('staOpenYosysVerilog').addEventListener('click', () => {
     if (typeof activeResult?.mapped_verilog !== 'string') return;
     const area = $('verilogText');
