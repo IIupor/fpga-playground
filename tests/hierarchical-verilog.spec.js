@@ -260,5 +260,7 @@ test('Import File imports the SKY130 mapped APB SPI netlist after loading Libert
     {timeout: 60000}
   );
   await expect(page.locator('#verilogText')).toHaveValue(/module apb_spi/);
-  expect(await page.evaluate(() => window.fpgaNodes.length)).toBeGreaterThan(50);
+  const imported = await page.evaluate(() => ({cells: window.fpgaNodes.filter(node => node.cellType).length, unresolved: window.fpgaNodes.filter(node => node.isUnresolved).length}));
+  expect(imported.cells).toBeGreaterThan(50);
+  expect(imported.unresolved).toBe(0);
 });
