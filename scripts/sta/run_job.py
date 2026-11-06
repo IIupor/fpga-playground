@@ -265,15 +265,27 @@ def main():
     flow_mode = classify_netlist(parsed_design, top, liberty_cell_names(args.liberty))
 
     if flow_mode == "library_mapped":
-        # OpenSTA consumes the original library-mapped Verilog directly.
-        netlist.write_text(source, encoding="utf-8")
-        netlist_json.write_text(json.dumps(parsed_design), encoding="utf-8")
-        (args.out / "yosys.log").write_text(
-            "Detected a library-mapped netlist: all reachable leaf Cell Names "
-            "exist in the loaded Liberty library. Yosys synth, dfflibmap and "
-            "ABC were skipped.\\n",
-            encoding="utf-8",
-        )
+        # Flatten only the hierarchy so OpenSTA receives a self-contained
+        # structural netlist. No logic synthesis or technology mapping occurs.
+        mapped_script = args.out / "mapped.ys"
+        mapped_script.write_text("\n".join([
+            *read_commands,
+            f"hierarchy -check -top {top}",
+            "flatten",
+            "clean",
+            f'write_verilog -noattr "{netlist.resolve()}"',
+            f'write_json "{netlist_json.resolve()}"',
+            "",
+        ]), encoding="utf-8")
+        run(["yosys", "-Q", "-s", str(mapped_script)], cwd=Path.cwd(),
+            log_path=args.out / "yosys.log", timeout=300)
+        with (args.out / "yosys.log").open("a", encoding="utf-8") as log:
+            log.write(
+                "\nDetected a library-mapped netlist: all reachable leaf Cell "
+                "Names exist in the loaded Liberty library. Yosys synth, "
+                "dfflibmap and ABC were skipped; only hierarchy flattening "
+                "and cleanup were performed.\n"
+            )
     else:
         yosys_script = args.out / "synthesis.ys"
         yosys_script.write_text("\n".join([
