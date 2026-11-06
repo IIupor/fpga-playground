@@ -204,6 +204,8 @@ jobs:
             > build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib
 
       - name: Run Yosys, ABC and OpenSTA
+        env:
+          STA_DEBUG: "1"
         run: |
           python3 scripts/sta/run_job.py build/sta/request.json \
             --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
