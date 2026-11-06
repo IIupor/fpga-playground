@@ -1,0 +1,5 @@
+create_clock -name core_clk -period 10.0 [get_ports CK]
+set_input_delay -clock core_clk 0.2 [get_ports {A B}]
+set_output_delay -clock core_clk 0.2 [get_ports {Y Z}]
+set_input_transition 0.1 [get_ports {A B}]
+set_load 5.0 [get_ports {Y Z}]
