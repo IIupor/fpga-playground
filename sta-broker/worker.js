@@ -504,6 +504,19 @@ async function handle(request, env) {
     }, 200, env);
   }
 
+  const privateJobInput = path.match(/^\/api\/jobs\/([0-9a-f-]{36})\/input$/i);
+  if (privateJobInput && request.method === "GET") {
+    const session = await requireSession(request, env);
+    if (!session) return json({ error: "GitHub sign-in required." }, 401, env);
+    const record = await env.STA_KV.get("job:" + privateJobInput[1], "json");
+    if (!record || String(record.ownerId || "") !== String(session.githubId || "")) {
+      return json({ error: "Job not found." }, 404, env);
+    }
+    const response = json({ request: record.input }, 200, env);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
+  }
+
   const internalJob = path.match(/^\/internal\/jobs\/([0-9a-f-]{36})(?:\/(result|status))?$/i);
   if (internalJob) {
     const auth = request.headers.get("Authorization")?.replace(/^Bearer\s+/, "") || "";
