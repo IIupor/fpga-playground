@@ -387,9 +387,12 @@
     $('staReport').textContent = result.report || '';
     $('staOpenYosysVerilog').hidden = typeof result.mapped_verilog !== 'string' || !result.mapped_verilog;
     const mode = result.flow_mode || summary.flow_mode;
-    setStatus(mode === 'library_mapped'
+    const netlistNote = result.mapped_verilog_unavailable_reason
+      ? ' ' + result.mapped_verilog_unavailable_reason
+      : '';
+    setStatus((mode === 'library_mapped'
       ? 'STA completed using the existing library-mapped Verilog. Yosys synthesis was skipped.'
-      : 'STA completed after Yosys synthesis. Select a critical path to highlight its mapped nets and blocks in the schematic.');
+      : 'STA completed after Yosys synthesis. Select a critical path to highlight its mapped nets and blocks in the schematic.') + netlistNote);
   }
 
   async function checkSession() {
