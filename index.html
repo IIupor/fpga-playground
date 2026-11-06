@@ -1036,12 +1036,20 @@ window.fpgaLegacyImport=importVerilog;
       area.dispatchEvent(new Event('input', {bubbles: true}));
       window.fpgaLastImportedSource = source;
       dialog.close();
+      const top = source.match(/\bmodule\s+([A-Za-z_$][A-Za-z0-9_$]*)/);
+      const topName = top ? top[1] : undefined;
+      const isSky130Mapped = /\bsky130_fd_sc_hd__[A-Za-z0-9_$]+\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\(/m.test(source);
+      const hasSky130Liberty = window.fpgaVerilogProject?.state?.libraries?.some(file => /\.lib$/i.test(file.name));
       if (path.startsWith('benchmarks/iscas89/') && window.fpgaVerilogProject?.importProject) {
-        const top = source.match(/\bmodule\s+([A-Za-z_$][A-Za-z0-9_$]*)/);
-        window.fpgaVerilogProject.importProject(source, top ? top[1] : undefined);
+        window.fpgaVerilogProject.importProject(source, topName);
         message.textContent = 'Loaded and imported ' + path + '.';
       } else if (path.startsWith('benchmarks/iscas85/')) {
         importButton.click();
+      } else if (isSky130Mapped && hasSky130Liberty && window.fpgaVerilogProject?.importProject) {
+        window.fpgaVerilogProject.importProject(source, topName);
+        message.textContent = 'Loaded and imported library-mapped netlist ' + path + '.';
+      } else if (isSky130Mapped && !hasSky130Liberty) {
+        message.textContent = 'Loaded ' + path + ' into the editor. Load the SKY130 Liberty library from Libraries → Load Library before importing this mapped netlist.';
       } else {
         message.textContent = 'Loaded ' + path + ' into the Verilog editor. The graphical importer was not run for this RTL source.';
       }
