@@ -80,3 +80,83 @@ test('STA explains Cloudflare edge quota errors even when the response is not JS
   expect(message).toContain('quota resets');
   expect(message).toContain('No paid plan is enabled');
 });
+
+
+test('Verilog editor shows synchronized line numbers', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#verilogText').fill('module demo(input wire a, output wire y);\nassign y = a;\nendmodule');
+  await expect(page.locator('#verilogLineNumbers')).toHaveText('1\n2\n3');
+});
+
+test('GitHub sign-in popup preserves the STA dialog and updates the account button', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('fpgaStaBrokerUrl', 'https://sta-broker.test');
+  });
+  await page.route('https://sta-broker.test/auth/login', async route => {
+    const returnUrl = page.url().split('#')[0] + '#sta_session=test-session-id';
+    await route.fulfill({status: 302, headers: {location: returnUrl}});
+  });
+  await page.route('https://sta-broker.test/api/session', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({authenticated: true, login: 'vas.khvatov'})
+  }));
+  await page.goto('/');
+  await page.locator('#staMenu [data-menu="timing"]').click();
+  await page.locator('#staOpen').click();
+  const nodesBefore = await page.locator('#editorStage g[data-node]').count();
+  const popupPromise = page.waitForEvent('popup');
+  await page.locator('#staLogin').click();
+  const popup = await popupPromise;
+  await expect.poll(() => popup.isClosed()).toBe(true);
+  await expect(page.locator('#staDialog')).toBeVisible();
+  await expect(page.locator('#staAuthStatus')).toContainText('Signed in as vas.khvatov');
+  await expect(page.locator('#staLogin')).toHaveText('Signed in as vas.khvatov');
+  await expect(page.locator('#staLogin')).toBeDisabled();
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(nodesBefore);
+});
+
+test('STA result can open synthesized Yosys Verilog in the editor', async ({ page }) => {
+  const mappedVerilog = 'module mapped_top(input wire a, output wire y);\\n  sky130_fd_sc_hd__buf_1 U1 (.A(a), .X(y));\\nendmodule\\n';
+  await page.addInitScript(() => {
+    localStorage.setItem('fpgaStaBrokerUrl', 'https://sta-broker.test');
+    sessionStorage.setItem('fpgaStaSession', 'test-session-id');
+  });
+  await page.route('https://sta-broker.test/api/session', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({authenticated: true, login: 'vas.khvatov'})
+  }));
+  await page.route('https://sta-broker.test/api/jobs', async route => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({status: 202, contentType: 'application/json', body: JSON.stringify({jobId: '00000000-0000-4000-8000-000000000001'})});
+    } else {
+      await route.continue();
+    }
+  });
+  await page.route('https://sta-broker.test/api/jobs/00000000-0000-4000-8000-000000000001', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      status: 'completed',
+      result: {
+        status: 'completed',
+        flow_mode: 'rtl_synthesized',
+        summary: {flow_mode: 'rtl_synthesized', setup_wns: 0, setup_tns: 0, setup_path_count: 0, hold_path_count: 0},
+        setup_paths: [],
+        hold_paths: [],
+        report: 'Synthetic test report',
+        mapped_verilog: mappedVerilog
+      }
+    })
+  }));
+  await page.goto('/');
+  await page.locator('#staMenu [data-menu="timing"]').click();
+  await page.locator('#staOpen').click();
+  await page.locator('#staRun').click();
+  await expect(page.locator('#staOpenYosysVerilog')).toBeVisible();
+  await page.locator('#staOpenYosysVerilog').click();
+  await expect(page.locator('#verilogText')).toHaveValue(mappedVerilog);
+  await expect(page.locator('#editorMessage')).toContainText('technology-mapped Verilog');
+  await expect(page.locator('#staDialog')).toBeVisible();
+});
