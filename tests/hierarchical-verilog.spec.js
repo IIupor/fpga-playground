@@ -62,7 +62,7 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
   const verilogLib = ['module CUSTOM_BUF(input wire A, output wire Y);',' assign Y = A;','endmodule'].join('\n');
   const verilogLib2 = ['module CUSTOM_INV(input wire A, output wire Y);',' not g1 (Y, A);','endmodule'].join('\n');
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles([
     { name: 'sky_and.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyA) },
     { name: 'sky_inv.lib', mimeType: 'text/plain', buffer: Buffer.from(libertyB) },
@@ -136,11 +136,11 @@ test('loads multiple Liberty and Verilog libraries and simulates combinational a
 test('rejects duplicate Liberty cell definitions without discarding already loaded libraries', async ({ page }) => {
   const lib = 'library(test) { cell(DUP_X1) { pin(A) { direction : \"input\"; } } }';
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'first.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles({ name: 'duplicate.lib', mimeType: 'text/plain', buffer: Buffer.from(lib) });
   await expect(page.locator('#editorMessage')).toContainText('Duplicate Liberty cell DUP_X1');
   await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
@@ -159,7 +159,7 @@ test('imports a real hierarchical SKY130 SoC and resolves ten mapped gate-level 
     ...libraryFiles.map(name => ({ name, mimeType: 'text/plain', buffer: fs.readFileSync(path.join(verilogDir, name)) }))
   ];
   await page.locator('[data-menu="libraries"]').click();
-  await page.locator('#menuLoadLibrary').click();
+  await page.locator('#menuLoadLibraryFile').click();
   await page.locator('#libraryFiles').setInputFiles(libraryInputs);
   await expect.poll(async () => {
     const status = await page.locator('#libraryStatus').textContent();
