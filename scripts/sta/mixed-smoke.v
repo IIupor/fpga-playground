@@ -6,15 +6,21 @@ module mixed_top (
     output wire Z
 );
     wire kept_and;
+    wire kept_and2;
 
-    // This instance is already mapped and must remain untouched.
+    // Both instances are already mapped and must remain untouched.
     sky130_fd_sc_hd__and2_1 U_KEEP (
         .A(A),
         .B(B),
         .X(kept_and)
     );
+    sky130_fd_sc_hd__and2_1 U_KEEP2 (
+        .A(A),
+        .B(CK),
+        .X(kept_and2)
+    );
 
     // These expressions are RTL and must be synthesized and mapped.
-    assign Y = kept_and ^ CK;
-    assign Z = A | B;
+    assign Y = kept_and ^ kept_and2;
+    assign Z = kept_and | B;
 endmodule
