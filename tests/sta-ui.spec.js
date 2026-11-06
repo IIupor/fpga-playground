@@ -94,7 +94,11 @@ test('GitHub sign-in popup preserves the STA dialog and updates the account butt
   });
   await page.route('https://sta-broker.test/auth/login', async route => {
     const returnUrl = page.url().split('#')[0] + '#sta_session=test-session-id';
-    await route.fulfill({status: 302, headers: {location: returnUrl}});
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/html',
+      body: '<!doctype html><script>location.replace(' + JSON.stringify(returnUrl) + ')</script>'
+    });
   });
   await page.route('https://sta-broker.test/api/session', route => route.fulfill({
     status: 200,
