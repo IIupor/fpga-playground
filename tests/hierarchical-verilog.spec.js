@@ -29,6 +29,17 @@ test('Load Library opens the root-relative libraries file list', async ({ page }
   await page.locator('#projectFileCancel').click();
 });
 
+
+test('Load Library imports the selected repository Liberty file', async ({ page }) => {
+  await page.locator('[data-menu="libraries"]').click();
+  await page.locator('#menuLoadLibrary').click();
+  await expect(page.locator('#projectFileDialog')).toBeVisible();
+  await page.locator('#projectFileList input[type="checkbox"]').check();
+  await page.locator('#projectFileLoad').click();
+  await expect(page.locator('#libraryStatus')).toContainText('Liberty cells', {timeout: 30000});
+  await expect(page.locator('#libraryStatus')).toContainText('1 library file(s)');
+});
+
 test('imports a multi-module Verilog project and navigates down and up the hierarchy', async ({ page }) => {
   const source = ['module leaf(input wire [1:0] a, output wire y);','  and g1 (y, a[1], a[0]);','endmodule','module middle(input wire [1:0] a, output wire y);','  leaf u_leaf (.a(a), .y(y));','endmodule','module top(input wire [1:0] a, output wire y);','  middle u_middle (.a(a), .y(y));','endmodule'].join('\n');
   await page.locator('#verilogText').fill(source);
