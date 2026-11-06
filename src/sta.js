@@ -421,7 +421,9 @@
     if (!authPopup || typeof value !== 'string' || !value) return;
     if (session() === value) { authPopup = null; return; }
     sessionStorage.setItem(sessionKey, value);
+    const popup = authPopup;
     authPopup = null;
+    try { if (popup && !popup.closed) popup.close(); } catch (_) {}
     checkSession();
   }
 
