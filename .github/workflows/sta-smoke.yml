@@ -74,6 +74,8 @@ jobs:
             --liberty build/sta/sky130_fd_sc_hd__tt_025C_1v80.lib \
             --out build/sta/runner
           grep -q '"status": "completed"' build/sta/runner/result.json
+          grep -q '"flow_mode": "rtl_synthesized"' build/sta/runner/result.json
+          grep -q '"mapped_verilog":' build/sta/runner/result.json
 
       - name: Verify schematic net names survive technology mapping
         run: |
@@ -132,7 +134,7 @@ jobs:
             --out build/sta/latch
           grep -q '"status": "completed"' build/sta/latch/result.json
           grep -q '"flow_mode": "library_mapped"' build/sta/latch/result.json
-          grep -q 'Yosys synth, dfflibmap and ABC were skipped' build/sta/yosys.log
+          grep -q 'Yosys synth, dfflibmap and ABC were skipped' build/sta/latch/yosys.log
           grep -q 'sky130_fd_sc_hd__dlxtp_1 LATCH1' build/sta/latch/mapped.v
           if grep -Eq '^(synth|dfflibmap|abc)([[:space:]]|$)' build/sta/latch/mapped.ys; then
             echo "Mapped-netlist path must not run synthesis or technology mapping."
