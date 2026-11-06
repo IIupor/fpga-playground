@@ -182,8 +182,11 @@ kvStore.set("session:non-owner-session", JSON.stringify({
   githubId: "99999999",
   expiresAt: Date.now() + 60_000
 }));
+kvStore.set("session:other-valid-session-token", JSON.stringify({
+  login: "other-account", githubId: "99999999", expiresAt: Date.now() + 60_000
+}));
 const nonOwnerInputResponse = await worker.fetch(new Request(privateInputUrl, {
-  headers: { Authorization: "Bearer non-owner-session" }
+  headers: { Authorization: "Bearer other-valid-session-token" }
 }), env);
 assert.equal(nonOwnerInputResponse.status, 404, "other GitHub accounts must not retrieve a user's private STA input");
 kvStore.set("session:non-owner-session", JSON.stringify({
