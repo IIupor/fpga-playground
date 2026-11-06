@@ -35,7 +35,7 @@
 <header class="top"><div class="logo">⌁</div><div><div class="eyebrow">Interactive logic lab · 01</div><h1>FPGA Playground</h1><p>Build a logic circuit, change its inputs, and simulate the output.</p></div></header>
 <div class="layout">
 <section class="panel editor-panel"><div class="panelhead"><div><h2>Graphical circuit editor</h2><div class="eyebrow" style="margin-top:5px">Build · connect · simulate</div></div><span class="pill">BETA 01</span></div><div class="body">
-<div class="editor-toolbar"><button class="toolbtn" data-add="INPUT">＋ Input</button><button class="toolbtn" data-add="VDD">vdd! · 1</button><button class="toolbtn" data-add="GND">gnd! · 0</button><button class="toolbtn" data-add="AND">AND</button><button class="toolbtn" data-add="OR">OR</button><button class="toolbtn" data-add="XOR">XOR</button><button class="toolbtn" data-add="NOT">NOT</button><button class="toolbtn" data-add="NAND">NAND</button><button class="toolbtn" data-add="NOR">NOR</button><button class="toolbtn" data-add="XNOR">XNOR</button><button class="toolbtn" data-add="DFF">D flip-flop</button><button class="toolbtn" data-add="LATCH">D latch</button><button class="toolbtn" data-add="OUTPUT">＋ Output</button><button class="toolbtn" id="editorUndo" disabled>Undo</button><button class="toolbtn" id="editorRedo" disabled>Redo</button><button class="toolbtn" id="editorDelete">Delete selected</button><button class="toolbtn" id="editorReset">Reset example</button><button class="toolbtn" id="exportVerilog">Export Verilog</button><button class="toolbtn" id="importVerilog">Import File</button><input id="verilogFile" type="file" accept=".v,.sv,.txt,text/plain" hidden></div>
+<div class="editor-toolbar"><button class="toolbtn" data-add="INPUT">＋ Input</button><button class="toolbtn" data-add="VDD">vdd! · 1</button><button class="toolbtn" data-add="GND">gnd! · 0</button><button class="toolbtn" data-add="AND">AND</button><button class="toolbtn" data-add="OR">OR</button><button class="toolbtn" data-add="XOR">XOR</button><button class="toolbtn" data-add="NOT">NOT</button><button class="toolbtn" data-add="NAND">NAND</button><button class="toolbtn" data-add="NOR">NOR</button><button class="toolbtn" data-add="XNOR">XNOR</button><button class="toolbtn" data-add="DFF">D flip-flop</button><button class="toolbtn" data-add="LATCH">D latch</button><button class="toolbtn" data-add="OUTPUT">＋ Output</button><button class="toolbtn" id="editorUndo" disabled>Undo</button><button class="toolbtn" id="editorRedo" disabled>Redo</button><button class="toolbtn" id="editorDelete">Delete selected</button><button class="toolbtn" id="editorReset">Reset example</button><button class="toolbtn" id="exportVerilog">Export Verilog</button><button class="toolbtn" id="importVerilog">Import editor text</button><input id="verilogFile" type="file" accept=".v,.sv,.txt,text/plain" hidden></div>
 <div class="editor-toolbar" style="margin-top:10px"><label class="status-chip" style="display:flex;align-items:center;gap:8px">ISCAS’85 / ISCAS’89 benchmark<select id="benchmarkSelect" style="max-width:220px;padding:7px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text)"><option value="">Choose a circuit…</option><option value="c17">c17 · 6 gates</option><option value="c432">c432 · 171 gates</option><option value="c499">c499 · 174 gates</option><option value="c880">c880 · 323 gates</option><option value="c1355">c1355 · 518 gates</option><option value="c1908">c1908 · 479 gates · up to 8 inputs</option><option value="c2670">c2670 · 699 gates</option><option value="c3540">c3540 · 1,043 gates</option><option value="c5315">c5315 · 1,586 gates</option><option value="c6288">c6288 · 2,353 gates</option><option value="c7552">c7552 · 2,331 gates</option><optgroup label="ISCAS’89 · sequential"><option value="s27">s27 · 3 DFF · 8 gates</option><option value="s298">s298</option><option value="s344">s344</option><option value="s349">s349</option><option value="s382">s382</option><option value="s386">s386</option><option value="s400">s400</option><option value="s420">s420</option><option value="s444">s444</option><option value="s510">s510</option><option value="s526">s526</option><option value="s641">s641</option><option value="s713">s713</option><option value="s820">s820</option><option value="s832">s832</option><option value="s838">s838</option><option value="s953">s953</option><option value="s1196">s1196</option><option value="s1238">s1238</option><option value="s1423">s1423</option><option value="s1488">s1488</option><option value="s5378">s5378</option><option value="s9234">s9234</option><option value="s13207">s13207</option><option value="s15850">s15850</option><option value="s35932">s35932</option><option value="s38417">s38417</option><option value="s38584">s38584</option></optgroup></select></label><button class="toolbtn primary" id="loadBenchmark">Load benchmark</button><span class="editor-hint" style="margin:0">Loads an ISCAS’85 or ISCAS’89 Verilog benchmark from this repository.</span></div>
 <div class="editor-status" id="benchmarkStats" aria-live="polite" style="margin-top:8px"><span class="status-chip" id="benchmarkGateCount">Gates: —</span><span class="status-chip" id="benchmarkDffCount">DFF: —</span><span class="status-chip" id="benchmarkLatchCount">Latches: —</span></div>
 <div class="editor-toolbar" style="margin-top:10px"><span class="status-chip">Selected block ports:</span><button class="toolbtn" id="inputMinus">− Input</button><button class="toolbtn" id="inputPlus">＋ Input</button><button class="toolbtn" id="outputMinus">− Output</button><button class="toolbtn" id="outputPlus">＋ Output</button><span class="editor-hint" style="margin:0">Adjust ports of the selected block (logic gates support 2–4 inputs).</span></div>
@@ -1073,12 +1073,11 @@ window.fpgaLegacyImport=importVerilog;
     }
   }
 
-  importButton.addEventListener('click', event => {
-    if (!event.isTrusted) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    openBrowser('benchmarks');
-  }, true);
+  const importBenchmarksButton = document.getElementById('importBenchmarks');
+  if (importBenchmarksButton) importBenchmarksButton.addEventListener('click', () => openBrowser('benchmarks'));
+  libraryInput.addEventListener('change', () => {
+    if (dialog.open && mode === 'libraries') dialog.close();
+  });
   libraryButton.addEventListener('click', event => {
     if (!event.isTrusted) return;
     event.preventDefault();
@@ -1092,6 +1091,7 @@ window.fpgaLegacyImport=importVerilog;
   loadButton.addEventListener('click', loadSelectedLibraries);
   document.getElementById('projectFileClose').addEventListener('click', () => dialog.close());
   document.getElementById('projectFileCancel').addEventListener('click', () => dialog.close());
+  window.fpgaProjectFileBrowser = {open: openBrowser};
 })();
 </script>
 
