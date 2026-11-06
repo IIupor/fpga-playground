@@ -512,7 +512,9 @@ async function handle(request, env) {
     if (!record || String(record.ownerId || "") !== String(session.githubId || "")) {
       return json({ error: "Job not found." }, 404, env);
     }
-    return json({ request: record.input }, 200, env);
+    const response = json({ request: record.input }, 200, env);
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
 
   const internalJob = path.match(/^\/internal\/jobs\/([0-9a-f-]{36})(?:\/(result|status))?$/i);
