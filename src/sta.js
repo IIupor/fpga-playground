@@ -93,6 +93,7 @@
       <div class="sta-actions">
         <button class="toolbtn primary" id="staRun" type="button">Run STA</button>
         <button class="toolbtn" id="staClear" type="button">Clear results</button>
+        <button class="toolbtn" id="staOpenYosysVerilog" type="button" hidden>Open Yosys Verilog in editor</button>
       </div>
       <div class="sta-status" id="staStatus" aria-live="polite">Ready. Pre-layout STA uses Sky130 HD TT cell timing; interconnect parasitics are not extracted yet.</div>
       <div class="sta-metrics" id="staMetrics"></div>
@@ -384,7 +385,11 @@
       list.append(button);
     });
     $('staReport').textContent = result.report || '';
-    setStatus('STA completed. Select a critical path to highlight its mapped nets and blocks in the schematic.');
+    $('staOpenYosysVerilog').hidden = typeof result.mapped_verilog !== 'string' || !result.mapped_verilog;
+    const mode = result.flow_mode || summary.flow_mode;
+    setStatus(mode === 'library_mapped'
+      ? 'STA completed using the existing library-mapped Verilog. Yosys synthesis was skipped.'
+      : 'STA completed after Yosys synthesis. Select a critical path to highlight its mapped nets and blocks in the schematic.');
   }
 
   async function checkSession() {
@@ -452,6 +457,7 @@
     if (pollTimer) clearInterval(pollTimer);
     pollTimer = null; activeResult = null;
     $('staMetrics').replaceChildren(); $('staPaths').replaceChildren(); $('staReport').textContent = '';
+    $('staOpenYosysVerilog').hidden = true;
     clearPathHighlight(); setStatus('Results cleared.');
   }
 
@@ -484,6 +490,16 @@
     $('staAuthStatus').textContent = 'Signed out.';
     $('staLogin').textContent = 'Sign in with GitHub';
     $('staLogin').disabled = false;
+  });
+  $('staOpenYosysVerilog').addEventListener('click', () => {
+    if (typeof activeResult?.mapped_verilog !== 'string') return;
+    const area = $('verilogText');
+    if (!area) { setStatus('The Verilog editor is not available.'); return; }
+    area.value = activeResult.mapped_verilog;
+    area.dispatchEvent(new Event('input', {bubbles: true}));
+    window.fpgaLastImportedSource = '';
+    $('editorMessage').textContent = 'Loaded the Yosys technology-mapped Verilog into the text editor. The schematic was not changed.';
+    setStatus('Yosys Verilog is now open in the editor. The STA dialog remains open.');
   });
   $('staRun').addEventListener('click', runSta);
   $('staClear').addEventListener('click', clearResults);
