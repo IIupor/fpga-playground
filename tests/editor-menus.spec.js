@@ -57,7 +57,7 @@ test('loaded library can be removed from the project without changing its file',
   ].join('\\n');
   await page.getByRole('button', { name: 'Libraries', exact: true }).click();
   const chooserPromise = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Load Library' }).click();
+  await page.getByRole('button', { name: 'Load from computer…' }).click();
   const chooser = await chooserPromise;
   await chooser.setFiles({ name: 'removable.lib', mimeType: 'text/plain', buffer: Buffer.from(liberty) });
   await expect(page.locator('#libraryStatus')).toContainText('1 Liberty cells');
