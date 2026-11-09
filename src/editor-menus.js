@@ -9,7 +9,7 @@
 
   const bar = document.createElement('div');
   bar.id = 'editorMenus'; bar.className = 'editor-menus';
-  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importBenchmarks">Import File</button><button class="toolbtn" id="importFile">Import editor text</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><button class="toolbtn" id="menuLoadLibraryFile">Load from computer…</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
+  bar.innerHTML = '<div class="editor-menu"><button class="toolbtn" data-menu="file">File</button><div class="editor-menu-popup" data-popup="file" hidden><button class="toolbtn" id="importBenchmarks">Import File</button><button class="toolbtn" id="importDeviceVerilog">Import Verilog from device…</button><button class="toolbtn" id="importFile">Import editor text</button><button class="toolbtn" id="exportFile">Export file</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="edit">Edit</button><div class="editor-menu-popup" data-popup="edit" hidden><button class="toolbtn" id="menuUndo">Undo (U)</button><button class="toolbtn" id="menuRedo">Redo (Shift+U)</button></div></div><div class="editor-menu"><button class="toolbtn" data-menu="libraries">Libraries</button><div class="editor-menu-popup" data-popup="libraries" hidden><button class="toolbtn" id="menuLoadLibrary">Load Library</button><button class="toolbtn" id="menuLoadLibraryFile">Load from computer…</button><div class="editor-menu-divider"></div><button class="toolbtn" id="menuStandardPrimitives">Standard Primitives</button><div id="loadedLibraryMenu" class="loaded-library-menu"></div></div></div>';
   toolbar.prepend(bar);
 
   const panel = $('libraryBrowser');
@@ -25,6 +25,7 @@
   bar.querySelectorAll('[data-menu]').forEach(b=>b.addEventListener('click',()=>{const p=bar.querySelector('[data-popup="'+b.dataset.menu+'"]');const open=!p.hidden;closeMenus();p.hidden=open;}));
   document.addEventListener('click',e=>{if(!bar.contains(e.target))closeMenus();});
   $('importBenchmarks').onclick=()=>{closeMenus();if(window.fpgaProjectFileBrowser)window.fpgaProjectFileBrowser.open('benchmarks');else $('importVerilog')?.click();};
+  $('importDeviceVerilog').onclick=()=>{closeMenus();$('verilogFile')?.click();};
   $('importFile').onclick=()=>{closeMenus();$('importVerilog')?.click();bar.querySelector('[data-menu="file"]').focus();};
   $('exportFile').onclick=()=>{closeMenus();$('exportVerilog')?.click();};
   $('menuUndo').onclick=()=>{closeMenus();$('editorUndo')?.click();};
