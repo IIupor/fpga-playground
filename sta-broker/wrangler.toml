@@ -9,6 +9,7 @@ id = "1c80482ccab24976a6b930d6cadaaf78"
 
 [vars]
 APP_ORIGIN = "https://iiupor.github.io"
+APP_ORIGINS = "https://iiupor.github.io,http://localhost:8000,http://127.0.0.1:8000"
 APP_URL = "https://iiupor.github.io/fpga-playground/"
 GITHUB_REPOSITORY = "IIupor/fpga-playground"
 
