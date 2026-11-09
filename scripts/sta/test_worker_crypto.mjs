@@ -42,6 +42,7 @@ console.log("GitHub App JWT signing works with PKCS#1 and PKCS#8 PEM keys.");
 const kvStore = new Map();
 const env = {
   APP_ORIGIN: "https://iiupor.github.io",
+  APP_ORIGINS: "https://iiupor.github.io,http://localhost:8000,http://127.0.0.1:8000",
   APP_URL: "https://iiupor.github.io/fpga-playground/",
   GITHUB_REPOSITORY: "IIupor/fpga-playground",
   GITHUB_OWNER_ID: "39133075",
@@ -57,7 +58,7 @@ const env = {
     async delete(key) { kvStore.delete(key); }
   }
 };
-const loginResponse = await worker.fetch(new Request("https://broker.example/auth/login"), env);
+const loginResponse = await worker.fetch(new Request("https://broker.example/auth/login?return_origin=http%3A%2F%2Flocalhost%3A8000"), env);
 assert.equal(loginResponse.status, 302);
 const authorizationUrl = new URL(loginResponse.headers.get("Location"));
 const oauthState = authorizationUrl.searchParams.get("state");
@@ -66,7 +67,7 @@ assert.ok(oauthState);
 assert.match(stateCookie, /HttpOnly/);
 assert.match(stateCookie, /Secure/);
 assert.match(stateCookie, /SameSite=Lax/);
-assert.equal(kvStore.get("oauth-state:" + oauthState), "1");
+assert.deepEqual(JSON.parse(kvStore.get("oauth-state:" + oauthState)), { returnOrigin: "http://localhost:8000" });
 
 let externalFetches = 0;
 const originalFetch = globalThis.fetch;
@@ -97,7 +98,7 @@ try {
     headers: { Cookie: "sta_oauth_state=" + oauthState }
   }), env);
   assert.equal(validCallback.status, 302);
-  assert.match(validCallback.headers.get("Location"), /#sta_session=/);
+  assert.match(validCallback.headers.get("Location"), /^http:\/\/localhost:8000\/#sta_session=/);
   assert.match(validCallback.headers.get("Set-Cookie"), /Max-Age=0/);
   assert.equal(kvStore.has("oauth-state:" + oauthState), false);
   assert.equal([...kvStore.keys()].some(key => key.startsWith("session:")), true);
