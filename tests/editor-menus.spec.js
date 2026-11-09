@@ -15,6 +15,28 @@ test('top-level menus replace the old file and history buttons', async ({ page }
   await expect(page.getByRole('button', { name: 'Redo (Shift+U)' })).toBeVisible();
 });
 
+test('File menu imports a Verilog file from the device', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'File', exact: true }).click();
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Import Verilog from device…' }).click();
+  const chooser = await chooserPromise;
+  const source = [
+    'module device_top (A, B, Y);',
+    'input A;',
+    'input B;',
+    'output Y;',
+    'wire n1;',
+    'and g1 (n1, A, B);',
+    'assign Y = n1;',
+    'endmodule'
+  ].join('\\n');
+  await chooser.setFiles({ name: 'device_top.v', mimeType: 'text/plain', buffer: Buffer.from(source) });
+  await expect(page.locator('#editorMessage')).toContainText('Imported 4 blocks and 3 wires');
+  await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
+  await expect(page.locator('#verilogText')).toHaveValue(source);
+});
+
 test('I opens the two-pane Standard Primitives browser and Q shows selected cell details', async ({ page }) => {
   await page.goto('/');
   await page.keyboard.press('i');
