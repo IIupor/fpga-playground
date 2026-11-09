@@ -180,9 +180,15 @@ export class StaGuard {
   }
 }
 
-function corsHeaders(env) {
+function allowedAppOrigins(env) {
+  return new Set(String(env.APP_ORIGINS || env.APP_ORIGIN || "").split(",").map(value => value.trim()).filter(Boolean));
+}
+function isAllowedAppOrigin(origin, env) {
+  return Boolean(origin && allowedAppOrigins(env).has(origin));
+}
+function corsHeaders(env, origin = env.APP_ORIGIN) {
   return {
-    "Access-Control-Allow-Origin": env.APP_ORIGIN,
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Authorization, Content-Type",
     "Access-Control-Max-Age": "86400",
@@ -331,13 +337,16 @@ async function handle(request, env) {
   const path = url.pathname;
 
   if (request.method === "OPTIONS") {
-    if (request.headers.get("Origin") !== env.APP_ORIGIN) return new Response(null, { status: 403 });
-    return new Response(null, { status: 204, headers: corsHeaders(env) });
+    const origin = request.headers.get("Origin");
+    if (!isAllowedAppOrigin(origin, env)) return new Response(null, { status: 403 });
+    return new Response(null, { status: 204, headers: corsHeaders(env, origin) });
   }
 
   if (path === "/auth/login" && request.method === "GET") {
+    const requestedOrigin = url.searchParams.get("return_origin") || env.APP_ORIGIN;
+    if (!isAllowedAppOrigin(requestedOrigin, env)) return new Response("This application origin is not allowed.", { status: 403 });
     const state = crypto.randomUUID();
-    await env.STA_KV.put("oauth-state:" + state, "1", { expirationTtl: 300 });
+    await env.STA_KV.put("oauth-state:" + state, JSON.stringify({ returnOrigin: requestedOrigin }), { expirationTtl: 300 });
     const callback = url.origin + "/auth/callback";
     const target = new URL("https://github.com/login/oauth/authorize");
     target.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
@@ -355,7 +364,9 @@ async function handle(request, env) {
     const stateCookie = request.headers.get("Cookie")?.split(";")
       .map(part => part.trim()).find(part => part.startsWith("sta_oauth_state="))
       ?.slice("sta_oauth_state=".length) || "";
-    if (!state || !code || !safeEqual(state, stateCookie) || !(await env.STA_KV.get("oauth-state:" + state))) {
+    const oauthState = state ? await env.STA_KV.get("oauth-state:" + state, "json") : null;
+    if (!state || !code || !safeEqual(state, stateCookie) || !oauthState ||
+        !isAllowedAppOrigin(oauthState.returnOrigin, env)) {
       return new Response("Invalid or expired GitHub authorization state.", {
         status: 400, headers: clearOAuthStateCookie()
       });
@@ -391,7 +402,10 @@ async function handle(request, env) {
       githubId: String(user.id),
       expiresAt: Date.now() + 6 * 60 * 60 * 1000
     }), { expirationTtl: 21600 });
-    return redirect((env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/")) + "#sta_session=" + encodeURIComponent(sessionId), clearOAuthStateCookie());
+    const returnUrl = oauthState.returnOrigin === env.APP_ORIGIN
+      ? (env.APP_URL || (env.APP_ORIGIN + "/fpga-playground/"))
+      : oauthState.returnOrigin + "/";
+    return redirect(returnUrl + "#sta_session=" + encodeURIComponent(sessionId), clearOAuthStateCookie());
   }
 
   if (path === "/api/session" && request.method === "GET") {
@@ -401,7 +415,7 @@ async function handle(request, env) {
   }
 
   if (path === "/api/jobs" && request.method === "POST") {
-    if (request.headers.get("Origin") !== env.APP_ORIGIN) return json({ error: "Origin not allowed." }, 403, env);
+    if (!isAllowedAppOrigin(request.headers.get("Origin"), env)) return json({ error: "Origin not allowed." }, 403, env);
     if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("Content-Type") || "")) {
       return json({ error: "Content-Type must be application/json." }, 415, env);
     }
@@ -572,7 +586,14 @@ export { createAppJwt, validateSignalMap, readJsonLimited, installationTokenPayl
 
 export default {
   async fetch(request, env) {
-    try { return await handle(request, env); }
+    try {
+      const response = await handle(request, env);
+      const origin = request.headers.get("Origin");
+      if (!isAllowedAppOrigin(origin, env)) return response;
+      const headers = new Headers(response.headers);
+      for (const [key, value] of Object.entries(corsHeaders(env, origin))) headers.set(key, value);
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+    }
     catch (error) {
       const message = error?.message || "Internal error.";
       if (/(?:1027|1015|quota|rate.?limit|limit.{0,40}exceed|exceed.{0,40}limit)/i.test(message)) {
