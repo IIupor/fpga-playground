@@ -30,7 +30,7 @@ test('File menu imports a Verilog file from the device', async ({ page }) => {
     'and g1 (n1, A, B);',
     'assign Y = n1;',
     'endmodule'
-  ].join('\\n');
+  ].join('\n');
   await chooser.setFiles({ name: 'device_top.v', mimeType: 'text/plain', buffer: Buffer.from(source) });
   await expect(page.locator('#editorMessage')).toContainText('Imported 4 blocks and 3 wires');
   await expect(page.locator('#editorStage g[data-node]')).toHaveCount(4);
