@@ -58,6 +58,47 @@ const env = {
     async delete(key) { kvStore.delete(key); }
   }
 };
+// Browser Origin is an allowlist boundary, not authentication. Reject foreign origins
+// before any OAuth, session, or job-processing work can begin.
+const foreignPreflight = await worker.fetch(new Request("https://broker.example/api/jobs", {
+  method: "OPTIONS",
+  headers: {
+    Origin: "https://attacker.example",
+    "Access-Control-Request-Method": "POST",
+    "Access-Control-Request-Headers": "authorization,content-type"
+  }
+}), env);
+assert.equal(foreignPreflight.status, 403, "CORS preflight must reject origins outside the application allowlist");
+assert.equal(foreignPreflight.headers.get("Access-Control-Allow-Origin"), null,
+  "a rejected preflight must not grant CORS access");
+
+const foreignOriginJob = await worker.fetch(new Request("https://broker.example/api/jobs", {
+  method: "POST",
+  headers: {
+    Origin: "https://attacker.example",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    verilog: "module top; endmodule",
+    top: "top",
+    sdc: "create_clock -name core_clk -period 1"
+  })
+}), env);
+assert.equal(foreignOriginJob.status, 403, "job submission must reject a foreign Origin");
+
+const missingOriginJob = await worker.fetch(new Request("https://broker.example/api/jobs", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    verilog: "module top; endmodule",
+    top: "top",
+    sdc: "create_clock -name core_clk -period 1"
+  })
+}), env);
+assert.equal(missingOriginJob.status, 403, "job submission must reject a missing Origin");
+
+console.log("STA broker rejects foreign CORS preflights and foreign or missing job Origins.");
+
 const loginResponse = await worker.fetch(new Request("https://broker.example/auth/login?return_origin=http%3A%2F%2Flocalhost%3A8000"), env);
 assert.equal(loginResponse.status, 302);
 const authorizationUrl = new URL(loginResponse.headers.get("Location"));
