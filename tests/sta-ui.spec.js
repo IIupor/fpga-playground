@@ -92,7 +92,7 @@ test('GitHub sign-in popup preserves the STA dialog and updates the account butt
   await page.addInitScript(() => {
     localStorage.setItem('fpgaStaBrokerUrl', 'https://sta-broker.test');
   });
-  await page.context().route('https://sta-broker.test/auth/login', async route => {
+  await page.context().route('**/auth/login?return_origin=*', async route => {
     const returnUrl = page.url().split('#')[0] + '#sta_session=test-session-id';
     await route.fulfill({
       status: 200,

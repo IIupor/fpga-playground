@@ -54,6 +54,12 @@ The runner accepts only the editor-generated SDC subset: `create_clock`, `set_in
    - `STA_BROKER_SECRET`: the same random secret configured in the Worker.
 9. Configure the editor's STA broker URL to the deployed Worker URL.
 
+## Local Windows development
+
+Run `start-local.bat` from the repository root. It starts Python's built-in static HTTP server bound to `127.0.0.1:8000` and opens `http://localhost:8000/`. Keep the command window open while using the app. Python 3 is required; no application packages need to be installed.
+
+The Worker allowlists both `http://localhost:8000` and `http://127.0.0.1:8000` for CORS and OAuth return. The OAuth callback remains on the Worker (the GitHub OAuth App callback URL does not change); after successful sign-in, the broker redirects the short-lived session to the exact allowlisted local origin. Do not use another port or hostname unless it is explicitly added to `APP_ORIGINS` and redeployed. The published GitHub Pages origin remains supported.
+
 ## Security and retention
 
 - The Worker requests only the GitHub profile scope (`read:user`) and accepts sign-in only when the OAuth user's immutable numeric ID matches `GITHUB_OWNER_ID`.

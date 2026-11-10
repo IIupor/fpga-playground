@@ -492,7 +492,7 @@
       if (!brokerUrl()) throw new Error('Enter the broker URL first.');
       if (authPopup && !authPopup.closed) authPopup.focus();
       else authPopup = window.open(
-        brokerUrl() + '/auth/login',
+        brokerUrl() + '/auth/login?return_origin=' + encodeURIComponent(location.origin),
         'fpgaStaGithubAuth',
         'popup,width=620,height=760,resizable=yes,scrollbars=yes'
       );
